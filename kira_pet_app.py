@@ -111,28 +111,50 @@ MSD_BASE = {
     "other":  "https://www.msdvetmanual.com/all-other-pets",
 }
 
+# MSD Vet Manual article index — direct links per condition
+# No search API exists; we map common conditions to specific MSD articles
+MSD_ARTICLES = {
+    "dog": {
+        "not eating": "https://www.msdvetmanual.com/dog-owners/digestive-disorders-of-dogs/vomiting-in-dogs",
+        "vomiting": "https://www.msdvetmanual.com/dog-owners/digestive-disorders-of-dogs/vomiting-in-dogs",
+        "diarrhoea": "https://www.msdvetmanual.com/dog-owners/digestive-disorders-of-dogs/diarrhea-in-dogs",
+        "lethargy": "https://www.msdvetmanual.com/dog-owners/routine-care-and-breeding-of-dogs/routine-health-care-of-dogs",
+        "coughing": "https://www.msdvetmanual.com/dog-owners/lung-and-airway-disorders-of-dogs/coughing-in-dogs",
+        "itching": "https://www.msdvetmanual.com/dog-owners/skin-disorders-of-dogs/itching-scratching-licking-and-chewing-in-dogs",
+        "limping": "https://www.msdvetmanual.com/dog-owners/bone-joint-and-muscle-disorders-of-dogs",
+        "seizures": "https://www.msdvetmanual.com/dog-owners/brain-spinal-cord-and-nerve-disorders-of-dogs/seizure-disorders-in-dogs",
+        "bloat": "https://www.msdvetmanual.com/dog-owners/digestive-disorders-of-dogs/bloat-in-dogs",
+        "default": "https://www.msdvetmanual.com/dog-owners",
+    },
+    "cat": {
+        "not eating": "https://www.msdvetmanual.com/cat-owners/digestive-disorders-of-cats/vomiting-in-cats",
+        "vomiting": "https://www.msdvetmanual.com/cat-owners/digestive-disorders-of-cats/vomiting-in-cats",
+        "urination": "https://www.msdvetmanual.com/cat-owners/kidney-and-urinary-tract-disorders-of-cats/urinary-tract-obstruction-in-cats",
+        "sneezing": "https://www.msdvetmanual.com/cat-owners/lung-and-airway-disorders-of-cats",
+        "itching": "https://www.msdvetmanual.com/cat-owners/skin-disorders-of-cats",
+        "default": "https://www.msdvetmanual.com/cat-owners",
+    },
+}
+
 def msdvet_search(species, query, n=3):
-    """Fetch MSD Vet Manual evidence for the clinical report."""
-    try:
-        base = MSD_BASE.get(species, MSD_BASE["dog"])
-        search_url = f"https://www.msdvetmanual.com/search?query={urllib.parse.quote(query)}&lang=en"
-        req = urllib.request.Request(search_url, headers={"User-Agent":"Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=8) as r:
-            html = r.read().decode("utf-8","ignore")
-        # Extract article links from search results
-        links = []
-        import re
-        for m in re.finditer(r'href="(/[a-z\-]+/[a-z\-/]+)"', html):
-            path = m.group(1)
-            if any(s in path for s in ["dog","cat","bird","rabbit","pet","veterinary"]) and path not in links:
-                links.append(f"https://www.msdvetmanual.com{path}")
-            if len(links) >= n: break
-        if not links:
-            links = [base]
-        return [{"title": l.split("/")[-1].replace("-"," ").title(), "url": l} for l in links]
-    except:
-        base = MSD_BASE.get(species, MSD_BASE["dog"])
-        return [{"title": "MSD Veterinary Manual", "url": base}]
+    """Return curated MSD Vet Manual links based on symptom keywords.
+    NOTE: MSD has no public API. Claude's built-in veterinary knowledge
+    (trained on MSD, WSAVA, Merck Vet Manual) drives the diagnosis.
+    These links provide the owner with reference reading material."""
+    articles = MSD_ARTICLES.get(species, MSD_ARTICLES["dog"])
+    query_lower = query.lower()
+    found = []
+    for keyword, url in articles.items():
+        if keyword != "default" and keyword in query_lower:
+            label = keyword.replace("-"," ").title()
+            found.append({"title": f"MSD Vet Manual — {label}", "url": url})
+        if len(found) >= n: break
+    if not found:
+        default_url = articles["default"]
+        found.append({"title": f"MSD Veterinary Manual — {species.title()} Health", "url": default_url})
+    # Always add WSAVA guidelines link
+    found.append({"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"})
+    return found[:n]
 
 # ── VETERINARY DRUG CHECK (Claude-powered) ────────────────────────────────────
 # Hard-coded toxicity rules — always applied regardless of AI
@@ -168,8 +190,61 @@ def check_toxicity(species, meds_text, symptoms_text=""):
                     warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: {t.title()} είναι τοξικό για σκύλους. Συμβουλευτείτε άμεσα κτηνίατρο.")
     return warnings
 
+
+# ── PHOTO SCANNER (Florence-2 + Claude Vision) ────────────────────────────────
+import base64 as _b64
+
+SCAN_PROMPTS = {
+    "eye":   "Describe any abnormalities in the eye: redness, discharge, cloudiness, third eyelid, pupil irregularities.",
+    "skin":  "Describe any skin abnormalities: lesions, hair loss, redness, scaling, lumps, wounds, discoloration, parasites.",
+    "ear":   "Describe the ear: discharge colour/consistency, redness, swelling, debris.",
+    "mouth": "Describe gum colour (pink=normal, pale/white/blue=EMERGENCY), teeth, any lesions.",
+    "body":  "Describe body condition: posture, swelling, wounds, asymmetry, pain signs.",
+    "paw":   "Describe paw: pad integrity, cuts, swelling, redness, interdigital cysts.",
+}
+
+def florence2_analyze(image_b64, scan_type, api_key):
+    workspace = st.secrets.get("ROBOFLOW_WORKSPACE","chriss-workspace-zk0ng")
+    workflow  = st.secrets.get("ROBOFLOW_WORKFLOW","florence2-base-demo")
+    url = f"https://serverless.roboflow.com/{workspace}/workflows/{workflow}"
+    task_prompt = SCAN_PROMPTS.get(scan_type, SCAN_PROMPTS["skin"])
+    body = json.dumps({
+        "api_key": api_key,
+        "inputs": {"image": {"type":"base64","value":image_b64}, "task_prompt": task_prompt}
+    }).encode()
+    req = urllib.request.Request(url, data=body, headers={"Content-Type":"application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            result = json.loads(r.read())
+        outputs = result.get("outputs",[])
+        if outputs:
+            first = outputs[0]
+            for key in ["output","caption","text","result","description"]:
+                if key in first and first[key]:
+                    return {"ok":True,"description":str(first[key])}
+        return {"ok":True,"description":str(result)}
+    except Exception as e:
+        return {"ok":False,"error":str(e)}
+
+def claude_vision_pet(image_b64, image_type, prompt, system=""):
+    key = get_claude_key()
+    if not key: return "⚠️ API key not set."
+    body = json.dumps({
+        "model":"claude-sonnet-4-6","max_tokens":3000,"system":system,
+        "messages":[{"role":"user","content":[
+            {"type":"image","source":{"type":"base64","media_type":image_type,"data":image_b64}},
+            {"type":"text","text":prompt}
+        ]}]
+    }).encode()
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages",data=body,
+        headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
+    try:
+        with urllib.request.urlopen(req,timeout=60) as r:
+            return json.loads(r.read())["content"][0]["text"]
+    except Exception as e: return f"⚠️ {e}"
+
 # ── GPT-4o ────────────────────────────────────────────────────────────────────
-def gpt4o(prompt, system="", max_tokens=900):
+def gpt4o(prompt, system="", max_tokens=3000):
     try:
         oai = get_openai_key()
         if not oai: return None
@@ -183,7 +258,7 @@ def gpt4o(prompt, system="", max_tokens=900):
     except Exception as e: return f"GPT-4o unavailable: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-def claude(messages, system="", max_tokens=1200, timeout=60):
+def claude(messages, system="", max_tokens=3000, timeout=60):
     key = get_claude_key()
     if not key: return "⚠️ Claude API key not set."
     body = json.dumps({"model":"claude-sonnet-4-6","max_tokens":max_tokens,
@@ -608,23 +683,118 @@ def render_vitals():
     rng  = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
     st.markdown(f"## 📊 {t('vitals_title')} — {pet.get('name','')} {pet.get('species_label','')}")
 
-    # Species-specific normal range info
     hr_range = rng["hr"]; br_range = rng["br"]; temp_range = rng["temp"]
     st.caption(f"{'Φυσιολογικά για' if lang=='el' else 'Normal for'} {pet.get('species_label','')}: "
                f"HR {hr_range[0]}–{hr_range[1]} bpm · BR {br_range[0]}–{br_range[1]}/min · "
                f"Temp {temp_range[0]}–{temp_range[1]}°C")
 
-    v = st.session_state.vitals
-    c1,c2,c3 = st.columns(3)
-    with c1:
-        hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=int(v.get("hr",0)) or None, placeholder=str(int((hr_range[0]+hr_range[1])//2)))
-        temp = st.number_input(t("temp"),min_value=0.0,max_value=45.0,value=float(v.get("temp",0.0)) or None, placeholder=str(temp_range[0]), format="%.1f")
-    with c2:
-        br   = st.number_input(t("br"),  min_value=0, max_value=100, value=int(v.get("br",0)) or None, placeholder=str(int((br_range[0]+br_range[1])//2)))
-        spo2 = st.number_input(t("spo2"),min_value=0, max_value=100, value=int(v.get("spo2",0)) or None, placeholder="98")
-    with c3:
-        wt   = st.number_input(t("weight_v"),min_value=0.0,max_value=200.0,
-                                value=float(pet.get("weight",0.0)) or None, placeholder="5.0", format="%.1f")
+    # ── Tabs: Photo Scan | Vitals | Skip ──────────────────────────────────────
+    tab_scan, tab_vitals = st.tabs([
+        "📷 " + ("Σάρωση Φωτογραφίας" if lang=="el" else "Photo Scan"),
+        "📋 " + ("Ζωτικές Ενδείξεις"  if lang=="el" else "Enter Vitals"),
+    ])
+
+    with tab_scan:
+        rf_key = st.secrets.get("ROBOFLOW_API_KEY","")
+        st.markdown(f"### {'Ανάλυση Φωτογραφίας' if lang=='el' else 'Photo Health Analysis'}")
+        st.caption("Florence-2 (Microsoft) + Claude Vision · " +
+                   ("Ανεβάστε φωτογραφία του ματιού, δέρματος, αυτιού, ούλων ή σώματος"
+                    if lang=="el" else "Upload photo of eye, skin, ear, gums or body"))
+
+        SCAN_OPTS = {
+            "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
+                   ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
+                   ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες")],
+            "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
+                   ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
+                   ("body","🐾 Body"),("paw","🐶 Paws")],
+        }
+        opts = SCAN_OPTS[lang]
+        scan_labels = [o[1] for o in opts]
+        scan_keys   = [o[0] for o in opts]
+        sel_idx = st.radio("", scan_labels, horizontal=True, key="scan_type_radio",
+                           label_visibility="collapsed")
+        selected_scan = scan_keys[scan_labels.index(sel_idx)] if sel_idx in scan_labels else "eye"
+
+        uploaded = st.file_uploader(
+            ("Φωτογραφία" if lang=="el" else "Upload photo"),
+            type=["jpg","jpeg","png","webp"], key="pet_photo_upload"
+        )
+
+        if uploaded:
+            col_img, col_info = st.columns([1,1])
+            with col_img:
+                st.image(uploaded, use_column_width=True)
+            with col_info:
+                st.markdown(f"**{pet.get('name','')}** {pet.get('species_label','')}")
+                st.markdown(f"Scan: **{sel_idx}**")
+
+            img_bytes = uploaded.read()
+            img_b64   = _b64.b64encode(img_bytes).decode()
+            img_type  = "image/jpeg"
+            if uploaded.name.lower().endswith(".png"):  img_type = "image/png"
+            if uploaded.name.lower().endswith(".webp"): img_type = "image/webp"
+
+            if st.button("🔍 " + ("Ανάλυση" if lang=="el" else "Analyse"),
+                         type="primary", use_container_width=True, key="analyse_photo"):
+                with st.spinner("Florence-2 + Claude..." if lang=="el" else "Florence-2 + Claude analysing..."):
+                    # Step 1: Florence-2 visual description
+                    f2_desc = ""
+                    if rf_key:
+                        f2_result = florence2_analyze(img_b64, selected_scan, rf_key)
+                        if f2_result.get("ok"):
+                            f2_desc = f2_result.get("description","")
+
+                    # Step 2: Claude Vision clinical interpretation
+                    context_note = (f"\n\nFLORENCE-2 DESCRIPTION: {f2_desc}" if f2_desc else "")
+                    system_prompt = ("Είσαι κτηνιατρικός αναλυτής φωτογραφιών. Δίνεις δομημένη, ακριβή ανάλυση."
+                                     if lang=="el" else
+                                     "You are a veterinary photo analyst. Give structured, accurate analysis.")
+                    el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** | **PITHANES AITIES** | **SISTASI**"
+                    en_suffix = "\n\nProvide: **FINDINGS** | **ASSESSMENT** (Normal/Monitor/Urgent) | **POSSIBLE CAUSES** | **RECOMMENDATION**"
+                    clinical_prompt = (SCAN_PROMPTS.get(selected_scan, SCAN_PROMPTS["skin"]) + context_note + (el_suffix if lang=="el" else en_suffix))
+                    analysis = claude_vision_pet(img_b64, img_type, clinical_prompt, system_prompt)
+
+                # Show Florence-2 raw description
+                if f2_desc:
+                    st.markdown(f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:10px 14px;margin-bottom:10px"><div style="font-size:11px;color:#6B7280;margin-bottom:4px">🔬 Florence-2 visual description</div><div style="font-size:13px">{f2_desc}</div></div>', unsafe_allow_html=True)
+
+                # Show Claude clinical analysis
+                st.markdown(f'<div class="card">', unsafe_allow_html=True)
+                st.markdown(analysis)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Store findings in session state → feed to triage
+                st.session_state["photo_scan_findings"] = {
+                    "scan_type": selected_scan,
+                    "scan_label": sel_idx,
+                    "florence_desc": f2_desc,
+                    "clinical_analysis": analysis,
+                }
+
+                # Button to continue to triage with findings
+                if st.button("➤ " + ("Συνέχεια στην Εκτίμηση Συμπτωμάτων →" if lang=="el"
+                                     else "Continue to Symptom Assessment →"),
+                             type="primary", use_container_width=True, key="photo_to_triage"):
+                    # Auto-inject photo findings into triage chat
+                    finding_msg = (f"Αποτελεσμα σαρωσης φωτογραφιας ({sel_idx}):\n\n{analysis}" if lang=="el"
+                                   else f"Photo scan result ({sel_idx}):\n\n{analysis}")
+                    st.session_state.triage_chat = [{"role":"user","content":finding_msg}]
+                    st.session_state.screen = "triage"
+                    st.rerun()
+
+    with tab_vitals:
+        v = st.session_state.vitals
+        c1,c2,c3 = st.columns(3)
+        with c1:
+            hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=int(v.get("hr",0)) or None, placeholder=str(int((hr_range[0]+hr_range[1])//2)))
+            temp = st.number_input(t("temp"),min_value=0.0,max_value=45.0,value=float(v.get("temp",0.0)) or None, placeholder=str(temp_range[0]), format="%.1f")
+        with c2:
+            br   = st.number_input(t("br"),  min_value=0, max_value=100, value=int(v.get("br",0)) or None, placeholder=str(int((br_range[0]+br_range[1])//2)))
+            spo2 = st.number_input(t("spo2"),min_value=0, max_value=100, value=int(v.get("spo2",0)) or None, placeholder="98")
+        with c3:
+            wt   = st.number_input(t("weight_v"),min_value=0.0,max_value=200.0,
+                                    value=float(pet.get("weight",0.0)) or None, placeholder="5.0", format="%.1f")
 
     col_b,col_s,col_n = st.columns([1,1,2])
     with col_b:
@@ -650,7 +820,7 @@ def render_vitals():
                               f"Φυσ. εύρος: HR {hr_range[0]}-{hr_range[1]}, BR {br_range[0]}-{br_range[1]}, "
                               f"Temp {temp_range[0]}-{temp_range[1]}°C. Σημείωσε ό,τι χρήζει προσοχής.")
                     st.session_state.vitals_analysis = claude(
-                        [{"role":"user","content":prompt}], system=kira_pet_system(), max_tokens=1200)
+                        [{"role":"user","content":prompt}], system=kira_pet_system(), max_tokens=3000)
             st.session_state.screen="triage"; st.rerun()
 
 
@@ -758,14 +928,18 @@ def render_triage():
         st.session_state.triage_chat.append({"role":"user","content":user_input})
         with st.spinner("Kira Pet..."):
             p = pet
+            photo_ctx = ""
+            if st.session_state.get("photo_scan_findings"):
+                pf = st.session_state["photo_scan_findings"]
+                photo_ctx = f"\nΦΩΤΟΓΡΑΦΙΑ ({pf.get('scan_label','')}): {pf.get('clinical_analysis','')[:400]}"
             profile_ctx = (f"Κατοικίδιο: {p.get('name')}, {p.get('species_label')} ({p.get('breed')}), "
                            f"{p.get('age_y')}y {p.get('age_m')}m, {p.get('sex')}, {p.get('weight','')}kg\n"
-                           f"Παθήσεις: {p.get('conditions','—')}\nΦάρμακα: {p.get('meds_raw','—')}\nΚτηνίατρος: {p.get('vet_name','—')}")
+                           f"Παθήσεις: {p.get('conditions','—')}\nΦάρμακα: {p.get('meds_raw','—')}\nΚτηνίατρος: {p.get('vet_name','—')}{photo_ctx}")
             vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
                           if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
             system_ctx = kira_pet_system() + f"\n\n{profile_ctx}\n{vitals_ctx}"
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
-                           system=system_ctx, max_tokens=1500)
+                           system=system_ctx, max_tokens=3000)
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         st.session_state.triage_chat.append({"role":"assistant","content":reply}); st.rerun()
@@ -838,7 +1012,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
 
         with st.spinner("Δημιουργία κτηνιατρικής αναφοράς..." if lang=="el" else "Generating veterinary report..."):
             result = claude([{"role":"user","content":report_prompt}],
-                            system=kira_pet_system(), max_tokens=2500, timeout=120)
+                            system=kira_pet_system(), max_tokens=3000, timeout=120)
             if result.startswith("⚠️"):
                 st.error(result)
                 if st.button("🔄 Retry"): st.rerun()
@@ -873,7 +1047,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                     with st.spinner("GPT-4o reviewing..."):
                         st.session_state.report_gpt = gpt4o(
                             prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nKira Pet's assessment:\n{st.session_state.report}\n\nDo you agree with this veterinary assessment? Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
-                            system=kira_pet_system(), max_tokens=900)
+                            system=kira_pet_system(), max_tokens=3000)
                     st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
@@ -938,4 +1112,3 @@ elif screen=="vitals": render_vitals()
 elif screen=="triage": render_triage()
 elif screen=="report": render_report()
 else: render_home()
-
