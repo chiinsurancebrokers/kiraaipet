@@ -11,6 +11,16 @@ import io
 import urllib.request
 import urllib.parse
 from datetime import datetime
+import io as _io
+
+# HEIC support (iPhone photos)
+try:
+    import pillow_heif as _heif
+    from PIL import Image as _Image
+    _heif.register_heif_opener()
+    HEIC_OK = True
+except ImportError:
+    HEIC_OK = False
 
 st.set_page_config(
     page_title="Kira Pet · AI Vet Nurse",
@@ -193,6 +203,16 @@ def check_toxicity(species, meds_text, symptoms_text=""):
 
 # ── PHOTO SCANNER (Florence-2 + Claude Vision) ────────────────────────────────
 import base64 as _b64
+
+
+def convert_heic(img_bytes, filename="photo"):
+    """Convert HEIC/HEIF to JPEG bytes. Returns (jpeg_bytes, "image/jpeg")."""
+    if not HEIC_OK:
+        raise RuntimeError("pillow-heif not installed — cannot convert HEIC")
+    img = _Image.open(_io.BytesIO(img_bytes))
+    buf = _io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=92)
+    return buf.getvalue(), "image/jpeg"
 
 SCAN_PROMPTS = {
     "eye":   "Describe any abnormalities in the eye: redness, discharge, cloudiness, third eyelid, pupil irregularities.",
@@ -718,7 +738,7 @@ def render_vitals():
 
         uploaded = st.file_uploader(
             ("Φωτογραφία" if lang=="el" else "Upload photo"),
-            type=["jpg","jpeg","png","webp"], key="pet_photo_upload"
+            type=["jpg","jpeg","png","webp","heic","heif"], key="pet_photo_upload"
         )
 
         if uploaded:
@@ -730,10 +750,27 @@ def render_vitals():
                 st.markdown(f"Scan: **{sel_idx}**")
 
             img_bytes = uploaded.read()
-            img_b64   = _b64.b64encode(img_bytes).decode()
-            img_type  = "image/jpeg"
-            if uploaded.name.lower().endswith(".png"):  img_type = "image/png"
-            if uploaded.name.lower().endswith(".webp"): img_type = "image/webp"
+            fname_lower = uploaded.name.lower()
+
+            # Convert HEIC/HEIF (iPhone default format) to JPEG
+            if fname_lower.endswith((".heic",".heif")):
+                if HEIC_OK:
+                    try:
+                        img_bytes, img_type = convert_heic(img_bytes, uploaded.name)
+                        st.caption("✅ HEIC → JPEG " + ("μετατράπηκε αυτόματα" if lang=="el" else "converted automatically"))
+                    except Exception as e:
+                        st.error(f"HEIC conversion failed: {e}")
+                        st.stop()
+                else:
+                    st.error("⚠️ HEIC photos need pillow-heif. Add it to requirements.txt" if lang=="en"
+                             else "⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif στο requirements.txt")
+                    st.stop()
+            else:
+                img_type = "image/jpeg"
+                if fname_lower.endswith(".png"):  img_type = "image/png"
+                if fname_lower.endswith(".webp"): img_type = "image/webp"
+
+            img_b64 = _b64.b64encode(img_bytes).decode()
 
             if st.button("🔍 " + ("Ανάλυση" if lang=="el" else "Analyse"),
                          type="primary", use_container_width=True, key="analyse_photo"):
