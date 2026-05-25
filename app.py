@@ -626,7 +626,7 @@ def render_intake():
         sex_opts = [t("male"), t("female"), t("neutered")]
         sex = st.selectbox(t("sex"), sex_opts)
     with c4: weight = st.number_input(t("weight"), min_value=0.0, max_value=150.0,
-                                       value=float(pet.get("weight",0.0)) or None, placeholder="5.0", format="%.1f")
+                                       value=(float(pet.get("weight")) if pet.get("weight") else None), placeholder="5.0", format="%.1f")
 
     microchip = st.text_input(t("microchip"), value=pet.get("microchip",""), placeholder="941000123456789")
     vax_opts = [t("yes"), t("no"), t("unknown")]
@@ -787,14 +787,14 @@ def render_vitals():
         v = st.session_state.vitals
         c1,c2,c3 = st.columns(3)
         with c1:
-            hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=int(v.get("hr",0)) or None, placeholder=str(int((hr_range[0]+hr_range[1])//2)))
-            temp = st.number_input(t("temp"),min_value=0.0,max_value=45.0,value=float(v.get("temp",0.0)) or None, placeholder=str(temp_range[0]), format="%.1f")
+            hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=(int(v.get("hr")) if v.get("hr") else None), placeholder=str(int((hr_range[0]+hr_range[1])//2)))
+            temp = st.number_input(t("temp"),min_value=0.0,max_value=45.0,value=(float(v.get("temp")) if v.get("temp") else None), placeholder=str(temp_range[0]), format="%.1f")
         with c2:
-            br   = st.number_input(t("br"),  min_value=0, max_value=100, value=int(v.get("br",0)) or None, placeholder=str(int((br_range[0]+br_range[1])//2)))
-            spo2 = st.number_input(t("spo2"),min_value=0, max_value=100, value=int(v.get("spo2",0)) or None, placeholder="98")
+            br   = st.number_input(t("br"),  min_value=0, max_value=100, value=(int(v.get("br")) if v.get("br") else None), placeholder=str(int((br_range[0]+br_range[1])//2)))
+            spo2 = st.number_input(t("spo2"),min_value=0, max_value=100, value=(int(v.get("spo2")) if v.get("spo2") else None), placeholder="98")
         with c3:
             wt   = st.number_input(t("weight_v"),min_value=0.0,max_value=200.0,
-                                    value=float(pet.get("weight",0.0)) or None, placeholder="5.0", format="%.1f")
+                                    value=(float(pet.get("weight")) if pet.get("weight") else None), placeholder="5.0", format="%.1f")
 
     col_b,col_s,col_n = st.columns([1,1,2])
     with col_b:
