@@ -398,46 +398,34 @@ Only findings you actually see in the document — don't invent indicators."""
 def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="recording.webm"):
     """Transcribe a short voice recording to text via Groq Whisper large-v3.
     Audio is sent to Groq for processing but NEVER stored on our side; only the
-    resulting transcript text enters session state. Returns (text, error)."""
+    resulting transcript text enters session state. Returns (text, error).
+
+    Uses the `requests` library for multipart encoding — manual urllib
+    multipart bodies have been observed to trigger 403 Forbidden from the
+    Groq API even with a valid key."""
     key = get_groq_key()
     if not key:
         return None, "⚠️ GROQ_API_KEY not set."
-    import uuid as _uuid
-    boundary = f"----petainurse{_uuid.uuid4().hex}"
-
-    def _multipart(parts):
-        body = bytearray()
-        for name, value, fn, ct in parts:
-            body += f"--{boundary}\r\n".encode()
-            if fn:
-                body += f'Content-Disposition: form-data; name="{name}"; filename="{fn}"\r\n'.encode()
-                body += f"Content-Type: {ct or 'application/octet-stream'}\r\n\r\n".encode()
-                body += value
-                body += b"\r\n"
-            else:
-                body += f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode()
-                body += str(value).encode()
-                body += b"\r\n"
-        body += f"--{boundary}--\r\n".encode()
-        return bytes(body)
-
     try:
-        body = _multipart([
-            ("file",  audio_bytes, filename, mime),
-            ("model", "whisper-large-v3", None, None),
-            ("language", lang if lang in ("el","en") else "el", None, None),
-            ("response_format", "text", None, None),
-        ])
-        req = urllib.request.Request(
+        import requests
+        files = {"file": (filename, audio_bytes, mime)}
+        data = {
+            "model": "whisper-large-v3",
+            "language": lang if lang in ("el","en") else "el",
+            "response_format": "text",
+        }
+        r = requests.post(
             "https://api.groq.com/openai/v1/audio/transcriptions",
-            data=body,
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": f"multipart/form-data; boundary={boundary}",
-            },
+            headers={"Authorization": f"Bearer {key}"},
+            files=files, data=data, timeout=60,
         )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode("utf-8").strip(), None
+        if r.status_code == 200:
+            return r.text.strip(), None
+        if r.status_code == 401:
+            return None, "⚠️ Groq API key invalid (401). Έλεγξε το GROQ_API_KEY."
+        if r.status_code == 403:
+            return None, f"⚠️ Groq 403 Forbidden: {r.text[:300]}"
+        return None, f"⚠️ Groq HTTP {r.status_code}: {r.text[:300]}"
     except Exception as e:
         return None, f"⚠️ {e}"
 
@@ -2040,8 +2028,10 @@ def render_vitals():
         opts = SCAN_OPTS[lang]
         scan_labels = [o[1] for o in opts]
         scan_keys   = [o[0] for o in opts]
-        sel_idx = st.radio("", scan_labels, horizontal=True, key="scan_type_radio",
-                           label_visibility="collapsed")
+        sel_idx = st.radio(
+            ("Τύπος σάρωσης" if lang=="el" else "Scan type"),
+            scan_labels, horizontal=True, key="scan_type_radio",
+            label_visibility="collapsed")
         selected_scan = scan_keys[scan_labels.index(sel_idx)] if sel_idx in scan_labels else "eye"
 
         uploaded = st.file_uploader(
@@ -2328,12 +2318,26 @@ def render_triage():
     voice_text = None
     if get_groq_key():
         with st.expander("🎙️ " + ("Μίλα αντί να γράψεις" if lang=="el" else "Speak instead of typing"), expanded=False):
+            st.caption(
+                "ℹ️ Πάτησε το κουμπί μικροφώνου για να ξεκινήσεις την ηχογράφηση. "
+                "Όταν τελειώσεις, πάτησε ΞΑΝΑ το ίδιο κουμπί για να σταματήσεις. "
+                "Μετά περίμενε λίγα δευτερόλεπτα για τη μεταγραφή, έλεγξε/διόρθωσε το κείμενο "
+                "και πάτησε «Αποστολή»."
+                if lang=="el" else
+                "ℹ️ Press the microphone button to start recording. "
+                "When you're done, press the SAME button AGAIN to stop. "
+                "Then wait a few seconds for transcription, review/edit the text, "
+                "and press «Send»."
+            )
             audio = st.audio_input(
                 ("Ηχογράφηση" if lang=="el" else "Record"),
                 key=f"pet_voice_{st.session_state._voice_widget_counter}")
             if audio:
                 with st.spinner("Whisper..." if lang=="el" else "Transcribing..."):
-                    txt, err = transcribe_audio(audio.read(), lang=lang, mime="audio/webm", filename="recording.webm")
+                    _mime = getattr(audio, "type", "audio/wav") or "audio/wav"
+                    _ext = {"audio/wav":"wav","audio/x-wav":"wav","audio/webm":"webm",
+                            "audio/mp4":"mp4","audio/mpeg":"mp3","audio/ogg":"ogg"}.get(_mime, "wav")
+                    txt, err = transcribe_audio(audio.read(), lang=lang, mime=_mime, filename=f"recording.{_ext}")
                 if err:
                     st.error(err)
                 elif txt:
@@ -2582,15 +2586,31 @@ if _STX_OK and auth_enabled():
     if "CM" not in st.session_state:
         st.session_state["CM"] = stx.CookieManager(key="pan_cookie_mgr")
     CM = st.session_state["CM"]
-    if not is_logged_in():
-        _tok = None
-        try:
-            _tok = CM.get(COOKIE_NAME)
-        except Exception:
-            pass
-        _email = _read_token(_tok) if _tok else None
-        if _email:
-            st.session_state["auth_user"] = _email
+
+    _tok = None
+    try:
+        _tok = CM.get(COOKIE_NAME)
+    except Exception:
+        pass
+    _email = _read_token(_tok) if _tok else None
+
+    if _email:
+        # Valid cookie present → always trust it (covers cases where
+        # session_state lost auth_user due to a fresh browser session).
+        st.session_state["auth_user"] = _email
+        st.session_state["_cookie_check_tries"] = 0
+    elif not is_logged_in():
+        if _tok is None:
+            # CookieManager's underlying component is async: on early runs of
+            # a session it may not have delivered the cookie value yet, even
+            # if a valid session cookie exists. Give it a few extra render
+            # passes before treating the user as logged out, so a mid-session
+            # st.rerun() (e.g. "Generate report") never bounces a logged-in
+            # user back to the login screen.
+            tries = st.session_state.get("_cookie_check_tries", 0)
+            if tries < 3:
+                st.session_state["_cookie_check_tries"] = tries + 1
+                st.rerun()
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
 if auth_enabled() and not is_logged_in():
