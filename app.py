@@ -917,6 +917,7 @@ defaults = {
     "intake_draft": {},   # holds field values across intake steps
     "_intake_show_errors": False,
     "_hero_seen": False,  # full marketing hero shown once before login/home
+    "_welcome_seen": False,  # travel-ad welcome splash shown once before hero
 }
 for k, v in defaults.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -1925,19 +1926,22 @@ def render_travel_ad_banner(lang):
             pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Δωρεάν"],
         )
 
+    # NOTE: each item MUST be emitted with NO leading whitespace. Streamlit's
+    # markdown parser turns any line indented >=4 spaces into a <code> block,
+    # which is why the raw HTML was previously shown as text on the home screen.
     items_html = ""
     for num, icon, label, sub, is_hero in d["items"]:
         cls = "pan-ta-item pan-ta-item-hero" if is_hero else "pan-ta-item"
-        items_html += f'''
-        <div class="{cls}">
-          <div class="pan-ta-num">{num}</div>
-          <div class="pan-ta-check">✓</div>
-          <div class="pan-ta-icon">{icon}</div>
-          <div class="pan-ta-text">
-            <div class="pan-ta-label">{label}</div>
-            <div class="pan-ta-sub">{sub}</div>
-          </div>
-        </div>'''
+        items_html += (
+            f'<div class="{cls}">'
+            f'<div class="pan-ta-num">{num}</div>'
+            f'<div class="pan-ta-check">✓</div>'
+            f'<div class="pan-ta-icon">{icon}</div>'
+            f'<div class="pan-ta-text">'
+            f'<div class="pan-ta-label">{label}</div>'
+            f'<div class="pan-ta-sub">{sub}</div>'
+            f'</div></div>'
+        )
 
     pills_html = "".join(f'<span class="pan-ta-pill">{p}</span>' for p in d["pills"])
 
@@ -2021,18 +2025,18 @@ def render_travel_ad_banner(lang):
 }}
 </style>
 <div class="pan-ta-wrap">
-  <div class="pan-ta-tag">{d['tag_icon']} {d['tag']}</div>
-  <div class="pan-ta-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span></div>
-  <div class="pan-ta-sub"><strong>{d['sub_strong']}</strong><br>{d['sub']}</div>
-  <div class="pan-ta-suitcase">
-    <div class="pan-ta-ttl"><div class="t">{d['ttl']}</div><div class="s">{d['ttl_sub']}</div></div>
-    {items_html}
-    <div class="pan-ta-footer">
-      <div class="pan-ta-tagline">{d['tagline']}</div>
-      <div class="pan-ta-url"><span class="arrow">→</span>{d['url']}</div>
-    </div>
-  </div>
-  <div class="pan-ta-pills">{pills_html}</div>
+<div class="pan-ta-tag">{d['tag_icon']} {d['tag']}</div>
+<div class="pan-ta-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span></div>
+<div class="pan-ta-sub"><strong>{d['sub_strong']}</strong><br>{d['sub']}</div>
+<div class="pan-ta-suitcase">
+<div class="pan-ta-ttl"><div class="t">{d['ttl']}</div><div class="s">{d['ttl_sub']}</div></div>
+{items_html}
+<div class="pan-ta-footer">
+<div class="pan-ta-tagline">{d['tagline']}</div>
+<div class="pan-ta-url"><span class="arrow">→</span>{d['url']}</div>
+</div>
+</div>
+<div class="pan-ta-pills">{pills_html}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -2399,9 +2403,6 @@ def render_home():
     </div>''', unsafe_allow_html=True)
 
     _render_disclaimer_strip()
-
-    # Pet Travel Checklist banner (suitcase/checklist style)
-    render_travel_ad_banner(lang)
 
     render_lifestyle_strip(lang)
 
@@ -3386,6 +3387,266 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         )
 
 # ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
+CATEGORY_SLUGS = ("pet-parents", "pet-sitters", "ktiniatroys")
+
+
+def _category_content(slug, lang):
+    """Placeholder content for the 3 audience pages. Texts are intentionally
+    generic samples — meant to be edited by the owner later."""
+    el = (lang == "el")
+    data = {
+        "pet-parents": dict(
+            icon="🐶",
+            title="Για Pet Parents" if el else "For Pet Parents",
+            lead=("Κατανόησε καλύτερα τα συμπτώματα του κατοικιδίου σου και επικοινώνησε "
+                  "πιο αποτελεσματικά με τον κτηνίατρο."
+                  if el else
+                  "Understand your pet's symptoms better and communicate more "
+                  "effectively with your vet."),
+            offers=[
+                ("📝", "Οργανωμένες παρατηρήσεις" if el else "Organized notes",
+                 "Κατέγραψε συμπτώματα και συμπεριφορά με δομημένο τρόπο." if el else
+                 "Log symptoms and behavior in a structured way."),
+                ("⚠️", "Ειδοποιήσεις τοξικότητας" if el else "Toxicity alerts",
+                 "Αυτόματη επισήμανση επικίνδυνων τροφών & ουσιών." if el else
+                 "Automatic flags for dangerous foods & substances."),
+                ("📄", "Αναφορά για τον κτηνίατρο" if el else "Vet-ready report",
+                 "Μια καθαρή σύνοψη που παίρνεις μαζί στο ραντεβού." if el else
+                 "A clean summary to bring to your appointment."),
+            ],
+            activities=[
+                ("🚶", "Καθημερινές βόλτες" if el else "Daily walks",
+                 "[placeholder] Ιδέες για διαδρομές & ρουτίνα άσκησης." if el else
+                 "[placeholder] Route ideas & exercise routine."),
+                ("🧩", "Παιχνίδια εμπλουτισμού" if el else "Enrichment games",
+                 "[placeholder] Δραστηριότητες για νοητική διέγερση." if el else
+                 "[placeholder] Activities for mental stimulation."),
+                ("🛁", "Φροντίδα & grooming" if el else "Care & grooming",
+                 "[placeholder] Βασικά βήματα περιποίησης στο σπίτι." if el else
+                 "[placeholder] Basic at-home grooming steps."),
+            ],
+            testimonials=[
+                ("Μαρία Κ." if el else "Maria K.", "Pet parent",
+                 "[placeholder] «Με βοήθησε να εξηγήσω καθαρά τι παρατήρησα.»" if el else
+                 "[placeholder] \u201cHelped me clearly explain what I noticed.\u201d"),
+                ("Γιώργος Π." if el else "George P.", "Pet parent",
+                 "[placeholder] «Η αναφορά γλίτωσε χρόνο στο ραντεβού.»" if el else
+                 "[placeholder] \u201cThe report saved time at the visit.\u201d"),
+                ("Έλενα Σ." if el else "Elena S.", "Pet parent",
+                 "[placeholder] «Νιώθω πιο σίγουρη πριν πάρω τον κτηνίατρο.»" if el else
+                 "[placeholder] \u201cI feel more confident before calling the vet.\u201d"),
+            ],
+        ),
+        "pet-sitters": dict(
+            icon="🧑‍🤝‍🧑",
+            title="Για Pet Sitters" if el else "For Pet Sitters",
+            lead=("Κατέγραψε με ακρίβεια παρατηρήσεις κατά τη φροντίδα ενός ζώου και "
+                  "ενημέρωσε υπεύθυνα τον κηδεμόνα ή τον κτηνίατρο."
+                  if el else
+                  "Log accurate observations while caring for a pet and responsibly "
+                  "update the owner or vet."),
+            offers=[
+                ("🗒️", "Ημερολόγιο φροντίδας" if el else "Care log",
+                 "Κράτα σημειώσεις ανά βάρδια/επίσκεψη." if el else
+                 "Keep notes per shift/visit."),
+                ("📤", "Παράδοση στον ιδιοκτήτη" if el else "Owner handover",
+                 "Στείλε γρήγορη, καθαρή ενημέρωση." if el else
+                 "Send a quick, clear update."),
+                ("🚑", "Έγκαιρη επισήμανση" if el else "Early flags",
+                 "Εντόπισε σημάδια που αξίζουν προσοχή." if el else
+                 "Spot signs worth attention."),
+            ],
+            activities=[
+                ("🎾", "Παιχνίδι & εκτόνωση" if el else "Play & energy",
+                 "[placeholder] Ιδέες για ασφαλές παιχνίδι." if el else
+                 "[placeholder] Ideas for safe play."),
+                ("🐾", "Ρουτίνα & δέσιμο" if el else "Routine & bonding",
+                 "[placeholder] Πώς να χτίσεις εμπιστοσύνη γρήγορα." if el else
+                 "[placeholder] How to build trust quickly."),
+                ("📸", "Ενημερώσεις με φωτο" if el else "Photo updates",
+                 "[placeholder] Κράτα τον ιδιοκτήτη ήσυχο." if el else
+                 "[placeholder] Keep the owner at ease."),
+            ],
+            testimonials=[
+                ("Νίκη Α." if el else "Niki A.", "Pet sitter",
+                 "[placeholder] «Οι ιδιοκτήτες εκτιμούν τις δομημένες ενημερώσεις.»" if el else
+                 "[placeholder] \u201cOwners value the structured updates.\u201d"),
+                ("Δημήτρης Λ." if el else "Dimitris L.", "Pet sitter",
+                 "[placeholder] «Ξέρω ακριβώς τι να καταγράψω.»" if el else
+                 "[placeholder] \u201cI know exactly what to log.\u201d"),
+                ("Σοφία Μ." if el else "Sofia M.", "Pet sitter",
+                 "[placeholder] «Πιο επαγγελματική εικόνα στους πελάτες.»" if el else
+                 "[placeholder] \u201cA more professional image for clients.\u201d"),
+            ],
+        ),
+        "ktiniatroys": dict(
+            icon="🩺",
+            title="Για Κτηνιάτρους" if el else "For Veterinarians",
+            lead=("Ένα επιπρόσθετο εργαλείο συλλογής οργανωμένου ιστορικού και "
+                  "προετοιμασίας της επίσκεψης."
+                  if el else
+                  "A supplementary tool for collecting organized history and "
+                  "preparing the visit."),
+            offers=[
+                ("📋", "Δομημένο ιστορικό" if el else "Structured history",
+                 "Λάβε οργανωμένες πληροφορίες πριν το ραντεβού." if el else
+                 "Receive organized information before the visit."),
+                ("⏱️", "Εξοικονόμηση χρόνου" if el else "Time savings",
+                 "Λιγότερη ώρα σε ερωτήσεις ρουτίνας." if el else
+                 "Less time on routine questions."),
+                ("🔗", "Παραπομπές πηγών" if el else "Sourced references",
+                 "Αναφορές βασισμένες στο MSD Vet Manual." if el else
+                 "References grounded in the MSD Vet Manual."),
+            ],
+            activities=[
+                ("🏥", "Υλικό για το ιατρείο" if el else "Clinic resources",
+                 "[placeholder] Ενημερωτικό υλικό για ιδιοκτήτες." if el else
+                 "[placeholder] Educational material for owners."),
+                ("📞", "Προετοιμασία επικοινωνίας" if el else "Comms prep",
+                 "[placeholder] Καθοδήγηση για follow-up." if el else
+                 "[placeholder] Guidance for follow-up."),
+                ("🧾", "Πρότυπα αναφορών" if el else "Report templates",
+                 "[placeholder] Έτοιμες δομές σύνοψης." if el else
+                 "[placeholder] Ready-made summary structures."),
+            ],
+            testimonials=[
+                ("Δρ. Παπαδοπούλου" if el else "Dr. Papadopoulou", "Κτηνίατρος" if el else "Veterinarian",
+                 "[placeholder] «Οι ιδιοκτήτες έρχονται πιο προετοιμασμένοι.»" if el else
+                 "[placeholder] \u201cOwners arrive better prepared.\u201d"),
+                ("Δρ. Ιωάννου" if el else "Dr. Ioannou", "Κτηνίατρος" if el else "Veterinarian",
+                 "[placeholder] «Χρήσιμη πρώτη εικόνα του περιστατικού.»" if el else
+                 "[placeholder] \u201cA useful first picture of the case.\u201d"),
+                ("Δρ. Βασιλείου" if el else "Dr. Vasiliou", "Κτηνίατρος" if el else "Veterinarian",
+                 "[placeholder] «Καθαρό ιστορικό, λιγότερη χαμένη ώρα.»" if el else
+                 "[placeholder] \u201cClean history, less wasted time.\u201d"),
+            ],
+        ),
+    }
+    return data.get(slug)
+
+
+def render_category_page(slug):
+    lang = st.session_state.lang
+    d = _category_content(slug, lang)
+    if not d:
+        st.query_params.clear(); st.rerun(); return
+
+    back_lbl = "← Πίσω" if lang == "el" else "← Back"
+    start_lbl = "✦ Ξεκίνα τώρα" if lang == "el" else "✦ Start now"
+    offers_ttl = "Τι προσφέρει" if lang == "el" else "What it offers"
+    how_ttl = "Πώς σε βοηθάει" if lang == "el" else "How it helps"
+    act_ttl = "Δραστηριότητες & ευεξία" if lang == "el" else "Activities & wellbeing"
+    voices_ttl = "Τι λένε" if lang == "el" else "What people say"
+
+    top_l, top_r = st.columns([6, 1])
+    with top_l:
+        if st.button(back_lbl, key=f"cat_back_top_{slug}"):
+            st.query_params.clear(); st.rerun()
+    with top_r:
+        if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key=f"cat_lang_{slug}"):
+            st.session_state.lang = "en" if lang == "el" else "el"; st.rerun()
+
+    offers_html = "".join(
+        f'<div class="pcat-offer"><div class="pcat-offer-ic">{ic}</div>'
+        f'<div class="pcat-offer-t">{tt}</div><div class="pcat-offer-d">{ds}</div></div>'
+        for ic, tt, ds in d["offers"]
+    )
+    acts_html = "".join(
+        f'<div class="pcat-offer"><div class="pcat-offer-ic">{ic}</div>'
+        f'<div class="pcat-offer-t">{tt}</div><div class="pcat-offer-d">{ds}</div></div>'
+        for ic, tt, ds in d["activities"]
+    )
+    tcards_html = "".join(
+        f'<div class="pcat-tcard"><div class="pcat-tquote">{q}</div>'
+        f'<div class="pcat-tauthor">{nm} · {ro}</div></div>'
+        for nm, ro, q in d["testimonials"]
+    )
+
+    st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800&family=Inter:wght@400;500;600;700;800&display=swap');
+.pcat-hero {{ background: linear-gradient(180deg,#F0FDF4 0%,#ECFDF5 100%); border:1px solid rgba(5,150,105,0.08); border-radius:24px; padding:30px 28px; margin:6px 0 18px; font-family:'Inter',system-ui,sans-serif; }}
+.pcat-ic {{ font-size:42px; }}
+.pcat-title {{ font-family:'Playfair Display',Georgia,serif; font-size:30px; font-weight:800; color:#1A1A2E; margin:8px 0 8px; letter-spacing:-0.5px; }}
+.pcat-lead {{ font-size:15px; color:#4B5563; line-height:1.6; max-width:640px; }}
+.pcat-sec-t {{ font-size:18px; font-weight:800; color:#1A1A2E; font-family:'Inter',system-ui,sans-serif; margin:22px 0 12px; }}
+.pcat-grid {{ display:flex; gap:14px; flex-wrap:wrap; }}
+.pcat-offer {{ flex:1 1 220px; background:white; border:1px solid #ECEEF3; border-radius:16px; padding:16px 16px; font-family:'Inter',system-ui,sans-serif; }}
+.pcat-offer-ic {{ font-size:26px; margin-bottom:8px; }}
+.pcat-offer-t {{ font-size:15px; font-weight:800; color:#1A1A2E; margin-bottom:4px; }}
+.pcat-offer-d {{ font-size:12.5px; color:#6B7280; line-height:1.5; }}
+.pcat-how {{ background:linear-gradient(135deg,#ECFDF5,#F0FDF4); border-radius:20px; padding:22px 24px; font-family:'Inter',system-ui,sans-serif; }}
+.pcat-how-row {{ display:flex; gap:16px; flex-wrap:wrap; justify-content:space-between; }}
+.pcat-step {{ flex:1 1 150px; text-align:center; }}
+.pcat-step-n {{ width:30px; height:30px; border-radius:99px; background:#059669; color:white; font-weight:800; font-size:14px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:8px; }}
+.pcat-step-t {{ font-size:14px; font-weight:700; color:#1A1A2E; }}
+.pcat-step-s {{ font-size:12px; color:#6B7280; }}
+.pcat-carousel {{ display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 14px; -webkit-overflow-scrolling:touch; }}
+.pcat-tcard {{ scroll-snap-align:start; flex:0 0 290px; background:white; border:1px solid #ECEEF3; border-radius:16px; padding:18px; font-family:'Inter',system-ui,sans-serif; }}
+.pcat-tquote {{ font-size:14px; color:#1A1A2E; line-height:1.55; font-style:italic; }}
+.pcat-tauthor {{ font-size:12.5px; font-weight:700; color:#059669; margin-top:12px; }}
+.pcat-hint {{ font-size:11.5px; color:#9CA3AF; margin:-6px 0 8px; }}
+</style>
+<div class="pcat-hero"><div class="pcat-ic">{d['icon']}</div><div class="pcat-title">{d['title']}</div><div class="pcat-lead">{d['lead']}</div></div>
+<div class="pcat-sec-t">{offers_ttl}</div>
+<div class="pcat-grid">{offers_html}</div>
+<div class="pcat-sec-t">{how_ttl}</div>
+<div class="pcat-how"><div class="pcat-how-row">
+<div class="pcat-step"><div class="pcat-step-n">1</div><div class="pcat-step-t">{('Καταγράφεις' if lang=='el' else 'You note')}</div><div class="pcat-step-s">{('παρατηρήσεις' if lang=='el' else 'observations')}</div></div>
+<div class="pcat-step"><div class="pcat-step-n">2</div><div class="pcat-step-t">{('Οργανώνει' if lang=='el' else 'It organizes')}</div><div class="pcat-step-s">{('τις πληροφορίες' if lang=='el' else 'the info')}</div></div>
+<div class="pcat-step"><div class="pcat-step-n">3</div><div class="pcat-step-t">{('Μοιράζεσαι' if lang=='el' else 'You share')}</div><div class="pcat-step-s">{('με τον κτηνίατρο' if lang=='el' else 'with the vet')}</div></div>
+</div></div>
+<div class="pcat-sec-t">{act_ttl}</div>
+<div class="pcat-grid">{acts_html}</div>
+<div class="pcat-sec-t">{voices_ttl}</div>
+<div class="pcat-hint">{('σύρε για περισσότερα →' if lang=='el' else 'swipe for more →')}</div>
+<div class="pcat-carousel">{tcards_html}</div>
+""", unsafe_allow_html=True)
+
+    cc1, cc2, cc3 = st.columns([1, 2, 1])
+    with cc2:
+        if st.button(start_lbl, type="primary", use_container_width=True, key=f"cat_start_{slug}"):
+            st.session_state["_welcome_seen"] = True
+            st.session_state["_hero_seen"] = True
+            st.query_params.clear()
+            if not auth_enabled() or is_logged_in():
+                st.session_state.screen = "intake"
+            st.rerun()
+        if st.button(back_lbl, use_container_width=True, key=f"cat_back_bottom_{slug}"):
+            st.query_params.clear(); st.rerun()
+
+
+def render_welcome_screen():
+    """Welcome / intro page shown ONCE before the marketing hero. It surfaces
+    the (now correctly-rendered) Pet Travel Checklist 'ad' as a standalone
+    splash, then a single CTA continues to the hero. Set via _welcome_seen."""
+    lang = st.session_state.lang
+
+    c1, c2 = st.columns([6, 1])
+    with c1:
+        st.markdown(
+            '<div style="font-size:19px;font-weight:800;color:#1A1A2E;'
+            'font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;'
+            'gap:8px;padding-top:6px">🐾 PetAiNurse</div>', unsafe_allow_html=True)
+    with c2:
+        if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key="welcome_lang"):
+            st.session_state.lang = "en" if lang == "el" else "el"; st.rerun()
+
+    # The ad — rendered natively (no longer raw HTML text)
+    render_travel_ad_banner(lang)
+
+    cta = "Συνέχεια →" if lang == "el" else "Continue →"
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button(cta, type="primary", use_container_width=True, key="welcome_continue"):
+            st.session_state["_welcome_seen"] = True
+            st.rerun()
+        skip = "Παράλειψη" if lang == "el" else "Skip"
+        if st.button(skip, use_container_width=True, key="welcome_skip"):
+            st.session_state["_welcome_seen"] = True
+            st.rerun()
+
+
 def render_hero_screen():
     """Full marketing 'hero' landing screen, shown once before the login
     form (or before 'home' when auth is disabled). Mirrors the standalone
@@ -3400,7 +3661,7 @@ def render_hero_screen():
             h1="Περίγραψε τι", h1_accent="παρατηρείς",
             h1_end="στο κατοικίδιό σου.",
             sub="Το PetAiNurse οργανώνει τα συμπτώματα και τις παρατηρήσεις σου ώστε να έχεις καλύτερη εικόνα πριν επικοινωνήσεις με κτηνίατρο.",
-            cta_primary="✦ Ξεκίνα αξιολόγηση συμπτωμάτων",
+            cta_primary="✦ Ξεκίνα αξιολόγηση & αναφορά",
             cta_secondary="📄 Δημιούργησε αναφορά για τον κτηνίατρο",
             disclaimer="Το PetAiNurse δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο. Σε επείγουσες καταστάσεις επικοινώνησε άμεσα με επαγγελματία υγείας ζώων.",
             card1="Καταγραφή συμπτωμάτων και συμπεριφοράς",
@@ -3430,7 +3691,7 @@ def render_hero_screen():
             h1="Describe what", h1_accent="you're noticing",
             h1_end="in your pet.",
             sub="PetAiNurse organizes your pet's symptoms and observations so you have a clearer picture before contacting a vet.",
-            cta_primary="✦ Start symptom assessment",
+            cta_primary="✦ Start assessment & report",
             cta_secondary="📄 Create a report for your vet",
             disclaimer="PetAiNurse does not provide veterinary diagnosis and does not replace your vet. In emergencies, contact an animal health professional immediately.",
             card1="Logging symptoms and behaviour",
@@ -3551,6 +3812,8 @@ def render_hero_screen():
 .pan-hr-aud-card h4 { font-size: 16px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px; }
 .pan-hr-aud-card p { font-size: 12.5px; color: #6B7280; line-height: 1.55; margin-bottom: 10px; }
 .pan-hr-aud-card .more { font-size: 12.5px; font-weight: 700; color: #059669; }
+a.pan-hr-aud-card { text-decoration: none; color: inherit; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,0.09); border-color: #D1FAE5; }
 @media (max-width: 640px) {
   .pan-hr-hero { padding: 26px 18px; border-radius: 20px; }
   .pan-hr-h1 { font-size: 28px; }
@@ -3569,11 +3832,12 @@ def render_hero_screen():
     st.markdown(css + body_top, unsafe_allow_html=True)
 
     # CTA buttons (real Streamlit buttons so they can route the app)
-    c1, c2 = st.columns([1.4,1])
-    with c1:
+    # Merged: "start assessment" and "create report" lead to the same
+    # intake -> vitals -> triage -> report flow, so they are a single CTA.
+    col_l, col_c, col_r = st.columns([1, 2.4, 1])
+    with col_c:
         cta1 = st.button(d["cta_primary"], type="primary", use_container_width=True, key="hero_cta_primary")
-    with c2:
-        cta2 = st.button(d["cta_secondary"], use_container_width=True, key="hero_cta_secondary")
+    cta2 = False
 
     # Mascots + floating feature cards
     st.markdown(f"""
@@ -3609,21 +3873,21 @@ def render_hero_screen():
     st.markdown(f"""
 <div class="pan-hr-aud-title">{d['audience_title']}</div>
 <div class="pan-hr-aud-row">
-  <div class="pan-hr-aud-card a1">
+  <a href="?page=pet-parents" target="_self" class="pan-hr-aud-card a1">
     <div class="pan-hr-aud-icon">🐶</div>
     <h4>{d['aud1_t']}</h4><p>{d['aud1_d']}</p>
     <div class="more">{d['more_label']}</div>
-  </div>
-  <div class="pan-hr-aud-card a2">
+  </a>
+  <a href="?page=pet-sitters" target="_self" class="pan-hr-aud-card a2">
     <div class="pan-hr-aud-icon">🧑‍🤝‍🧑</div>
     <h4>{d['aud2_t']}</h4><p>{d['aud2_d']}</p>
     <div class="more">{d['more_label']}</div>
-  </div>
-  <div class="pan-hr-aud-card a3">
+  </a>
+  <a href="?page=ktiniatroys" target="_self" class="pan-hr-aud-card a3">
     <div class="pan-hr-aud-icon">🩺</div>
     <h4>{d['aud3_t']}</h4><p>{d['aud3_d']}</p>
     <div class="more">{d['more_label']}</div>
-  </div>
+  </a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -3763,6 +4027,17 @@ if _STX_OK and auth_enabled():
                 st.rerun()
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
+_page_param = st.query_params.get("page")
+if _page_param in CATEGORY_SLUGS:
+    render_category_page(_page_param)
+    st.stop()
+
+if (not st.session_state.get("_welcome_seen")
+        and not st.session_state.get("_hero_seen")
+        and st.session_state.screen == "home"):
+    render_welcome_screen()
+    st.stop()
+
 if not st.session_state.get("_hero_seen") and st.session_state.screen == "home":
     _hl = st.session_state.lang
     c1, c2 = st.columns([6,1])
