@@ -632,6 +632,12 @@ def sanitize_ai_text(text):
         return text or ""
     # 1) drop CJK / fullwidth runs entirely
     text = _CJK_RANGES.sub("", text)
+    # 1b) fix a frequent mistranslation: informal «Πάντε» -> proper «Πηγαίνετε»
+    text = _re_san.sub(r"\bΠΑΝΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
+    text = _re_san.sub(r"\bΠάντε\b", "Πηγαίνετε", text)
+    text = _re_san.sub(r"\bπάντε\b", "πηγαίνετε", text)
+    # 1c) tidy stray double-space left after stripping CJK, e.g. "腹水 (x)" -> " (x)"
+    text = _re_san.sub(r"(?<=\S) {2,}\(", " (", text)
     # 2) remove a blockquote line that was cut off mid-sentence (no closing on
     #    a bold marker, e.g. "> 🟡 **Ε") which is what produced the garbled text
     cleaned = []
@@ -649,6 +655,16 @@ def sanitize_ai_text(text):
     text = _re_san.sub(r"[ \t]+\n", "\n", text)
     text = _re_san.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+import unicodedata as _ud_norm
+def _strip_accents(s):
+    """Lowercase + remove Greek/Latin diacritics for robust keyword matching."""
+    if not s:
+        return ""
+    s = s.lower()
+    return "".join(c for c in _ud_norm.normalize("NFD", s)
+                   if _ud_norm.category(c) != "Mn")
 
 
 # ── AUTH (Supabase email-OTP — optional) ──────────────────────────────────────
@@ -1177,6 +1193,8 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
+- ΓΛΩΣΣΑ: Γράφε ΑΠΟΚΛΕΙΣΤΙΚΑ στα Ελληνικά. ΠΟΤΕ μη χρησιμοποιείς κινέζικους/ιαπωνικούς/κορεάτικους ή άλλους μη-ελληνικούς/λατινικούς χαρακτήρες (π.χ. όχι «腹水»). Αν χρειαστείς ιατρικό όρο, γράψ' τον στα Ελληνικά ή Λατινικά.
+- ΥΦΟΣ: Χρησιμοποίησε «Πηγαίνετε» (όχι «Πάντε») και σωστά ελληνικά προστακτικής.
 - Όταν έχεις αρκετά: "Έχω αρκετά στοιχεία — μπορούμε να δημιουργήσουμε κτηνιατρική αναφορά." """
 
 PETAINURSE_EN = """You are PetAiNurse — an AI veterinary nurse for pets in Greece.
@@ -1194,6 +1212,7 @@ Rules:
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
+- LANGUAGE: Write ONLY in English. NEVER use Chinese/Japanese/Korean or any non-Latin characters (e.g. no «腹水»). Use Latin medical terms if needed.
 - When ready: "I have enough information — we can generate a veterinary report." """
 
 def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" else PETAINURSE_EN
@@ -1239,36 +1258,36 @@ def mascot_for_pet(pet=None):
 
 
 def render_lifestyle_strip(lang="el"):
-    """Three lifestyle cards (walks, vet visits, daily care) using real pet
-    photographs — grounds the product in real pet-owner moments."""
-    if not PET_PHOTOS:
+    """Three lifestyle cards (walks, vet visits, daily care) using the
+    illustrated 'life action' artwork — warmer, brand-consistent feel."""
+    if not ILLUSTRATIONS:
         return
     if lang == "el":
         items = [
-            ("dog_cavapoo", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
-            ("cat_couch",   "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
-            ("dog_cocker",  "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
+            ("walking", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
+            ("vet",     "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
+            ("care",    "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
         ]
     else:
         items = [
-            ("dog_cavapoo", "Daily walks", "Keep track of how your pet feels every day"),
-            ("cat_couch",   "Vet visits", "Arrive prepared, with a structured assessment"),
-            ("dog_cocker",  "Home care", "Track symptoms, medications and history"),
+            ("walking", "Daily walks", "Keep track of how your pet feels every day"),
+            ("vet",     "Vet visits", "Arrive prepared, with a structured assessment"),
+            ("care",    "Home care", "Track symptoms, medications and history"),
         ]
     cols = st.columns(3)
     for col, (key, title, sub) in zip(cols, items):
-        b64 = PET_PHOTOS.get(key)
+        b64 = ILLUSTRATIONS.get(key)
         if not b64:
             continue
         with col:
             st.markdown(
                 f'''<div style="border-radius:14px;overflow:hidden;border:1px solid #E5E7EB;background:white">
-                    <img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:130px" />
-                    <div style="padding:10px 12px">
-                        <div style="font-size:13px;font-weight:700;color:#1A1A2E">{title}</div>
-                        <div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sub}</div>
-                    </div>
-                </div>''',
+<img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:130px" />
+<div style="padding:10px 12px">
+<div style="font-size:13px;font-weight:700;color:#1A1A2E">{title}</div>
+<div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sub}</div>
+</div>
+</div>''',
                 unsafe_allow_html=True,
             )
 
@@ -2770,6 +2789,21 @@ def render_vitals():
                 st.markdown(analysis)
                 st.markdown('</div>', unsafe_allow_html=True)
 
+                # Explainer: tell the user what this means and what to do next,
+                # so the screen doesn't feel like a dead end after analysing.
+                st.info(
+                    "ℹ️ **Τι σημαίνει αυτό:** Η ανάλυση βασίζεται μόνο στα ορατά "
+                    "χαρακτηριστικά της φωτογραφίας και **δεν** είναι διάγνωση.\n\n"
+                    "**Επόμενο βήμα:** Πάτησε «Συνέχεια στην Εκτίμηση Συμπτωμάτων» — "
+                    "το εύρημα θα ενσωματωθεί αυτόματα στη συζήτηση και στην τελική "
+                    "αναφορά για τον κτηνίατρο."
+                    if lang=="el" else
+                    "ℹ️ **What this means:** The analysis is based only on visible "
+                    "features in the photo and is **not** a diagnosis.\n\n"
+                    "**Next step:** Tap “Continue to Symptom Assessment” — the finding "
+                    "is automatically added to the conversation and to the final vet report."
+                )
+
                 # Store findings in session state → feed to triage
                 st.session_state["photo_scan_findings"] = {
                     "scan_type": selected_scan,
@@ -2879,6 +2913,21 @@ def render_triage():
     )
     render_vitals_summary()
     _render_disclaimer_strip()
+
+    # Explainer: what this step does, so the chat doesn't feel aimless.
+    with st.expander("ℹ️ " + ("Πώς λειτουργεί η εκτίμηση συμπτωμάτων" if lang=="el"
+                              else "How the symptom assessment works"), expanded=False):
+        st.markdown(
+            "- Η PetAiNurse κάνει **μία ερώτηση κάθε φορά** για να καταλάβει τι συμβαίνει.\n"
+            "- Απάντησε με δικά σου λόγια (ή με φωνή 🎙️) ή πάτησε μια **γρήγορη επιλογή** πιο κάτω.\n"
+            "- Μπορείς να ανεβάσεις **εξετάσεις** ή να έχεις ήδη ανεβάσει **φωτογραφία** — ενσωματώνονται στην εκτίμηση.\n"
+            "- Όταν συγκεντρωθούν αρκετά στοιχεία, ενεργοποιείται το κουμπί **«Δημιουργία Κτηνιατρικής Αναφοράς»**."
+            if lang=="el" else
+            "- PetAiNurse asks **one question at a time** to understand what's going on.\n"
+            "- Answer in your own words (or by voice 🎙️), or tap a **quick option** below.\n"
+            "- You can upload **lab results** or an already-uploaded **photo** — they're folded into the assessment.\n"
+            "- Once there's enough information, the **“Generate Veterinary Report”** button unlocks."
+        )
 
     # Symptom tracker (browser-only, localStorage)
     _render_pet_symptom_tracker(lang)
@@ -2997,6 +3046,22 @@ def render_triage():
     last_assistant = next((m["content"].lower() for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), "")
     triage_ready = any(ph in last_assistant for ph in ready_phrases)
 
+    # If the assistant asks for the user's location or flags an emergency, open
+    # the geolocation vet-finder map right here instead of asking them to type
+    # their city. Match accent-insensitively (handles ΕΠΕΙΓΟΝ/επείγον etc.).
+    _la_norm = _strip_accents(next((m["content"] for m in reversed(st.session_state.triage_chat)
+                                    if m["role"]=="assistant"), ""))
+    _geo_triggers = [
+        "που βρισκεσαι", "που βρισκεστε", "ποια ειναι τα επειγοντα",
+        "κοντινοτερο", "κοντινα κτηνιατρεια", "επειγον κτηνιατρειο",
+        "κοκκινη σημαια", "πηγαινετε αμεσα", "πηγαινετε τωρα",
+        "where are you", "your location", "nearest vet", "emergency vet", "red flag",
+    ]
+    if any(tr in _la_norm for tr in _geo_triggers):
+        st.markdown("**" + ("📍 Δες τα κοντινά επείγοντα κτηνιατρεία:" if lang=="el"
+                            else "📍 See nearby emergency vets:") + "**")
+        render_nearby_vets_geo(lang)
+
     # ── Voice input (mic → Groq Whisper → review/edit → send) ─────────────────
     voice_text = None
     if get_groq_key():
@@ -3051,6 +3116,7 @@ def render_triage():
             system_ctx = petainurse_system() + f"\n\n{profile_ctx}\n{vitals_ctx}"
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
+            reply = sanitize_ai_text(reply)
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         st.session_state.triage_chat.append({"role":"assistant","content":reply}); st.rerun()
@@ -3067,12 +3133,33 @@ def render_triage():
                    else "Continue — PetAiNurse will let you know when she has enough.")
 
 
+def _evidence_context():
+    """Photo-scan + lab analyses as plain-text clinical evidence, so they can be
+    injected into BOTH the assessment prompt and the second-opinion prompt — not
+    just shown as side cards. Pulls from session_state so it works on any rerun."""
+    pfs = st.session_state.get("photo_findings") or []
+    lfs = st.session_state.get("lab_findings") or []
+    photo_ctx = "\n\n".join(
+        f"[{pf.get('scan_label','Photo')}]\n{(pf.get('analysis','') or '').strip()}"
+        for pf in pfs if isinstance(pf, dict) and pf.get("analysis")
+    )
+    lab_ctx = "\n\n".join(
+        f"[{lf.get('file_name','Lab')}]\n{(lf.get('analysis','') or '').strip()}"
+        for lf in lfs if isinstance(lf, dict) and lf.get("analysis")
+    )
+    return photo_ctx, lab_ctx
+
+
 def render_report():
     render_stepper("report")
     pet  = st.session_state.pet
     lang = st.session_state.lang
     sp   = pet.get("species_key","dog")
     nm = pet.get("name","")
+    _bcol, _ = st.columns([1, 4])
+    with _bcol:
+        if st.button("← " + ("Πίσω στη συζήτηση" if lang=="el" else "Back to chat"), key="report_back"):
+            st.session_state.screen = "triage"; st.rerun()
     render_doc_header(
         "Η εκτίμηση για το κατοικίδιό σου", "Your pet's assessment",
         icon="📋",
@@ -3085,6 +3172,9 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
+        st.info("⏳ " + ("Περιμένετε, ετοιμάζεται η αναφορά σας… Αυτό μπορεί να πάρει λίγα δευτερόλεπτα."
+                        if lang=="el" else
+                        "Please wait, your report is being prepared… This may take a few seconds."))
         conversation = "\n".join(
             f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content']}"
             for m in st.session_state.triage_chat)
@@ -3100,6 +3190,10 @@ def render_report():
             st.session_state.report_refs = refs
         msd_ctx = "\n".join(f"- {a['title']}: {a['url']}" for a in refs) if refs else "None found."
 
+        # Photo-scan + lab analyses as explicit evidence, so the assessment
+        # actually incorporates them (not only the side cards / chat).
+        photo_ctx, lab_ctx = _evidence_context()
+
         report_prompt = f"""Generate a concise veterinary assessment report for:
 
 PET: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y {pet.get('age_m')}m, {pet.get('sex')}, {pet.get('weight','')}kg
@@ -3114,6 +3208,12 @@ VITALS (Normal for {pet.get('species_label')}: HR {rng['hr'][0]}-{rng['hr'][1]} 
 CLINICAL CONSULTATION:
 {conversation}
 
+PHOTO ANALYSIS FINDINGS (AI vision — treat as observed evidence):
+{photo_ctx or "None provided."}
+
+LAB / TEST RESULT ANALYSIS (treat as observed evidence):
+{lab_ctx or "None provided."}
+
 MSD VETERINARY MANUAL REFERENCES:
 {msd_ctx}
 
@@ -3126,10 +3226,11 @@ Write a structured veterinary report:
 6. RED FLAGS — Symptoms requiring immediate emergency vet
 7. MSD REFERENCES — Cite 1-2 references where relevant
 
+If PHOTO ANALYSIS FINDINGS or LAB / TEST RESULT ANALYSIS are provided above, you MUST integrate them into the ASSESSMENT and RECOMMENDED WORKUP, referencing the specific findings.
 Language: {"Greek (Ελληνικά)" if lang=="el" else "English"}
 Be direct and clinical. Always recommend professional veterinary evaluation. End with AI disclaimer."""
 
-        with st.spinner("Δημιουργία κτηνιατρικής αναφοράς..." if lang=="el" else "Generating veterinary report..."):
+        with st.spinner("⏳ Περιμένετε, ετοιμάζεται η αναφορά..." if lang=="el" else "⏳ Please wait, preparing the report..."):
             result = claude([{"role":"user","content":report_prompt}],
                             system=petainurse_system(), max_tokens=3000, timeout=120)
             if result.startswith("⚠️"):
@@ -3254,8 +3355,14 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             if not st.session_state.report_gpt:
                 if st.button("Get GPT-4o Veterinary Second Opinion", type="secondary"):
                     with st.spinner("GPT-4o reviewing..."):
+                        _pctx, _lctx = _evidence_context()
+                        _evid = ""
+                        if _pctx:
+                            _evid += f"\n\nPHOTO ANALYSIS FINDINGS:\n{_pctx}"
+                        if _lctx:
+                            _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
                         st.session_state.report_gpt = sanitize_ai_text(gpt4o(
-                            prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}\n\nDo you agree with this veterinary assessment? Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
+                            prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}{_evid}\n\nDo you agree with this veterinary assessment? Take the photo and lab findings above into account. Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
                             system=petainurse_system(), max_tokens=3000))
                     st.rerun()
             else:
@@ -3416,25 +3523,25 @@ def _category_content(slug, lang):
             ],
             activities=[
                 ("🚶", "Καθημερινές βόλτες" if el else "Daily walks",
-                 "[placeholder] Ιδέες για διαδρομές & ρουτίνα άσκησης." if el else
-                 "[placeholder] Route ideas & exercise routine."),
+                 "Ιδέες για διαδρομές & ρουτίνα άσκησης." if el else
+                 "Route ideas & exercise routine."),
                 ("🧩", "Παιχνίδια εμπλουτισμού" if el else "Enrichment games",
-                 "[placeholder] Δραστηριότητες για νοητική διέγερση." if el else
-                 "[placeholder] Activities for mental stimulation."),
+                 "Δραστηριότητες για νοητική διέγερση." if el else
+                 "Activities for mental stimulation."),
                 ("🛁", "Φροντίδα & grooming" if el else "Care & grooming",
-                 "[placeholder] Βασικά βήματα περιποίησης στο σπίτι." if el else
-                 "[placeholder] Basic at-home grooming steps."),
+                 "Βασικά βήματα περιποίησης στο σπίτι." if el else
+                 "Basic at-home grooming steps."),
             ],
             testimonials=[
                 ("Μαρία Κ." if el else "Maria K.", "Pet parent",
-                 "[placeholder] «Με βοήθησε να εξηγήσω καθαρά τι παρατήρησα.»" if el else
-                 "[placeholder] \u201cHelped me clearly explain what I noticed.\u201d"),
+                 "«Με βοήθησε να εξηγήσω καθαρά τι παρατήρησα.»" if el else
+                 "\u201cHelped me clearly explain what I noticed.\u201d"),
                 ("Γιώργος Π." if el else "George P.", "Pet parent",
-                 "[placeholder] «Η αναφορά γλίτωσε χρόνο στο ραντεβού.»" if el else
-                 "[placeholder] \u201cThe report saved time at the visit.\u201d"),
+                 "«Η αναφορά γλίτωσε χρόνο στο ραντεβού.»" if el else
+                 "\u201cThe report saved time at the visit.\u201d"),
                 ("Έλενα Σ." if el else "Elena S.", "Pet parent",
-                 "[placeholder] «Νιώθω πιο σίγουρη πριν πάρω τον κτηνίατρο.»" if el else
-                 "[placeholder] \u201cI feel more confident before calling the vet.\u201d"),
+                 "«Νιώθω πιο σίγουρη πριν πάρω τον κτηνίατρο.»" if el else
+                 "\u201cI feel more confident before calling the vet.\u201d"),
             ],
         ),
         "pet-sitters": dict(
@@ -3458,25 +3565,25 @@ def _category_content(slug, lang):
             ],
             activities=[
                 ("🎾", "Παιχνίδι & εκτόνωση" if el else "Play & energy",
-                 "[placeholder] Ιδέες για ασφαλές παιχνίδι." if el else
-                 "[placeholder] Ideas for safe play."),
+                 "Ιδέες για ασφαλές παιχνίδι." if el else
+                 "Ideas for safe play."),
                 ("🐾", "Ρουτίνα & δέσιμο" if el else "Routine & bonding",
-                 "[placeholder] Πώς να χτίσεις εμπιστοσύνη γρήγορα." if el else
-                 "[placeholder] How to build trust quickly."),
+                 "Πώς να χτίσεις εμπιστοσύνη γρήγορα." if el else
+                 "How to build trust quickly."),
                 ("📸", "Ενημερώσεις με φωτο" if el else "Photo updates",
-                 "[placeholder] Κράτα τον ιδιοκτήτη ήσυχο." if el else
-                 "[placeholder] Keep the owner at ease."),
+                 "Κράτα τον ιδιοκτήτη ήσυχο." if el else
+                 "Keep the owner at ease."),
             ],
             testimonials=[
                 ("Νίκη Α." if el else "Niki A.", "Pet sitter",
-                 "[placeholder] «Οι ιδιοκτήτες εκτιμούν τις δομημένες ενημερώσεις.»" if el else
-                 "[placeholder] \u201cOwners value the structured updates.\u201d"),
+                 "«Οι ιδιοκτήτες εκτιμούν τις δομημένες ενημερώσεις.»" if el else
+                 "\u201cOwners value the structured updates.\u201d"),
                 ("Δημήτρης Λ." if el else "Dimitris L.", "Pet sitter",
-                 "[placeholder] «Ξέρω ακριβώς τι να καταγράψω.»" if el else
-                 "[placeholder] \u201cI know exactly what to log.\u201d"),
+                 "«Ξέρω ακριβώς τι να καταγράψω.»" if el else
+                 "\u201cI know exactly what to log.\u201d"),
                 ("Σοφία Μ." if el else "Sofia M.", "Pet sitter",
-                 "[placeholder] «Πιο επαγγελματική εικόνα στους πελάτες.»" if el else
-                 "[placeholder] \u201cA more professional image for clients.\u201d"),
+                 "«Πιο επαγγελματική εικόνα στους πελάτες.»" if el else
+                 "\u201cA more professional image for clients.\u201d"),
             ],
         ),
         "ktiniatroys": dict(
@@ -3500,25 +3607,25 @@ def _category_content(slug, lang):
             ],
             activities=[
                 ("🏥", "Υλικό για το ιατρείο" if el else "Clinic resources",
-                 "[placeholder] Ενημερωτικό υλικό για ιδιοκτήτες." if el else
-                 "[placeholder] Educational material for owners."),
+                 "Ενημερωτικό υλικό για ιδιοκτήτες." if el else
+                 "Educational material for owners."),
                 ("📞", "Προετοιμασία επικοινωνίας" if el else "Comms prep",
-                 "[placeholder] Καθοδήγηση για follow-up." if el else
-                 "[placeholder] Guidance for follow-up."),
+                 "Καθοδήγηση για follow-up." if el else
+                 "Guidance for follow-up."),
                 ("🧾", "Πρότυπα αναφορών" if el else "Report templates",
-                 "[placeholder] Έτοιμες δομές σύνοψης." if el else
-                 "[placeholder] Ready-made summary structures."),
+                 "Έτοιμες δομές σύνοψης." if el else
+                 "Ready-made summary structures."),
             ],
             testimonials=[
                 ("Δρ. Παπαδοπούλου" if el else "Dr. Papadopoulou", "Κτηνίατρος" if el else "Veterinarian",
-                 "[placeholder] «Οι ιδιοκτήτες έρχονται πιο προετοιμασμένοι.»" if el else
-                 "[placeholder] \u201cOwners arrive better prepared.\u201d"),
+                 "«Οι ιδιοκτήτες έρχονται πιο προετοιμασμένοι.»" if el else
+                 "\u201cOwners arrive better prepared.\u201d"),
                 ("Δρ. Ιωάννου" if el else "Dr. Ioannou", "Κτηνίατρος" if el else "Veterinarian",
-                 "[placeholder] «Χρήσιμη πρώτη εικόνα του περιστατικού.»" if el else
-                 "[placeholder] \u201cA useful first picture of the case.\u201d"),
+                 "«Χρήσιμη πρώτη εικόνα του περιστατικού.»" if el else
+                 "\u201cA useful first picture of the case.\u201d"),
                 ("Δρ. Βασιλείου" if el else "Dr. Vasiliou", "Κτηνίατρος" if el else "Veterinarian",
-                 "[placeholder] «Καθαρό ιστορικό, λιγότερη χαμένη ώρα.»" if el else
-                 "[placeholder] \u201cClean history, less wasted time.\u201d"),
+                 "«Καθαρό ιστορικό, λιγότερη χαμένη ώρα.»" if el else
+                 "\u201cClean history, less wasted time.\u201d"),
             ],
         ),
     }
