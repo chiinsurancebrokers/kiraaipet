@@ -809,7 +809,7 @@ T = {
         "title":"PetAiNurse","subtitle":"Ο AI Κτηνιατρικός Νοσηλευτής σου",
         "tagline":"Για την υγεία του κατοικίδιού σου · Πάντα δίπλα σου",
         "start":"Ξεκίνα Εκτίμηση",
-        "disclaimer_main":"⚠️ Η PetAiNurse παρέχει πληροφορίες για ενημερωτικούς σκοπούς μόνο. Δεν αντικαθιστά κτηνιατρική διάγνωση ή θεραπεία. Σε επείγον καλέστε άμεσα κτηνίατρο.",
+        "disclaimer_main":"⚠️ Η PetAiNurse ΔΕΝ είναι ιατρικό ή κτηνιατρικό εργαλείο. Παρέχει πληροφορίες μόνο για ενημερωτικούς/εκπαιδευτικούς σκοπούς και δεν αντικαθιστά κτηνιατρική διάγνωση, εξέταση ή θεραπεία. Σε επείγον καλέστε άμεσα κτηνίατρο.",
         "emergency_vet":"🚨 ΕΠΕΙΓΟΝ: Επικοινωνήστε με επείγον κτηνιατρείο ΑΜΕΣΑ",
         "pet_name":"Όνομα κατοικίδιου","species":"Είδος","breed":"Φυλή",
         "age_y":"Ηλικία (χρόνια)","age_m":"Μήνες","sex":"Φύλο",
@@ -839,7 +839,7 @@ T = {
         "title":"PetAiNurse","subtitle":"Your AI Veterinary Nurse",
         "tagline":"For your pet's health · Always by your side",
         "start":"Start Assessment",
-        "disclaimer_main":"⚠️ PetAiNurse provides information for informational purposes only. It does not replace veterinary diagnosis or treatment. In an emergency call a vet immediately.",
+        "disclaimer_main":"⚠️ PetAiNurse is NOT a medical or veterinary device/tool. It provides information for informational/educational purposes only and does not replace veterinary diagnosis, examination, or treatment. In an emergency call a vet immediately.",
         "emergency_vet":"🚨 EMERGENCY: Contact an emergency vet IMMEDIATELY",
         "pet_name":"Pet's name","species":"Species","breed":"Breed",
         "age_y":"Age (years)","age_m":"Months","sex":"Sex",
@@ -867,6 +867,11 @@ T = {
     }
 }
 def t(key): return T[st.session_state.lang].get(key, key)
+
+def _render_disclaimer_strip(lang=None):
+    """Compact 'not a medical/veterinary tool' disclaimer — shown on every screen."""
+    lang = lang or st.session_state.lang
+    st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
 
 # ── STEPPER ───────────────────────────────────────────────────────────────────
 def render_stepper(current):
@@ -1446,6 +1451,342 @@ def _render_pet_health_pillars(pet, vitals, status_map, report_text, lang):
 # SCREENS
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MARKETING / EXPLAINER COMPONENTS (pet-themed, adapted from Asklepios)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def render_ad_banner(lang):
+    """Editorial-style value-prop banner for the home/login screen.
+    Pet-themed (green/teal), honest claims only — no diagnostic promises."""
+    if lang == "en":
+        d = {
+            "pill_l":"PETAINURSE · AI VET NURSE", "pill_r":"🔒 GDPR · Encrypted",
+            "h_l":"Symptoms.", "h_m":"Assessment.", "h_r":"For your pet.",
+            "sub":"Describe what your pet is going through. Get a structured assessment with veterinary references. In a few minutes.",
+            "s1_lbl":"YOU", "s1_text":"\"Hasn't eaten since yesterday, vomiting…\"",
+            "s2_lbl":"VITALS",
+            "s2_v1":"HR", "s2_v1v":"110 bpm",
+            "s2_v2":"Temp", "s2_v2v":"38.6°C",
+            "s3_lbl":"REPORT",
+            "s3_l1":"Structured assessment",
+            "s3_l2":"MSD Vet Manual references",
+            "s3_l3":"Toxicity warnings",
+            "t1":"🇬🇷 Greek", "t2":"🔒 GDPR",
+            "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Free",
+        }
+    else:
+        d = {
+            "pill_l":"PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ", "pill_r":"🔒 GDPR · Κρυπτογράφηση",
+            "h_l":"Συμπτώματα.", "h_m":"Εκτίμηση.", "h_r":"Για το κατοικίδιό σου.",
+            "sub":"Περίγραψε τι περνάει το κατοικίδιό σου. Λάβε δομημένη εκτίμηση με κτηνιατρικές αναφορές. Σε λίγα λεπτά.",
+            "s1_lbl":"ΕΣΥ", "s1_text":"«Δεν τρώει από χθες, έχει εμετό…»",
+            "s2_lbl":"ΖΩΤΙΚΑ",
+            "s2_v1":"HR", "s2_v1v":"110 bpm",
+            "s2_v2":"Θερμ.", "s2_v2v":"38.6°C",
+            "s3_lbl":"ΑΝΑΦΟΡΑ",
+            "s3_l1":"Δομημένη εκτίμηση",
+            "s3_l2":"Αναφορές MSD Vet Manual",
+            "s3_l3":"Προειδοποιήσεις τοξικότητας",
+            "t1":"🇬🇷 Ελληνικά", "t2":"🔒 GDPR",
+            "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Δωρεάν",
+        }
+    css = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700&display=swap');
+.pan-ad-hero {
+  background: linear-gradient(180deg, #F0FDF4 0%, #ECFDF5 100%);
+  border-radius: 28px; padding: 60px 40px 36px;
+  margin: 12px 0 28px; text-align: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  border: 1px solid rgba(5, 150, 105, 0.08);
+}
+.pan-ad-pill {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: white; border: 1px solid #E5E7EB;
+  border-radius: 999px; padding: 8px 18px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em;
+  color: #059669; margin-bottom: 24px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.pan-ad-pill .sep { color: #D1D5DB; font-weight: 400; }
+.pan-ad-pill .gdpr { color: #10B981; letter-spacing: 0.04em; }
+.pan-ad-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 60px; font-weight: 700; line-height: 1.02;
+  letter-spacing: -2px; color: #1A1A2E; margin: 0 0 4px;
+}
+.pan-ad-title .word { display: inline-block; }
+.pan-ad-title .accent {
+  color: #0EA5E9; font-style: italic; font-weight: 900;
+  letter-spacing: -2.5px;
+}
+.pan-ad-sub {
+  font-size: 16.5px; color: #4B5563;
+  max-width: 580px; margin: 22px auto 38px;
+  line-height: 1.6; font-weight: 400;
+}
+.pan-ad-flow {
+  display: flex; align-items: stretch; justify-content: center;
+  gap: 14px; margin: 36px 0 38px; flex-wrap: wrap;
+}
+.pan-ad-card {
+  background: white; border: 1px solid #ECEEF3;
+  border-radius: 18px; padding: 18px 16px 18px;
+  width: 210px; max-width: 230px; min-height: 130px;
+  box-shadow: 0 3px 10px rgba(26, 26, 46, 0.05);
+  display: flex; flex-direction: column;
+  text-align: left;
+}
+.pan-ad-card-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  color: #9CA3AF; text-transform: uppercase; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.pan-ad-card-label .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.pan-ad-card-1 .pan-ad-card-label .dot { background: #059669; }
+.pan-ad-card-2 .pan-ad-card-label .dot { background: #DC2626; }
+.pan-ad-card-3 .pan-ad-card-label .dot { background: #0EA5E9; }
+.pan-ad-bubble {
+  background: #ECFDF5; border-radius: 14px 14px 14px 4px;
+  padding: 11px 13px; font-size: 13px;
+  color: #1A1A2E; line-height: 1.45; font-style: italic;
+  font-weight: 500;
+}
+.pan-ad-vitals { display: flex; flex-direction: column; gap: 8px; }
+.pan-ad-vital-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #FAFBFC; border-radius: 9px;
+  padding: 8px 11px; font-size: 12.5px;
+}
+.pan-ad-vital-row .lbl { color: #6B7280; font-weight: 600; letter-spacing: 0.04em; }
+.pan-ad-vital-row .val { color: #1A1A2E; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pan-ad-report { display: flex; flex-direction: column; gap: 7px; }
+.pan-ad-report-line {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; color: #1A1A2E; font-weight: 500;
+}
+.pan-ad-report-line .check {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #ECFDF5; color: #059669;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.pan-ad-arrow {
+  display: flex; align-items: center;
+  font-size: 22px; color: #0EA5E9; font-weight: 700; opacity: 0.5;
+}
+.pan-ad-trust {
+  display: flex; justify-content: center; align-items: center;
+  gap: 10px; flex-wrap: wrap; font-size: 12.5px;
+  color: #6B7280; font-weight: 500;
+  padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.05);
+  margin-top: 20px;
+}
+.pan-ad-trust .item { white-space: nowrap; }
+.pan-ad-trust .sep-dot {
+  color: #D1D5DB; font-weight: 400; font-size: 14px;
+  line-height: 1;
+}
+@media (max-width: 640px) {
+  .pan-ad-hero { padding: 36px 22px 28px; border-radius: 22px; }
+  .pan-ad-title { font-size: 36px; letter-spacing: -1.2px; }
+  .pan-ad-title .accent { letter-spacing: -1.5px; }
+  .pan-ad-sub { font-size: 14.5px; margin: 18px auto 28px; }
+  .pan-ad-arrow { display: none; }
+  .pan-ad-card { width: 100%; max-width: 340px; padding: 14px; min-height: auto; }
+  .pan-ad-flow { gap: 10px; margin: 24px 0 28px; }
+  .pan-ad-trust { gap: 6px; font-size: 11.5px; }
+  .pan-ad-pill { font-size: 10.5px; padding: 7px 14px; }
+}
+</style>
+"""
+    body = f"""
+<div class="pan-ad-hero">
+  <div class="pan-ad-pill">✦ {d["pill_l"]} <span class="sep">|</span> <span class="gdpr">{d["pill_r"]}</span></div>
+  <h1 class="pan-ad-title">
+    <span class="word">{d["h_l"]}</span>
+    <span class="word">{d["h_m"]}</span><br>
+    <span class="word accent">{d["h_r"]}</span>
+  </h1>
+  <p class="pan-ad-sub">{d["sub"]}</p>
+  <div class="pan-ad-flow">
+    <div class="pan-ad-card pan-ad-card-1">
+      <div class="pan-ad-card-label"><span class="dot"></span>{d["s1_lbl"]}</div>
+      <div class="pan-ad-bubble">{d["s1_text"]}</div>
+    </div>
+    <div class="pan-ad-arrow">→</div>
+    <div class="pan-ad-card pan-ad-card-2">
+      <div class="pan-ad-card-label"><span class="dot"></span>{d["s2_lbl"]}</div>
+      <div class="pan-ad-vitals">
+        <div class="pan-ad-vital-row"><span class="lbl">❤️ {d["s2_v1"]}</span><span class="val">{d["s2_v1v"]}</span></div>
+        <div class="pan-ad-vital-row"><span class="lbl">🌡️ {d["s2_v2"]}</span><span class="val">{d["s2_v2v"]}</span></div>
+      </div>
+    </div>
+    <div class="pan-ad-arrow">→</div>
+    <div class="pan-ad-card pan-ad-card-3">
+      <div class="pan-ad-card-label"><span class="dot"></span>{d["s3_lbl"]}</div>
+      <div class="pan-ad-report">
+        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l1"]}</div>
+        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l2"]}</div>
+        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l3"]}</div>
+      </div>
+    </div>
+  </div>
+  <div class="pan-ad-trust">
+    <span class="item">{d["t1"]}</span><span class="sep-dot">·</span>
+    <span class="item">{d["t2"]}</span><span class="sep-dot">·</span>
+    <span class="item">{d["t3"]}</span><span class="sep-dot">·</span>
+    <span class="item">{d["t4"]}</span><span class="sep-dot">·</span>
+    <span class="item">{d["t5"]}</span>
+  </div>
+</div>
+"""
+    st.markdown(css + body, unsafe_allow_html=True)
+
+
+def render_explainer_video(lang):
+    """Horizontal scrollable 'how it works' cards — pet-themed walkthrough."""
+    el = (lang == "el")
+    if el:
+        steps = [
+            ("01", "🐾", "#ECFDF5", "PETAINURSE",
+             "Ο ψηφιακός νοσηλευτής του κατοικίδιού σου",
+             "Αξιολόγηση συμπτωμάτων με τεχνητή νοημοσύνη — γρήγορα, στα Ελληνικά."),
+            ("02", "✉️", "#EEF6FF", "ΣΥΝΔΕΣΗ",
+             "Σύνδεση με email",
+             "Email + κωδικός μίας χρήσης. Χωρίς password, χωρίς πολύπλοκη εγγραφή."),
+            ("03", "🐶", "#FFF7ED", "ΠΡΟΦΙΛ",
+             "Συμπλήρωσε το προφίλ του κατοικίδιου",
+             "Είδος, φυλή, ηλικία, βάρος, παθήσεις, αλλεργίες, φάρμακα."),
+            ("04", "💬", "#F0EEFE", "ΣΥΜΠΤΩΜΑΤΑ",
+             "Περίγραψε τι παρατηρείς",
+             "Η PetAiNurse κάνει στοχευμένες ερωτήσεις — μία κάθε φορά. Μπορείς και με φωνή."),
+            ("05", "❤️", "#FEF2F2", "ΖΩΤΙΚΑ",
+             "Μέτρηση ζωτικών ενδείξεων",
+             "Καρδιακός ρυθμός, αναπνοή, θερμοκρασία, SpO2 — με φυσιολογικά εύρη ανά είδος."),
+            ("06", "📷", "#F0FDFA", "ΦΩΤΟ & ΕΞΕΤΑΣΕΙΣ",
+             "Φωτογραφία ή εργαστηριακή εξέταση",
+             "Σάρωση ματιών/δέρματος/ούλων ή ανέβασμα PDF αιματολογικών αποτελεσμάτων."),
+            ("07", "📋", "#FDF4FF", "ΑΝΑΦΟΡΑ",
+             "Δομημένη κτηνιατρική αναφορά",
+             "Με αναφορές MSD Vet Manual, προειδοποιήσεις τοξικότητας και προφίλ υγείας. PDF για τον κτηνίατρο."),
+        ]
+        header = "Πώς λειτουργεί"
+        hint   = "← σύρε για περισσότερα →"
+    else:
+        steps = [
+            ("01", "🐾", "#ECFDF5", "PETAINURSE",
+             "Your pet's digital nurse",
+             "AI-powered symptom assessment — fast, in your language."),
+            ("02", "✉️", "#EEF6FF", "SIGN-IN",
+             "Sign in with email",
+             "Email + one-time code. No password, no complex registration."),
+            ("03", "🐶", "#FFF7ED", "PROFILE",
+             "Fill in your pet's profile",
+             "Species, breed, age, weight, conditions, allergies, medications."),
+            ("04", "💬", "#F0EEFE", "SYMPTOMS",
+             "Describe what you're noticing",
+             "PetAiNurse asks targeted questions — one at a time. You can also use voice."),
+            ("05", "❤️", "#FEF2F2", "VITALS",
+             "Measure vital signs",
+             "Heart rate, breathing, temperature, SpO2 — with species-specific normal ranges."),
+            ("06", "📷", "#F0FDFA", "PHOTO & LABS",
+             "Photo or lab results",
+             "Scan eyes/skin/gums or upload a PDF of blood test results."),
+            ("07", "📋", "#FDF4FF", "REPORT",
+             "Structured veterinary report",
+             "With MSD Vet Manual references, toxicity warnings and a health profile. PDF for your vet."),
+        ]
+        header = "How it works"
+        hint   = "← swipe for more →"
+    cards = "".join(
+        f"""<div class="pan-exp-card" style="background:{tint};">
+              <div class="pan-exp-num">{num}</div>
+              <div class="pan-exp-icon">{icon}</div>
+              <div class="pan-exp-label">{label}</div>
+              <div class="pan-exp-title">{title}</div>
+              <div class="pan-exp-sub">{sub}</div>
+            </div>"""
+        for (num, icon, tint, label, title, sub) in steps
+    )
+    st.markdown(
+        f"""
+<style>
+.pan-exp-section {{
+  margin: 32px 0 16px;
+}}
+.pan-exp-header {{
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0 4px 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+}}
+.pan-exp-header .ttl {{
+  font-size: 18px; font-weight: 700; color: #1A1A2E;
+  letter-spacing: -0.01em;
+}}
+.pan-exp-header .hint {{
+  font-size: 11px; color: #9CA3AF; font-weight: 500;
+  letter-spacing: 0.02em;
+}}
+.pan-exp-scroll {{
+  display: flex; gap: 12px;
+  overflow-x: auto; overflow-y: hidden;
+  padding: 4px 4px 18px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}}
+.pan-exp-scroll::-webkit-scrollbar {{ height: 6px; }}
+.pan-exp-scroll::-webkit-scrollbar-thumb {{
+  background: #CBD5E1; border-radius: 3px;
+}}
+.pan-exp-scroll::-webkit-scrollbar-track {{ background: transparent; }}
+.pan-exp-card {{
+  flex: 0 0 250px; max-width: 250px;
+  border-radius: 18px; padding: 22px 20px;
+  scroll-snap-align: start;
+  border: 1px solid rgba(0,0,0,0.04);
+  text-align: left;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}}
+.pan-exp-num {{
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+  color: rgba(0,0,0,0.28); margin-bottom: 12px;
+}}
+.pan-exp-icon {{
+  font-size: 30px; line-height: 1; margin-bottom: 10px;
+}}
+.pan-exp-label {{
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+  color: #9CA3AF; text-transform: uppercase; margin-bottom: 6px;
+}}
+.pan-exp-title {{
+  font-size: 15px; font-weight: 700; color: #1A1A2E;
+  line-height: 1.35; margin-bottom: 8px;
+}}
+.pan-exp-sub {{
+  font-size: 12.5px; color: #4B5563; line-height: 1.55;
+}}
+@media (max-width: 640px) {{
+  .pan-exp-card {{ flex: 0 0 220px; padding: 18px 16px; }}
+  .pan-exp-icon {{ font-size: 26px; }}
+  .pan-exp-title {{ font-size: 14px; }}
+  .pan-exp-sub {{ font-size: 12px; }}
+}}
+</style>
+<div class="pan-exp-section">
+  <div class="pan-exp-header"><span class="ttl">{header}</span><span class="hint">{hint}</span></div>
+  <div class="pan-exp-scroll">{cards}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def render_home():
     lang = st.session_state.lang
 
@@ -1461,7 +1802,10 @@ def render_home():
         <div class="pet-tagline">{t("tagline")}</div>
     </div>''', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
+    _render_disclaimer_strip()
+
+    # Editorial value-prop banner
+    render_ad_banner(lang)
 
     col1,col2,col3 = st.columns([1,2,1])
     with col2:
@@ -1477,7 +1821,11 @@ def render_home():
     with f3:
         st.markdown('<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς.</p></div>', unsafe_allow_html=True)
 
+    # "How it works" walkthrough
+    render_explainer_video(lang)
+
     st.markdown(f'<div class="emergency-vet">{t("emergency_vet")}</div>', unsafe_allow_html=True)
+
 
 
 def render_intake():
@@ -1485,6 +1833,7 @@ def render_intake():
     lang = st.session_state.lang
     pet = st.session_state.pet
     st.markdown(f"## 🐾 {t('pet_name')} & Προφίλ")
+    _render_disclaimer_strip()
 
     c1,c2 = st.columns([2,1])
     with c1: name = st.text_input(t("pet_name"), value=pet.get("name",""), placeholder="Μπόμπης")
@@ -1568,6 +1917,7 @@ def render_vitals():
     sp   = pet.get("species_key","dog")
     rng  = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
     st.markdown(f"## 📊 {t('vitals_title')} — {pet.get('name','')} {pet.get('species_label','')}")
+    _render_disclaimer_strip()
 
     hr_range = rng["hr"]; br_range = rng["br"]; temp_range = rng["temp"]
     st.caption(f"{'Φυσιολογικά για' if lang=='el' else 'Normal for'} {pet.get('species_label','')}: "
@@ -1757,7 +2107,7 @@ def render_triage():
     sp   = pet.get("species_key","dog")
     st.markdown(f"## 🩺 {t('triage_title')} — {pet.get('name','')} {pet.get('species_label','')}")
     render_vitals_summary()
-    st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
+    _render_disclaimer_strip()
 
     # Symptom tracker (browser-only, localStorage)
     _render_pet_symptom_tracker(lang)
@@ -1939,6 +2289,7 @@ def render_report():
     sp   = pet.get("species_key","dog")
     st.markdown(f"## 📋 {t('report_title')}")
     st.caption(f"{pet.get('name','')} {pet.get('species_label','')} · {pet.get('breed','')} · {datetime.now().strftime('%d %b %Y %H:%M')}")
+    _render_disclaimer_strip()
     render_vitals_summary()
 
     if not st.session_state.report:
