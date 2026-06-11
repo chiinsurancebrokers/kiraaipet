@@ -863,10 +863,10 @@ def _render_disclaimer_strip(lang=None):
 
 # ── STEPPER ───────────────────────────────────────────────────────────────────
 def render_doc_header(title_el, title_en, *, icon="📋",
-                      sub_el=None, sub_en=None, show_date=True):
+                      sub_el=None, sub_en=None, show_date=True, mascot_key=None):
     """Compact doc-template style header card for each screen — tells the
-    user what to do on this step. White card with circular icon, brand caps,
-    friendly title, optional subtitle and date."""
+    user what to do on this step. White card with circular icon (or species
+    mascot), brand caps, friendly title, optional subtitle and date."""
     lang = st.session_state.lang
     title = title_el if lang == "el" else title_en
     sub = (sub_el if lang == "el" else sub_en) or ""
@@ -878,6 +878,10 @@ def render_doc_header(title_el, title_en, *, icon="📋",
         f'<div class="pan-dph-date-val">{date_str}</div></div>'
     ) if show_date else ""
     sub_html = f'<div class="pan-dph-sub">{sub}</div>' if sub else ""
+    if mascot_key:
+        logo_inner = render_mascot(mascot_key, size=40)
+    else:
+        logo_inner = icon
     st.markdown(
         f"""
 <style>
@@ -930,7 +934,7 @@ def render_doc_header(title_el, title_en, *, icon="📋",
 }}
 </style>
 <div class="pan-doc-page-head">
-  <div class="pan-dph-logo">{icon}</div>
+  <div class="pan-dph-logo">{logo_inner}</div>
   <div class="pan-dph-text">
     <div class="pan-dph-org">{org}</div>
     <div class="pan-dph-title">{title}</div>
@@ -995,6 +999,84 @@ Rules:
 - When ready: "I have enough information — we can generate a veterinary report." """
 
 def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" else PETAINURSE_EN
+
+
+# ── MASCOTS ───────────────────────────────────────────────────────────────────
+MASCOT_SVG = {
+"dog": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse dog mascot">
+  <title>Dr. Pawlo</title>
+  <ellipse cx="52" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(-18 52 78)"/>
+  <ellipse cx="148" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(18 148 78)"/>
+  <circle cx="100" cy="104" r="62" fill="#F3C99A"/>
+  <ellipse cx="100" cy="128" rx="34" ry="26" fill="#FFF8EE"/>
+  <ellipse cx="100" cy="116" rx="11" ry="8" fill="#1A1A2E"/>
+  <path d="M100 124 Q100 136 86 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 124 Q100 136 114 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="76" cy="92" r="7" fill="#1A1A2E"/>
+  <circle cx="124" cy="92" r="7" fill="#1A1A2E"/>
+  <circle cx="78.5" cy="89.5" r="2.2" fill="white"/>
+  <circle cx="126.5" cy="89.5" r="2.2" fill="white"/>
+  <path d="M66 80 Q76 74 86 80" stroke="#B5703F" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M114 80 Q124 74 134 80" stroke="#B5703F" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M58 56 Q100 30 142 56" stroke="#0EA5E9" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <circle cx="100" cy="48" r="11" fill="#E5F6FE"/>
+  <circle cx="100" cy="48" r="6" fill="#0EA5E9"/>
+  <path d="M72 158 Q72 180 100 180 Q128 180 128 158" stroke="#059669" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="72" cy="156" r="7" fill="#059669"/>
+  <circle cx="128" cy="156" r="7" fill="#059669"/>
+  <circle cx="100" cy="180" r="10" fill="#047857"/>
+  <circle cx="100" cy="180" r="5" fill="#A7F3D0"/>
+</svg>''',
+"cat": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse cat mascot">
+  <title>Nurse Mimi</title>
+  <path d="M48 70 L34 24 L82 56 Z" fill="#9CA3AF"/>
+  <path d="M152 70 L166 24 L118 56 Z" fill="#9CA3AF"/>
+  <path d="M52 64 L42 34 L74 54 Z" fill="#F3D9C9"/>
+  <path d="M148 64 L158 34 L126 54 Z" fill="#F3D9C9"/>
+  <circle cx="100" cy="104" r="62" fill="#B7BFC9"/>
+  <ellipse cx="100" cy="130" rx="36" ry="24" fill="#F4F6F8"/>
+  <path d="M100 112 L92 122 L108 122 Z" fill="#F472B6"/>
+  <path d="M100 122 Q100 132 86 134" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 122 Q100 132 114 134" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M62 124 L34 118 M62 132 L32 132 M62 140 L34 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M138 124 L166 118 M138 132 L168 132 M138 140 L166 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="76" cy="92" rx="7" ry="9" fill="#1A1A2E"/>
+  <ellipse cx="124" cy="92" rx="7" ry="9" fill="#1A1A2E"/>
+  <circle cx="78.5" cy="88.5" r="2.2" fill="white"/>
+  <circle cx="126.5" cy="88.5" r="2.2" fill="white"/>
+  <path d="M62 60 Q100 32 138 60 L138 70 Q100 50 62 70 Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="92" y="44" width="16" height="16" fill="#059669" rx="2"/>
+  <rect x="96" y="40" width="8" height="24" fill="#059669" rx="2"/>
+  <rect x="84" y="48" width="32" height="8" fill="#059669" rx="2"/>
+  <circle cx="100" cy="166" r="18" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="2"/>
+  <ellipse cx="100" cy="170" rx="9" ry="7" fill="#059669"/>
+  <ellipse cx="89" cy="158" rx="4" ry="5" fill="#059669"/>
+  <ellipse cx="100" cy="153" rx="4" ry="5" fill="#059669"/>
+  <ellipse cx="111" cy="158" rx="4" ry="5" fill="#059669"/>
+</svg>''',
+}
+
+def render_mascot(species_key="dog", size=72, style=""):
+    """Render a mascot SVG inline. species_key: 'dog', 'cat', or anything else
+    (falls back to dog+cat shown side by side as a generic 'pet' duo)."""
+    svg = MASCOT_SVG.get(species_key)
+    base_style = f"width:{size}px;height:{size}px;flex-shrink:0;{style}"
+    if svg:
+        return f'<span style="display:inline-block;{base_style}">{svg}</span>'
+    # unknown species → show both mascots smaller, side by side
+    half = int(size*0.62)
+    dog = MASCOT_SVG["dog"]; cat = MASCOT_SVG["cat"]
+    return (f'<span style="display:inline-flex;gap:2px;{base_style}">'
+            f'<span style="width:{half}px;height:{half}px">{dog}</span>'
+            f'<span style="width:{half}px;height:{half}px;margin-top:auto">{cat}</span></span>')
+
+def mascot_for_pet(pet=None):
+    """Return the mascot key ('dog'/'cat'/None) for the given pet profile."""
+    pet = pet or st.session_state.get("pet", {})
+    sp = pet.get("species_key", "")
+    if sp in ("dog","cat"):
+        return sp
+    return None
 
 
 # ── EMERGENCY VET CLINICS (Athens + major Greek cities) ───────────────────────
@@ -1077,6 +1159,7 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
     cond   = _html.escape(str(pet.get("conditions","") or "—"))
     meds   = _html.escape(str(pet.get("meds_raw","") or "—"))
     vet    = _html.escape(str(pet.get("vet_name","") or "—"))
+    filled_by = _html.escape(str(pet.get("filled_by","") or ""))
     ts     = datetime.now().strftime("%d %B %Y  %H:%M")
 
     VLABELS={"hr":("Καρδιακός Ρυθμός","bpm"),"br":("Αναπνευστικός Ρυθμός","/min"),
@@ -1140,7 +1223,7 @@ table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 @media print{{body{{padding:16px}}.pet-card,.emergency{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@page{{margin:15mm}}}}</style></head><body>
 <div class="hdr"><div class="hdr-logo">🐾 PetAiNurse</div><div class="hdr-date">Κτηνιατρική Εκτίμηση<br>{ts}</div></div>
 <div class="pet-card"><div class="pet-name">{name} {species}</div><div class="pet-meta">{breed} · {age} · {sex} · {weight}kg</div>
-<div class="pet-detail"><strong>Κτηνίατρος:</strong> {vet}<br><strong>Παθήσεις/Αλλεργίες:</strong> {cond}<br><strong>Φάρμακα:</strong> {meds}</div></div>
+<div class="pet-detail"><strong>Κτηνίατρος:</strong> {vet}<br><strong>Παθήσεις/Αλλεργίες:</strong> {cond}<br><strong>Φάρμακα:</strong> {meds}{('<br><strong>Συμπληρώθηκε από:</strong> ' + filled_by) if filled_by and filled_by not in ('Ιδιοκτήτης','Owner') else ''}</div></div>
 {vitals_sec}<h2>Κτηνιατρική Αξιολόγηση</h2>{md2h(report_text or "")}{lab_html}{refs_html}
 <div class="emergency">🚨 ΣΕ ΕΠΕΙΓΟΝ: Επικοινωνήστε ΑΜΕΣΑ με κτηνίατρο ή επείγον κτηνιατρείο</div>
 <div class="cta"><a href="https://pet.gov.gr" target="_blank">🐾 Επίσημες Υπηρεσίες → pet.gov.gr</a></div>
@@ -1865,7 +1948,10 @@ def render_home():
             st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
 
     st.markdown(f'''<div class="pet-hero">
-        <div style="font-size:64px;margin-bottom:8px">🐾</div>
+        <div style="display:flex;justify-content:center;gap:6px;margin-bottom:4px">
+            {render_mascot("dog", size=92)}
+            {render_mascot("cat", size=92)}
+        </div>
         <h1>{t("title")}</h1>
         <p>{t("subtitle")}</p>
         <div class="pet-tagline">{t("tagline")}</div>
@@ -1882,12 +1968,20 @@ def render_home():
             st.session_state.screen="intake"; st.rerun()
 
     st.markdown("---")
-    f1,f2,f3 = st.columns(3)
+    f1,f2,f3,f4 = st.columns(4)
     with f1:
         st.markdown('<div class="card"><div style="font-size:32px">📋</div><h3 style="margin-top:12px">MSD Veterinary Manual</h3><p style="font-size:13px;color:#6B7280">Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής.</p></div>', unsafe_allow_html=True)
     with f2:
-        st.markdown('<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">Τοξικότητα & Ασφάλεια</h3><p style="font-size:13px;color:#6B7280">Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες.</p></div>', unsafe_allow_html=True)
+        st.markdown('''<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">Τοξικότητα & Ασφάλεια</h3>
+            <p style="font-size:13px;color:#6B7280">Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες.</p>
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>
+                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Κρεμμύδι</span>
+                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Παρακεταμόλη</span>
+            </div></div>''', unsafe_allow_html=True)
     with f3:
+        st.markdown('<div class="card"><div style="font-size:32px">👥</div><h3 style="margin-top:12px">Για Pet Sitters</h3><p style="font-size:13px;color:#6B7280">Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο.</p></div>', unsafe_allow_html=True)
+    with f4:
         st.markdown('<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς.</p></div>', unsafe_allow_html=True)
 
     # "How it works" walkthrough
@@ -1908,6 +2002,21 @@ def render_intake():
         sub_en="Name, species, breed, age, weight, history",
     )
     _render_disclaimer_strip()
+
+    filler_opts_el = ["Ιδιοκτήτης", "Pet Sitter", "Κτηνίατρος/Προσωπικό κλινικής"]
+    filler_opts_en = ["Owner", "Pet Sitter", "Vet/Clinic staff"]
+    filler_opts = filler_opts_el if lang=="el" else filler_opts_en
+    prev_filler = pet.get("filled_by", filler_opts[0])
+    if prev_filler not in filler_opts: prev_filler = filler_opts[0]
+    filled_by = st.selectbox(
+        ("Η αναφορά συμπληρώνεται από" if lang=="el" else "This assessment is being filled in by"),
+        filler_opts, index=filler_opts.index(prev_filler))
+    if filled_by != filler_opts[0]:
+        st.caption(("ℹ️ Η αναφορά θα αναφέρει ότι συμπληρώθηκε από " + filled_by.lower()
+                    + " — χρήσιμο όταν στέλνεις την αναφορά στον ιδιοκτήτη ή τον κτηνίατρο.")
+                   if lang=="el" else
+                   ("ℹ️ The report will note it was filled in by a " + filled_by.lower()
+                    + " — useful when sharing it with the owner or vet."))
 
     c1,c2 = st.columns([2,1])
     with c1: name = st.text_input(t("pet_name"), value=pet.get("name",""), placeholder="Μπόμπης")
@@ -1977,7 +2086,8 @@ def render_intake():
                     "name":name,"species_key":species_key,"species_label":species_label,
                     "breed":breed,"age_y":age_y,"age_m":age_m,"sex":sex,
                     "weight":weight,"microchip":microchip,"vaccinations":vaccinations,
-                    "conditions":conditions,"meds_raw":meds_raw,"vet_name":vet_name
+                    "conditions":conditions,"meds_raw":meds_raw,"vet_name":vet_name,
+                    "filled_by":filled_by,
                 }
                 st.session_state.screen="vitals"; st.rerun()
             else:
@@ -1996,6 +2106,7 @@ def render_vitals():
         icon="❤️",
         sub_el=(f"Μέτρησε ή σάρωσε για {nm}" if nm else "Χειροκίνητη μέτρηση ή σάρωση φωτογραφίας"),
         sub_en=(f"Measure or scan for {nm}" if nm else "Manual entry or photo scan"),
+        mascot_key=mascot_for_pet(pet),
     )
     _render_disclaimer_strip()
 
@@ -2193,6 +2304,7 @@ def render_triage():
         icon="💬",
         sub_el=(f"Συνομιλία για τον/την {nm} — μία ερώτηση κάθε φορά" if nm else "Πες τι παρατηρείς — μία ερώτηση κάθε φορά"),
         sub_en=(f"Chat about {nm} — one question at a time" if nm else "Tell us what you're noticing — one question at a time"),
+        mascot_key=mascot_for_pet(pet),
     )
     render_vitals_summary()
     _render_disclaimer_strip()
@@ -2395,6 +2507,7 @@ def render_report():
         icon="📋",
         sub_el=(f"Δομημένη αναφορά για {nm} — αποθήκευσε ή τύπωσε για τον κτηνίατρο" if nm else "Δομημένη αναφορά με τεκμηρίωση"),
         sub_en=(f"Structured report for {nm} — save or print for your vet" if nm else "Structured assessment with references"),
+        mascot_key=mascot_for_pet(pet),
     )
     st.caption(f"{pet.get('name','')} {pet.get('species_label','')} · {pet.get('breed','')} · {datetime.now().strftime('%d %b %Y %H:%M')}")
     _render_disclaimer_strip()
