@@ -874,6 +874,87 @@ def _render_disclaimer_strip(lang=None):
     st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
 
 # ── STEPPER ───────────────────────────────────────────────────────────────────
+def render_doc_header(title_el, title_en, *, icon="📋",
+                      sub_el=None, sub_en=None, show_date=True):
+    """Compact doc-template style header card for each screen — tells the
+    user what to do on this step. White card with circular icon, brand caps,
+    friendly title, optional subtitle and date."""
+    lang = st.session_state.lang
+    title = title_el if lang == "el" else title_en
+    sub = (sub_el if lang == "el" else sub_en) or ""
+    org = "PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ" if lang == "el" else "PETAINURSE · AI VET NURSE"
+    date_str = datetime.now().strftime("%d.%m.%Y")
+    date_lbl = "ΗΜΕΡ." if lang == "el" else "DATE"
+    date_html = (
+        f'<div class="pan-dph-date"><div class="pan-dph-date-lbl">{date_lbl}</div>'
+        f'<div class="pan-dph-date-val">{date_str}</div></div>'
+    ) if show_date else ""
+    sub_html = f'<div class="pan-dph-sub">{sub}</div>' if sub else ""
+    st.markdown(
+        f"""
+<style>
+.pan-doc-page-head {{
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 22px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  margin: 4px 0 22px;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}}
+.pan-dph-logo {{
+  width: 50px; height: 50px; border-radius: 50%;
+  background: #ECFDF5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 23px; flex-shrink: 0;
+}}
+.pan-dph-text {{ flex: 1; min-width: 0; }}
+.pan-dph-org {{
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+  color: #6B7280; text-transform: uppercase; margin-bottom: 3px;
+}}
+.pan-dph-title {{
+  font-size: 19px; font-weight: 700; color: #111827;
+  letter-spacing: -0.015em; line-height: 1.2;
+}}
+.pan-dph-sub {{
+  font-size: 12.5px; color: #6B7280; margin-top: 3px; font-weight: 500;
+}}
+.pan-dph-date {{
+  text-align: right; flex-shrink: 0;
+  border-left: 1px solid #E5E7EB; padding-left: 14px;
+}}
+.pan-dph-date-lbl {{
+  font-size: 9px; font-weight: 700; letter-spacing: 0.14em;
+  color: #9CA3AF; text-transform: uppercase;
+}}
+.pan-dph-date-val {{
+  font-size: 13px; font-weight: 700; color: #111827;
+  font-variant-numeric: tabular-nums; margin-top: 2px;
+}}
+@media (max-width: 640px) {{
+  .pan-doc-page-head {{ padding: 14px 16px; gap: 12px; }}
+  .pan-dph-logo {{ width: 42px; height: 42px; font-size: 19px; }}
+  .pan-dph-title {{ font-size: 16px; }}
+  .pan-dph-sub {{ font-size: 11.5px; }}
+  .pan-dph-date {{ display: none; }}
+}}
+</style>
+<div class="pan-doc-page-head">
+  <div class="pan-dph-logo">{icon}</div>
+  <div class="pan-dph-text">
+    <div class="pan-dph-org">{org}</div>
+    <div class="pan-dph-title">{title}</div>
+    {sub_html}
+  </div>
+  {date_html}
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def render_stepper(current):
     steps_el = ["1 Προφίλ","2 Ζωτικές","3 Συμπτώματα","4 Αναφορά"]
     steps_en = ["1 Profile","2 Vitals","3 Symptoms","4 Report"]
@@ -1832,7 +1913,12 @@ def render_intake():
     render_stepper("intake")
     lang = st.session_state.lang
     pet = st.session_state.pet
-    st.markdown(f"## 🐾 {t('pet_name')} & Προφίλ")
+    render_doc_header(
+        "Πες μας για το κατοικίδιό σου", "Tell us about your pet",
+        icon="🐾",
+        sub_el="Όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό",
+        sub_en="Name, species, breed, age, weight, history",
+    )
     _render_disclaimer_strip()
 
     c1,c2 = st.columns([2,1])
@@ -1916,7 +2002,13 @@ def render_vitals():
     lang = st.session_state.lang
     sp   = pet.get("species_key","dog")
     rng  = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
-    st.markdown(f"## 📊 {t('vitals_title')} — {pet.get('name','')} {pet.get('species_label','')}")
+    nm = pet.get("name","")
+    render_doc_header(
+        "Πώς είναι οι ζωτικές ενδείξεις;", "How are the vital signs?",
+        icon="❤️",
+        sub_el=(f"Μέτρησε ή σάρωσε για {nm}" if nm else "Χειροκίνητη μέτρηση ή σάρωση φωτογραφίας"),
+        sub_en=(f"Measure or scan for {nm}" if nm else "Manual entry or photo scan"),
+    )
     _render_disclaimer_strip()
 
     hr_range = rng["hr"]; br_range = rng["br"]; temp_range = rng["temp"]
@@ -2105,7 +2197,13 @@ def render_triage():
     pet  = st.session_state.pet
     lang = st.session_state.lang
     sp   = pet.get("species_key","dog")
-    st.markdown(f"## 🩺 {t('triage_title')} — {pet.get('name','')} {pet.get('species_label','')}")
+    nm = pet.get("name","")
+    render_doc_header(
+        "Ας μιλήσουμε για τα συμπτώματα", "Let's talk about the symptoms",
+        icon="💬",
+        sub_el=(f"Συνομιλία για τον/την {nm} — μία ερώτηση κάθε φορά" if nm else "Πες τι παρατηρείς — μία ερώτηση κάθε φορά"),
+        sub_en=(f"Chat about {nm} — one question at a time" if nm else "Tell us what you're noticing — one question at a time"),
+    )
     render_vitals_summary()
     _render_disclaimer_strip()
 
@@ -2287,7 +2385,13 @@ def render_report():
     pet  = st.session_state.pet
     lang = st.session_state.lang
     sp   = pet.get("species_key","dog")
-    st.markdown(f"## 📋 {t('report_title')}")
+    nm = pet.get("name","")
+    render_doc_header(
+        "Η εκτίμηση για το κατοικίδιό σου", "Your pet's assessment",
+        icon="📋",
+        sub_el=(f"Δομημένη αναφορά για {nm} — αποθήκευσε ή τύπωσε για τον κτηνίατρο" if nm else "Δομημένη αναφορά με τεκμηρίωση"),
+        sub_en=(f"Structured report for {nm} — save or print for your vet" if nm else "Structured assessment with references"),
+    )
     st.caption(f"{pet.get('name','')} {pet.get('species_label','')} · {pet.get('breed','')} · {datetime.now().strftime('%d %b %Y %H:%M')}")
     _render_disclaimer_strip()
     render_vitals_summary()
