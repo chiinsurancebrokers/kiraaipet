@@ -1617,37 +1617,39 @@ def render_ad_banner(lang):
     Pet-themed (green/teal), honest claims only — no diagnostic promises."""
     if lang == "en":
         d = {
-            "pill_l":"PETAINURSE · AI VET NURSE", "pill_r":"🔒 GDPR · Encrypted",
-            "h_l":"Symptoms.", "h_m":"Assessment.", "h_r":"For your pet.",
-            "sub":"Describe what your pet is going through. Get a structured assessment with veterinary references. In a few minutes.",
-            "s1_lbl":"YOU", "s1_text":"\"Hasn't eaten since yesterday, vomiting…\"",
+            "pill_l":"PETAINURSE · SUMMER PET CARE", "pill_r":"🔒 GDPR · Encrypted",
+            "h_l":"Summer days.", "h_m":"Smart prep.", "h_r":"Happy pets.",
+            "sub":"Heatstroke, ticks, travel stress, foreign bodies — summer brings its own risks. Describe what's going on, get a structured pre-visit summary with veterinary references, and arrive at the clinic prepared. Always complements — never replaces — your vet.",
+            "s1_lbl":"SUMMER RISK", "s1_text":"\"Panting heavily after a walk, won't settle, gums look red…\"",
             "s2_lbl":"VITALS",
             "s2_v1":"HR", "s2_v1v":"110 bpm",
-            "s2_v2":"Temp", "s2_v2v":"38.6°C",
-            "s3_lbl":"REPORT",
+            "s2_v2":"Temp", "s2_v2v":"39.4°C",
+            "s3_lbl":"PRE-VISIT SUMMARY",
             "s3_l1":"Structured assessment",
             "s3_l2":"MSD Vet Manual references",
-            "s3_l3":"Toxicity warnings",
+            "s3_l3":"Heatstroke & toxicity warnings",
             "s3_l4":"GPT-4o second opinion",
             "t1":"🇬🇷 Greek", "t2":"🔒 GDPR",
             "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Free",
+            "vetnote":"🩺 For pet owners — designed to make every vet visit faster and more informed, not to replace one. Always see your veterinarian for diagnosis and treatment.",
         }
     else:
         d = {
-            "pill_l":"PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ", "pill_r":"🔒 GDPR · Κρυπτογράφηση",
-            "h_l":"Συμπτώματα.", "h_m":"Εκτίμηση.", "h_r":"Για το κατοικίδιό σου.",
-            "sub":"Περίγραψε τι περνάει το κατοικίδιό σου. Λάβε δομημένη εκτίμηση με κτηνιατρικές αναφορές. Σε λίγα λεπτά.",
-            "s1_lbl":"ΕΣΥ", "s1_text":"«Δεν τρώει από χθες, έχει εμετό…»",
+            "pill_l":"PETAINURSE · ΦΡΟΝΤΙΔΑ ΓΙΑ ΤΟ ΚΑΛΟΚΑΙΡΙ", "pill_r":"🔒 GDPR · Κρυπτογράφηση",
+            "h_l":"Καλοκαίρι.", "h_m":"Έτοιμη πρόληψη.", "h_r":"Ήρεμο κατοικίδιο.",
+            "sub":"Θερμοπληξία, τσιμπούρια, άγχος ταξιδιού, ξένα σώματα — το καλοκαίρι έχει τους δικούς του κινδύνους. Περίγραψε τι παρατηρείς και λάβε δομημένη σύνοψη με κτηνιατρικές αναφορές, ώστε να φτάσεις στο ιατρείο πιο προετοιμασμένος. Συμπληρώνει — δεν αντικαθιστά — τον κτηνίατρό σου.",
+            "s1_lbl":"ΚΑΛΟΚΑΙΡΙΝΟΣ ΚΙΝΔΥΝΟΣ", "s1_text":"«Λαχανιάζει έντονα μετά τη βόλτα, δεν ηρεμεί, τα ούλα φαίνονται κόκκινα…»",
             "s2_lbl":"ΖΩΤΙΚΑ",
             "s2_v1":"HR", "s2_v1v":"110 bpm",
-            "s2_v2":"Θερμ.", "s2_v2v":"38.6°C",
-            "s3_lbl":"ΑΝΑΦΟΡΑ",
+            "s2_v2":"Θερμ.", "s2_v2v":"39.4°C",
+            "s3_lbl":"ΣΥΝΟΨΗ ΠΡΙΝ ΤΟ ΙΑΤΡΕΙΟ",
             "s3_l1":"Δομημένη εκτίμηση",
             "s3_l2":"Αναφορές MSD Vet Manual",
-            "s3_l3":"Προειδοποιήσεις τοξικότητας",
+            "s3_l3":"Προειδοποιήσεις θερμοπληξίας & τοξικότητας",
             "s3_l4":"Δεύτερη γνώμη GPT-4o",
             "t1":"🇬🇷 Ελληνικά", "t2":"🔒 GDPR",
             "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Δωρεάν",
+            "vetnote":"🩺 Για ιδιοκτήτες κατοικιδίων — σχεδιασμένο ώστε κάθε επίσκεψη στον κτηνίατρο να γίνεται πιο γρήγορη και ενημερωμένη, όχι για να την αντικαταστήσει. Για διάγνωση και θεραπεία, πάντα ο κτηνίατρός σας.",
         }
     css = """
 <style>
@@ -1704,11 +1706,11 @@ def render_ad_banner(lang):
 .pan-ad-card-label .dot {
   width: 6px; height: 6px; border-radius: 50%;
 }
-.pan-ad-card-1 .pan-ad-card-label .dot { background: #059669; }
+.pan-ad-card-1 .pan-ad-card-label .dot { background: #F59E0B; }
 .pan-ad-card-2 .pan-ad-card-label .dot { background: #DC2626; }
 .pan-ad-card-3 .pan-ad-card-label .dot { background: #0EA5E9; }
 .pan-ad-bubble {
-  background: #ECFDF5; border-radius: 14px 14px 14px 4px;
+  background: #FFFBEB; border-radius: 14px 14px 14px 4px;
   padding: 11px 13px; font-size: 13px;
   color: #1A1A2E; line-height: 1.45; font-style: italic;
   font-weight: 500;
@@ -1747,6 +1749,11 @@ def render_ad_banner(lang):
 .pan-ad-trust .sep-dot {
   color: #D1D5DB; font-weight: 400; font-size: 14px;
   line-height: 1;
+}
+.pan-ad-vetnote {
+  font-size: 12px; color: #6B7280; line-height: 1.5;
+  max-width: 540px; margin: 16px auto 0;
+  padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.05);
 }
 @media (max-width: 640px) {
   .pan-ad-hero { padding: 36px 22px 28px; border-radius: 22px; }
@@ -1801,6 +1808,7 @@ def render_ad_banner(lang):
     <span class="item">{d["t4"]}</span><span class="sep-dot">·</span>
     <span class="item">{d["t5"]}</span>
   </div>
+  <div class="pan-ad-vetnote">{d["vetnote"]}</div>
 </div>
 """
     st.markdown(css + body, unsafe_allow_html=True)
