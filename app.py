@@ -2447,6 +2447,32 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                            file_name=fname+".html", mime="text/html", use_container_width=True,
                            help="Open in browser → Ctrl+P → Save as PDF")
 
+# ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
+def render_login_screen():
+    """Full-page login shown at the very start when auth is enabled.
+    Wraps the login form with the ad banner, disclaimer, and explainer —
+    same structure as the home screen so first-time visitors see the value
+    proposition before/while signing in."""
+    lang = st.session_state.lang
+    c1, c2 = st.columns([6,1])
+    with c2:
+        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ", key="login_lang"):
+            st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
+
+    # Value-prop banner
+    render_ad_banner(lang)
+
+    # Login form
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        render_login_gate()
+
+    # "How it works" walkthrough
+    render_explainer_video(lang)
+
+    _render_disclaimer_strip()
+
+
 # ── COOKIE MANAGER (once) — persistent login ──────────────────────────────────
 if _STX_OK and auth_enabled():
     if "CM" not in st.session_state:
@@ -2463,7 +2489,8 @@ if _STX_OK and auth_enabled():
             st.session_state["auth_user"] = _email
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
-if not render_login_gate():
+if auth_enabled() and not is_logged_in():
+    render_login_screen()
     st.stop()
 
 screen = st.session_state.screen
