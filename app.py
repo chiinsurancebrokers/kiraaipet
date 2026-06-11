@@ -176,7 +176,145 @@ MSD_ARTICLES = {
     },
 }
 
-def msdvet_search(species, query, n=3):
+# Category reference links used for the "Personalized Recommendations" cards
+# (activity / nutrition / home-care). These are general, evergreen MSD Vet
+# Manual + WSAVA pages — independent of the symptom-keyword lookup above.
+MSD_RECS_REFS = {
+    "dog": {
+        "activity":  [
+            {"title": "MSD Vet Manual — Exercise Requirements of Dogs", "url": "https://www.msdvetmanual.com/dog-owners/routine-care-and-breeding-of-dogs/routine-health-care-of-dogs"},
+            {"title": "WSAVA Global Nutrition & Wellness Guidelines", "url": "https://wsava.org/global-guidelines/global-nutrition-guidelines/"},
+        ],
+        "nutrition": [
+            {"title": "MSD Vet Manual — Nutrition: Dogs", "url": "https://www.msdvetmanual.com/dog-owners/nutrition-and-general-health-of-dogs/nutrition-general-feeding-of-dogs"},
+            {"title": "WSAVA Global Nutrition Guidelines", "url": "https://wsava.org/global-guidelines/global-nutrition-guidelines/"},
+        ],
+        "lifestyle": [
+            {"title": "MSD Vet Manual — Routine Health Care of Dogs", "url": "https://www.msdvetmanual.com/dog-owners/routine-care-and-breeding-of-dogs/routine-health-care-of-dogs"},
+            {"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"},
+        ],
+    },
+    "cat": {
+        "activity":  [
+            {"title": "MSD Vet Manual — Routine Care of Cats", "url": "https://www.msdvetmanual.com/cat-owners/routine-care-and-breeding-of-cats/routine-health-care-of-cats"},
+            {"title": "WSAVA Global Nutrition & Wellness Guidelines", "url": "https://wsava.org/global-guidelines/global-nutrition-guidelines/"},
+        ],
+        "nutrition": [
+            {"title": "MSD Vet Manual — Nutrition: Cats", "url": "https://www.msdvetmanual.com/cat-owners/nutrition-and-general-health-of-cats/nutrition-general-feeding-of-cats"},
+            {"title": "WSAVA Global Nutrition Guidelines", "url": "https://wsava.org/global-guidelines/global-nutrition-guidelines/"},
+        ],
+        "lifestyle": [
+            {"title": "MSD Vet Manual — Routine Health Care of Cats", "url": "https://www.msdvetmanual.com/cat-owners/routine-care-and-breeding-of-cats/routine-health-care-of-cats"},
+            {"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"},
+        ],
+    },
+}
+
+
+def generate_pet_recommendations(pet, vitals_text, conversation, report_text, lang="el"):
+    """Ask Claude for 3 short personalized recommendation blurbs
+    (activity / nutrition / lifestyle) tailored to this pet's situation,
+    mirroring the Asklepios '📍 Εξατομικευμένες Συστάσεις' cards.
+    Returns a dict: {"activity": "...", "nutrition": "...", "lifestyle": "..."} or {} on failure."""
+    sp = pet.get("species_key","dog")
+    species_label = pet.get("species_label", "pet")
+    prompt = f"""Based on this veterinary assessment, write short personalized home-care
+recommendations for the owner of {pet.get('name','the pet')} ({species_label}, {pet.get('breed','')},
+{pet.get('age_y','?')}y {pet.get('age_m','?')}m, {pet.get('weight','?')}kg).
+
+VITALS:
+{vitals_text}
+
+CONSULTATION:
+{conversation}
+
+ASSESSMENT:
+{report_text[:2000]}
+
+Respond with ONLY a raw JSON object (no markdown fences, no preamble) with exactly these
+three keys, each a string of 2-4 sentences in {"Greek (Ελληνικά)" if lang=="el" else "English"}:
+{{
+  "activity": "Recommendations about exercise / activity level / movement restrictions appropriate for this pet's condition.",
+  "nutrition": "Recommendations about diet, feeding schedule, foods to avoid or include, hydration.",
+  "lifestyle": "Recommendations about home environment, rest, monitoring, stress reduction, grooming, or other home-care."
+}}
+
+Be specific to this pet's actual condition/symptoms — not generic advice. If the condition is mild
+or no major issue was found, give sensible preventive/wellness guidance instead."""
+
+    result = claude([{"role":"user","content":prompt}],
+                    system=petainurse_system(), max_tokens=900, timeout=60)
+    if result.startswith("⚠️"):
+        return {}
+    try:
+        cleaned = result.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("```")[1]
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:]
+        data = json.loads(cleaned.strip())
+        if all(k in data for k in ("activity","nutrition","lifestyle")):
+            return data
+    except Exception:
+        pass
+    return {}
+
+
+def render_pet_recommendations(recs, sp, lang="el"):
+    """Render the 3-column 'Personalized Recommendations' grid with MSD/WSAVA
+    references, mirroring the Asklepios .recs-grid styling but vet-themed."""
+    if not recs:
+        return
+    import html as _html_pr, re as _re_pr
+    refs = MSD_RECS_REFS.get(sp, MSD_RECS_REFS["dog"])
+    title = "📍 Εξατομικευμένες Συστάσεις" if lang=="el" else "📍 Personalized Recommendations"
+
+    labels = {
+        "activity":  ("🏃 Δραστηριότητα" if lang=="el" else "🏃 Activity"),
+        "nutrition": ("🥗 Διατροφή" if lang=="el" else "🥗 Nutrition"),
+        "lifestyle": ("🌿 Φροντίδα στο Σπίτι" if lang=="el" else "🌿 Home Care"),
+    }
+    refs_lbl = "📚 Οδηγίες & βιβλιογραφία" if lang=="el" else "📚 Guidelines & references"
+    css_cls = {"activity":"activity","nutrition":"nutrition","lifestyle":"lifestyle"}
+
+    boxes_html = ""
+    for key in ("activity","nutrition","lifestyle"):
+        text = _html_pr.escape(recs.get(key,"").strip())
+        text = _re_pr.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+        ref_items = "".join(
+            f'<li><a href="{r["url"]}" target="_blank" '
+            f'style="color:#1E40AF;text-decoration:none">{_html_pr.escape(r["title"])}</a></li>'
+            for r in refs.get(key, [])
+        )
+        boxes_html += (
+            f'<div class="pr-box {css_cls[key]}">'
+            f'<div class="pr-lbl">{labels[key]}</div>'
+            f'<div class="pr-body">{text}</div>'
+            f'<div class="pr-refs"><div class="pr-refs-lbl">{refs_lbl}</div>'
+            f'<ul>{ref_items}</ul></div>'
+            f'</div>'
+        )
+
+    st.markdown(
+        '<style>'
+        '.pr-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:14px 0 18px}'
+        '@media (max-width:900px){.pr-grid{grid-template-columns:1fr}}'
+        '.pr-box{border:1px solid;border-radius:14px;padding:16px 18px;font-size:13px;line-height:1.6}'
+        '.pr-box.activity{background:#EFF6FF;border-color:#BFDBFE}'
+        '.pr-box.nutrition{background:#ECFDF5;border-color:#A7F3D0}'
+        '.pr-box.lifestyle{background:#FFF7ED;border-color:#FED7AA}'
+        '.pr-lbl{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1F2937;margin-bottom:8px}'
+        '.pr-refs{margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.10)}'
+        '.pr-refs-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7280;margin-bottom:4px}'
+        '.pr-refs ul{list-style:none;padding:0;margin:0}'
+        '.pr-refs li{font-size:11px;line-height:1.5;margin-bottom:3px}'
+        '</style>'
+        f'<h4 style="margin:18px 0 4px">{title}</h4>'
+        f'<div class="pr-grid">{boxes_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
     """Return curated MSD Vet Manual links based on symptom keywords.
     NOTE: MSD has no public API. Claude's built-in veterinary knowledge
     (trained on MSD, WSAVA, Merck Vet Manual) drives the diagnosis.
@@ -1129,6 +1267,75 @@ def render_govgr_links(lang="el"):
     st.markdown(html, unsafe_allow_html=True)
 
 
+def render_nearby_vets_geo(lang="el"):
+    """Browser-geolocation widget: asks the user's device for their current
+    location and opens Google Maps search for nearby veterinary clinics
+    using those coordinates. Falls back gracefully if location is denied —
+    the static EMERGENCY_VETS list (rendered separately) still applies."""
+    if lang == "el":
+        title    = "📍 Βρες κοντινά κτηνιατρεία"
+        sub      = "Χρησιμοποιεί την τοποθεσία της συσκευής σου — δεν αποθηκεύεται πουθενά."
+        btn      = "📍 Εύρεση κοντινών κτηνιατρείων"
+        denied   = "⚠️ Δεν δόθηκε πρόσβαση στην τοποθεσία. Ενεργοποίησε το geolocation στον browser σου ή χρησιμοποίησε τη λίστα παρακάτω."
+        loading  = "Εντοπισμός τοποθεσίας..."
+        opening  = "✅ Άνοιγμα Google Maps με κοντινά κτηνιατρεία..."
+    else:
+        title    = "📍 Find nearby vet clinics"
+        sub      = "Uses your device's location — never stored anywhere."
+        btn      = "📍 Find nearby vet clinics"
+        denied   = "⚠️ Location access was denied. Enable geolocation in your browser, or use the list below."
+        loading  = "Locating..."
+        opening  = "✅ Opening Google Maps with nearby vet clinics..."
+
+    st.markdown(f"""
+<style>
+.pan-geo-card{{background:white;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-bottom:14px}}
+.pan-geo-card h3{{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7280;margin-bottom:6px}}
+.pan-geo-sub{{font-size:12px;color:#6B7280;margin-bottom:12px}}
+.pan-geo-btn{{background:#059669;color:white;border:none;border-radius:8px;padding:10px 18px;
+  font-size:13px;font-weight:700;cursor:pointer;width:100%}}
+.pan-geo-btn:hover{{background:#047857}}
+.pan-geo-status{{font-size:12px;color:#6B7280;margin-top:10px;min-height:18px}}
+.pan-geo-status.err{{color:#B91C1C}}
+.pan-geo-status.ok{{color:#065F46}}
+</style>
+<div class="pan-geo-card">
+  <h3>{title}</h3>
+  <div class="pan-geo-sub">{sub}</div>
+  <button class="pan-geo-btn" onclick="panFindNearbyVets()">{btn}</button>
+  <div id="pan_geo_status" class="pan-geo-status"></div>
+</div>
+<script>
+function panFindNearbyVets() {{
+  var statusEl = document.getElementById("pan_geo_status");
+  statusEl.className = "pan-geo-status";
+  statusEl.textContent = "{loading}";
+  if (!navigator.geolocation) {{
+    statusEl.className = "pan-geo-status err";
+    statusEl.textContent = "{denied}";
+    return;
+  }}
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {{
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var query = encodeURIComponent("veterinary clinic");
+      var url = "https://www.google.com/maps/search/" + query + "/@" + lat + "," + lng + ",14z";
+      statusEl.className = "pan-geo-status ok";
+      statusEl.textContent = "{opening}";
+      window.open(url, "_blank");
+    }},
+    function(err) {{
+      statusEl.className = "pan-geo-status err";
+      statusEl.textContent = "{denied}";
+    }},
+    {{enableHighAccuracy: true, timeout: 8000}}
+  );
+}}
+</script>
+""", unsafe_allow_html=True)
+
+
 EMERGENCY_VETS = [
     {"name":"Αττικό Κτηνιατρικό Κέντρο (24h)","area":"Αθήνα","phone":"210 6012345","address":"Λ. Κηφισίας 100, Αθήνα"},
     {"name":"VetCity Emergency (24h)","area":"Αθήνα","phone":"210 7777777","address":"Λ. Συγγρού 50, Αθήνα"},
@@ -1137,6 +1344,7 @@ EMERGENCY_VETS = [
 ]
 
 def render_emergency_vets(lang="el"):
+    render_nearby_vets_geo(lang)
     vets_html = ""
     for v in EMERGENCY_VETS:
         maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(v['name']+' '+v['area'])}"
@@ -1149,11 +1357,12 @@ def render_emergency_vets(lang="el"):
                 <a href="{maps_url}" target="_blank" style="background:#0EA5E9;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">🗺️ Χάρτης</a>
             </div>
         </div>"""
-    title = "🚨 Επείγοντα Κτηνιατρεία" if lang=="el" else "🚨 Emergency Vet Clinics"
-    st.markdown(f'<div style="font-weight:700;font-size:15px;margin-bottom:10px">{title}</div>{vets_html}', unsafe_allow_html=True)
+    title = ("🏥 Κατάλογος Επειγόντων (Αθήνα/Θεσσαλονίκη)" if lang=="el"
+             else "🏥 Directory (Athens/Thessaloniki)")
+    st.markdown(f'<div style="font-weight:700;font-size:15px;margin:14px 0 10px">{title}</div>{vets_html}', unsafe_allow_html=True)
 
 # ── HTML REPORT GENERATOR ─────────────────────────────────────────────────────
-def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_findings=None):
+def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_findings=None, recs=None, species_key="dog"):
     import re as _re, html as _html
     name   = _html.escape(str(pet.get("name","—")))
     species= _html.escape(str(pet.get("species_label","")))
@@ -1204,6 +1413,31 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
             )
         lab_html = f'<h2>{_lf_title}</h2><div class="lf-list">{_lf_items}</div>'
 
+    recs_html = ""
+    if recs and isinstance(recs, dict) and all(k in recs for k in ("activity","nutrition","lifestyle")):
+        _recs_title = "📍 Εξατομικευμένες Συστάσεις" if lang=="el" else "📍 Personalized Recommendations"
+        _recs_refs = MSD_RECS_REFS.get(species_key, MSD_RECS_REFS["dog"])
+        _recs_labels = {
+            "activity":  ("🏃 Δραστηριότητα" if lang=="el" else "🏃 Activity"),
+            "nutrition": ("🥗 Διατροφή" if lang=="el" else "🥗 Nutrition"),
+            "lifestyle": ("🌿 Φροντίδα στο Σπίτι" if lang=="el" else "🌿 Home Care"),
+        }
+        _recs_refs_lbl = "📚 Οδηγίες & βιβλιογραφία" if lang=="el" else "📚 Guidelines & references"
+        _recs_boxes = ""
+        for key, css_cls in (("activity","exercise"),("nutrition","nutrition"),("lifestyle","lifestyle")):
+            _txt = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _html.escape((recs.get(key,"") or "").strip()))
+            _ref_items = "".join(
+                f'<li><a href="{_html.escape(r["url"])}" target="_blank" style="color:#1E40AF;text-decoration:none">{_html.escape(r["title"])}</a></li>'
+                for r in _recs_refs.get(key, [])
+            )
+            _recs_boxes += (
+                f'<div class="recs-box {css_cls}"><div class="recs-lbl">{_recs_labels[key]}</div>'
+                f'<div>{_txt}</div>'
+                f'<div class="recs-refs"><div class="recs-refs-lbl">{_recs_refs_lbl}</div><ul>{_ref_items}</ul></div>'
+                f'</div>'
+            )
+        recs_html = f'<h2>{_recs_title}</h2><div class="recs-grid">{_recs_boxes}</div>'
+
     return f"""<!DOCTYPE html><html lang="{lang}"><head><meta charset="UTF-8">
 
 <title>PetAiNurse Report — {name}</title>
@@ -1225,11 +1459,21 @@ table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 .lf-row-head{{display:flex;align-items:center;gap:8px;margin-bottom:5px}}
 .lf-row-num{{background:#D1FAE5;color:#065F46;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}}
 .lf-row-lbl{{font-size:12px;font-weight:700;color:#111827}}.lf-row-body{{font-size:11.5px;color:#374151;line-height:1.55}}
+.recs-grid{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0 16px}}
+.recs-box{{border:1px solid;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.55}}
+.recs-box.exercise{{background:#EFF6FF;border-color:#BFDBFE}}
+.recs-box.nutrition{{background:#ECFDF5;border-color:#A7F3D0}}
+.recs-box.lifestyle{{background:#FFF7ED;border-color:#FED7AA}}
+.recs-lbl{{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1F2937;margin-bottom:6px}}
+.recs-refs{{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.10)}}
+.recs-refs-lbl{{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7280;margin-bottom:4px}}
+.recs-refs ul{{list-style:none;padding:0;margin:0}}.recs-refs li{{font-size:10.5px;line-height:1.4;margin-bottom:3px}}
+@media print{{.recs-box{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.recs-grid{{grid-template-columns:1fr 1fr 1fr !important}}}}
 @media print{{body{{padding:16px}}.pet-card,.emergency{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@page{{margin:15mm}}}}</style></head><body>
 <div class="hdr"><div class="hdr-logo">🐾 PetAiNurse</div><div class="hdr-date">Κτηνιατρική Εκτίμηση<br>{ts}</div></div>
 <div class="pet-card"><div class="pet-name">{name} {species}</div><div class="pet-meta">{breed} · {age} · {sex} · {weight}kg</div>
 <div class="pet-detail"><strong>Κτηνίατρος:</strong> {vet}<br><strong>Παθήσεις/Αλλεργίες:</strong> {cond}<br><strong>Φάρμακα:</strong> {meds}{('<br><strong>Συμπληρώθηκε από:</strong> ' + filled_by) if filled_by and filled_by not in ('Ιδιοκτήτης','Owner') else ''}</div></div>
-{vitals_sec}<h2>Κτηνιατρική Αξιολόγηση</h2>{md2h(report_text or "")}{lab_html}{refs_html}
+{vitals_sec}<h2>Κτηνιατρική Αξιολόγηση</h2>{md2h(report_text or "")}{lab_html}{recs_html}{refs_html}
 <div class="emergency">🚨 ΣΕ ΕΠΕΙΓΟΝ: Επικοινωνήστε ΑΜΕΣΑ με κτηνίατρο ή επείγον κτηνιατρείο</div>
 <div class="cta"><a href="https://pet.gov.gr" target="_blank">🐾 Επίσημες Υπηρεσίες → pet.gov.gr</a></div>
 <div class="disclaimer">⚠️ AI-generated. Δεν αποτελεί κτηνιατρική διάγνωση. Απαιτείται επίσκεψη σε κτηνίατρο.</div>
@@ -2594,6 +2838,11 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             st.session_state.report_gpt = ""
             st.session_state["_gpt_integrated"] = False
 
+        # Personalized recommendations (activity / nutrition / home-care)
+        with st.spinner("📍 Εξατομικευμένες συστάσεις..." if lang=="el" else "📍 Personalized recommendations..."):
+            st.session_state.report_recs = generate_pet_recommendations(
+                pet, vitals_text, conversation, st.session_state.report, lang)
+
     if not st.session_state.report:
         if st.button("🔄 " + ("Δοκιμή ξανά" if lang=="el" else "Retry"), type="primary"): st.rerun()
         return
@@ -2680,6 +2929,11 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             f'<div class="lf-card"><div class="lf-title">{_lf_title} · {_lf_count}</div>{_lf_cards}</div>',
             unsafe_allow_html=True,
         )
+
+    # Personalized recommendations (activity / nutrition / home-care),
+    # mirroring the Asklepios "📍 Εξατομικευμένες Συστάσεις" cards.
+    if st.session_state.get("report_recs"):
+        render_pet_recommendations(st.session_state.report_recs, sp, lang)
 
     # Health profile (vitals + symptom burden pillars)
     if st.session_state.vitals:
@@ -2781,7 +3035,9 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         st.download_button("📄 PDF/HTML",
                            data=generate_pet_html_report(pet, st.session_state.vitals,
                                                           st.session_state.report, st.session_state.report_refs, lang,
-                                                          lab_findings=st.session_state.lab_findings),
+                                                          lab_findings=st.session_state.lab_findings,
+                                                          recs=st.session_state.get("report_recs"),
+                                                          species_key=sp),
                            file_name=fname+".html", mime="text/html", use_container_width=True,
                            help="Open in browser → Ctrl+P → Save as PDF")
 
