@@ -721,9 +721,11 @@ defaults = {
     "vitals_analysis": "",
     "triage_chat": [],
     "report": "", "report_refs": [], "report_gpt": "",
+    "_gpt_integrated": False,
     "report_recs": None,
     "report_recs_refs": {},
     "lab_findings": [],   # list of dicts — lab PDF/image analyses
+    "photo_findings": [], # list of dicts — photo scan analyses (eye/skin/etc.)
     "_voice_widget_counter": 0,
     "medications": [], "med_inputs": [],
     "symptom_chips": [],
@@ -1626,6 +1628,7 @@ def render_ad_banner(lang):
             "s3_l1":"Structured assessment",
             "s3_l2":"MSD Vet Manual references",
             "s3_l3":"Toxicity warnings",
+            "s3_l4":"GPT-4o second opinion",
             "t1":"🇬🇷 Greek", "t2":"🔒 GDPR",
             "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Free",
         }
@@ -1642,6 +1645,7 @@ def render_ad_banner(lang):
             "s3_l1":"Δομημένη εκτίμηση",
             "s3_l2":"Αναφορές MSD Vet Manual",
             "s3_l3":"Προειδοποιήσεις τοξικότητας",
+            "s3_l4":"Δεύτερη γνώμη GPT-4o",
             "t1":"🇬🇷 Ελληνικά", "t2":"🔒 GDPR",
             "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Δωρεάν",
         }
@@ -1786,6 +1790,7 @@ def render_ad_banner(lang):
         <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l1"]}</div>
         <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l2"]}</div>
         <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l3"]}</div>
+        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l4"]}</div>
       </div>
     </div>
   </div>
@@ -2222,6 +2227,13 @@ def render_vitals():
                     "florence_desc": f2_desc,
                     "clinical_analysis": analysis,
                 }
+                # Also keep a running list of all photo analyses so they can
+                # be shown as evidence cards in the final report (mirrors
+                # the Asklepios "photo findings" card).
+                st.session_state.setdefault("photo_findings", []).append({
+                    "scan_label": sel_idx,
+                    "analysis": analysis,
+                })
 
                 # Button to continue to triage with findings
                 if st.button("➤ " + ("Συνέχεια στην Εκτίμηση Συμπτωμάτων →" if lang=="el"
@@ -2571,6 +2583,8 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                 if st.button("🔄 Retry"): st.rerun()
                 return
             st.session_state.report = result
+            st.session_state.report_gpt = ""
+            st.session_state["_gpt_integrated"] = False
 
     if not st.session_state.report:
         if st.button("🔄 " + ("Δοκιμή ξανά" if lang=="el" else "Retry"), type="primary"): st.rerun()
@@ -2586,14 +2600,78 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     st.markdown(st.session_state.report)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Lab findings (if any)
-    if st.session_state.lab_findings:
-        _lf_title = "🧪 Ευρήματα Εργαστηριακών Εξετάσεων" if lang=="el" else "🧪 Lab Findings"
-        with st.expander(f"{_lf_title} ({len(st.session_state.lab_findings)})", expanded=True):
-            for lf in st.session_state.lab_findings:
-                st.markdown(f"**📄 {lf['file_name']}**")
-                st.markdown(lf["analysis"])
-                st.markdown("---")
+    # Photo findings card — if the user uploaded any photos during intake/triage,
+    # the AI vision analyses become visible evidence in the final report.
+    # Mirrors the Asklepios "📷 PHOTO FINDINGS" card.
+    _pfs = st.session_state.get("photo_findings") or []
+    if isinstance(_pfs, list) and _pfs:
+        _pf_title = ("📷 ΕΥΡΗΜΑΤΑ ΑΠΟ ΦΩΤΟΓΡΑΦΙΕΣ" if lang=="el" else "📷 PHOTO FINDINGS")
+        _pf_count = len(_pfs)
+        import html as _html_pf, re as _re_pf
+        def _flat_pf(txt): return _re_pf.sub(r"\s+", " ", (txt or "").strip())
+        _cards_html = ""
+        for i, pf in enumerate(_pfs, 1):
+            _label = _html_pf.escape(pf.get("scan_label","—"))
+            _analysis = _flat_pf(pf.get("analysis",""))
+            _analysis = _html_pf.escape(_analysis)
+            _analysis = _re_pf.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _analysis)
+            _cards_html += (
+                f'<div class="pf-item">'
+                f'<div class="pf-head"><span class="pf-num">{i}</span><span class="pf-label">{_label}</span></div>'
+                f'<div class="pf-body">{_analysis}</div>'
+                f'</div>'
+            )
+        st.markdown(
+            f'<style>'
+            f'.pf-card{{background:white;border:1px solid #E5E7EB;border-radius:14px;padding:22px 24px;margin:18px 0;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.04)}}'
+            f'.pf-title{{font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B7280;text-transform:uppercase;border-bottom:2px solid #E5E7EB;padding-bottom:10px;margin-bottom:14px}}'
+            f'.pf-item{{padding:14px 0;border-bottom:1px solid #F3F4F6}}'
+            f'.pf-item:last-child{{border-bottom:none;padding-bottom:0}}'
+            f'.pf-head{{display:flex;align-items:center;gap:10px;margin-bottom:8px}}'
+            f'.pf-num{{background:#DBEAFE;color:#1E40AF;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}}'
+            f'.pf-label{{font-size:13.5px;font-weight:700;color:#111827}}'
+            f'.pf-body{{font-size:13px;color:#374151;line-height:1.6}}'
+            f'.pf-body strong{{color:#1F2937}}'
+            f'</style>'
+            f'<div class="pf-card"><div class="pf-title">{_pf_title} · {_pf_count}</div>{_cards_html}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # Lab findings card — same styling as the photo card with a green accent
+    # for laboratory data. Mirrors the Asklepios "🧪 LAB FINDINGS" card.
+    _lfs = st.session_state.get("lab_findings") or []
+    if isinstance(_lfs, list) and _lfs:
+        _lf_title = ("🧪 ΕΥΡΗΜΑΤΑ ΕΡΓΑΣΤΗΡΙΑΚΩΝ ΕΞΕΤΑΣΕΩΝ" if lang=="el" else "🧪 LAB FINDINGS")
+        _lf_count = len(_lfs)
+        import html as _html_lf, re as _re_lf
+        def _flat_lf(txt): return _re_lf.sub(r"\s+", " ", (txt or "").strip())
+        _lf_cards = ""
+        for i, lf in enumerate(_lfs, 1):
+            _fname = _html_lf.escape(lf.get("file_name","—"))
+            _an = _html_lf.escape(_flat_lf(lf.get("analysis","")))
+            _an = _re_lf.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _an)
+            _lf_cards += (
+                f'<div class="lf-item">'
+                f'<div class="lf-head"><span class="lf-num">{i}</span>'
+                f'<span class="lf-label">📄 {_fname}</span></div>'
+                f'<div class="lf-body">{_an}</div>'
+                f'</div>'
+            )
+        st.markdown(
+            f'<style>'
+            f'.lf-card{{background:white;border:1px solid #E5E7EB;border-radius:14px;padding:22px 24px;margin:18px 0;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.04)}}'
+            f'.lf-title{{font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B7280;text-transform:uppercase;border-bottom:2px solid #E5E7EB;padding-bottom:10px;margin-bottom:14px}}'
+            f'.lf-item{{padding:14px 0;border-bottom:1px solid #F3F4F6}}'
+            f'.lf-item:last-child{{border-bottom:none;padding-bottom:0}}'
+            f'.lf-head{{display:flex;align-items:center;gap:10px;margin-bottom:8px}}'
+            f'.lf-num{{background:#D1FAE5;color:#065F46;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}}'
+            f'.lf-label{{font-size:13.5px;font-weight:700;color:#111827}}'
+            f'.lf-body{{font-size:13px;color:#374151;line-height:1.6}}'
+            f'.lf-body strong{{color:#1F2937}}'
+            f'</style>'
+            f'<div class="lf-card"><div class="lf-title">{_lf_title} · {_lf_count}</div>{_lf_cards}</div>',
+            unsafe_allow_html=True,
+        )
 
     # Health profile (vitals + symptom burden pillars)
     if st.session_state.vitals:
@@ -2618,6 +2696,32 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                     st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
+                # Integration: if the second opinion adds value, the user can fold
+                # it into the main report so it shows up in the on-screen
+                # assessment AND in every downstream export (PDF/HTML).
+                st.divider()
+                if st.session_state.get("_gpt_integrated"):
+                    st.success("✓ " + ("Ενσωματώθηκε στην τελική εκτίμηση παραπάνω και στα exports."
+                                       if lang=="el" else
+                                       "Integrated into the final assessment above and in all exports."))
+                else:
+                    if st.button(("➕ Ενσωμάτωση στην τελική εκτίμηση" if lang=="el"
+                                  else "➕ Integrate into final assessment"),
+                                 type="primary", use_container_width=True, key="pet_gpt_integrate"):
+                        _hdr = "## " + ("ΔΕΥΤΕΡΗ ΓΝΩΜΗ (GPT-4o)" if lang=="el"
+                                        else "SECOND OPINION (GPT-4o)")
+                        st.session_state.report = (
+                            (st.session_state.report or "").rstrip()
+                            + "\n\n---\n\n" + _hdr + "\n\n"
+                            + (st.session_state.report_gpt or "").strip()
+                        )
+                        st.session_state["_gpt_integrated"] = True
+                        st.rerun()
+                    st.caption(("💡 Προσθέτει τη δεύτερη γνώμη ως ξεχωριστή ενότητα στην αναφορά "
+                                "και σε όλα τα exports (PDF/HTML)."
+                                if lang=="el" else
+                                "💡 Adds the second opinion as a separate section in the report "
+                                "and in every export (PDF/HTML)."))
 
     # Emergency vets
     with st.expander("🚨 " + ("Επείγοντα Κτηνιατρεία" if lang=="el" else "Emergency Vet Clinics")):
@@ -2687,6 +2791,15 @@ def render_login_screen():
 
     # Value-prop banner
     render_ad_banner(lang)
+
+    # Mascots — same friendly "AI Nurse Heroes" as the home screen, shown
+    # above the login form so first-time visitors see them immediately.
+    st.markdown(f'''
+    <div style="display:flex;justify-content:center;gap:18px;margin:6px 0 18px">
+      <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("dog", size=88)}</div>
+      <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("cat", size=88)}</div>
+    </div>
+    ''', unsafe_allow_html=True)
 
     # Login form
     col1, col2, col3 = st.columns([1,2,1])
