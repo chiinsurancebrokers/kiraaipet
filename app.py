@@ -211,6 +211,27 @@ MSD_RECS_REFS = {
 }
 
 
+def msdvet_search(species, query, n=3):
+    """Return curated MSD Vet Manual links based on symptom keywords.
+    NOTE: MSD has no public API. Claude's built-in veterinary knowledge
+    (trained on MSD, WSAVA, Merck Vet Manual) drives the diagnosis.
+    These links provide the owner with reference reading material."""
+    articles = MSD_ARTICLES.get(species, MSD_ARTICLES["dog"])
+    query_lower = query.lower()
+    found = []
+    for keyword, url in articles.items():
+        if keyword != "default" and keyword in query_lower:
+            label = keyword.replace("-"," ").title()
+            found.append({"title": f"MSD Vet Manual — {label}", "url": url})
+        if len(found) >= n: break
+    if not found:
+        default_url = articles["default"]
+        found.append({"title": f"MSD Veterinary Manual — {species.title()} Health", "url": default_url})
+    # Always add WSAVA guidelines link
+    found.append({"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"})
+    return found[:n]
+
+
 def generate_pet_recommendations(pet, vitals_text, conversation, report_text, lang="el"):
     """Ask Claude for 3 short personalized recommendation blurbs
     (activity / nutrition / lifestyle) tailored to this pet's situation,
@@ -870,6 +891,7 @@ defaults = {
     "intake_step": 0,     # 0-3 — grouped intake form steps
     "intake_draft": {},   # holds field values across intake steps
     "_intake_show_errors": False,
+    "_hero_seen": False,  # full marketing hero shown once before login/home
 }
 for k, v in defaults.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -3149,7 +3171,9 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     c1,c2,c3,c4 = st.columns(4)
     with c1:
         if st.button("← "+("Νέα Εκτίμηση" if lang=="el" else "New Assessment"), use_container_width=True):
+            _hero_seen = st.session_state.get("_hero_seen", False)
             for k,v in defaults.items(): st.session_state[k]=v
+            st.session_state["_hero_seen"] = _hero_seen
             st.rerun()
     with c2:
         st.download_button("📄 TXT", data=st.session_state.report,
@@ -3206,6 +3230,265 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         )
 
 # ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
+def render_hero_screen():
+    """Full marketing 'hero' landing screen, shown once before the login
+    form (or before 'home' when auth is disabled). Mirrors the standalone
+    PetAiNurse marketing site layout: top bar with CTA, big headline with
+    mascots + floating feature cards, 'how it works' steps, and audience
+    cards — all using the existing illustrated Perro/Gato mascots."""
+    lang = st.session_state.lang
+
+    if lang == "el":
+        d = dict(
+            kicker="ΟΙ ΣΩΣΤΕΣ ΠΛΗΡΟΦΟΡΙΕΣ. ΚΑΛΥΤΕΡΗ ΦΡΟΝΤΙΔΑ.",
+            h1="Περίγραψε τι", h1_accent="παρατηρείς",
+            h1_end="στο κατοικίδιό σου.",
+            sub="Το PetAiNurse οργανώνει τα συμπτώματα και τις παρατηρήσεις σου ώστε να έχεις καλύτερη εικόνα πριν επικοινωνήσεις με κτηνίατρο.",
+            cta_primary="✦ Ξεκίνα αξιολόγηση συμπτωμάτων",
+            cta_secondary="📄 Δημιούργησε αναφορά για τον κτηνίατρο",
+            disclaimer="Το PetAiNurse δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο. Σε επείγουσες καταστάσεις επικοινώνησε άμεσα με επαγγελματία υγείας ζώων.",
+            card1="Καταγραφή συμπτωμάτων και συμπεριφοράς",
+            card2="Εντοπισμός πιθανών παραγόντων",
+            card3="Αναφορά για τον κτηνίατρο με οργανωμένες πληροφορίες",
+            steps_title="Πώς λειτουργεί",
+            steps=[
+                ("1","💬","Καταγράφεις","συμπτώματα και παρατηρήσεις"),
+                ("2","🧠","Το PetAiNurse οργανώνει","τις πληροφορίες"),
+                ("3","🔍","Εντοπίζει","πιθανούς παράγοντες που αξίζει να συζητηθούν"),
+                ("4","📄","Δημιουργεί","αναφορά για τον κτηνίατρο"),
+                ("5","👤","Η τελική αξιολόγηση","γίνεται πάντα από κτηνίατρο"),
+            ],
+            audience_title="Για όλους όσοι φροντίζουν ζώα",
+            aud1_t="Για Pet Parents", aud1_d="Κατανόησε καλύτερα τα συμπτώματα του κατοικίδιου σου και επικοινώνησε πιο αποτελεσματικά με τον κτηνίατρο.",
+            aud2_t="Για Pet Sitters", aud2_d="Κατέγραψε με ακρίβεια παρατηρήσεις κατά τη φροντίδα ενός ζώου και ενημέρωσε υπεύθυνα τον κηδεμόνα ή τον κτηνίατρο.",
+            aud3_t="Για Κτηνιάτρους", aud3_d="Ένα επιπρόσθετο εργαλείο συλλογής οργανωμένου ιστορικού και προετοιμασίας της επίσκεψης.",
+            more_label="Μάθε περισσότερα →",
+            cta_band_t="Ξεκίνα τώρα και φρόντισε με γνώση.",
+            cta_band_s="Μια καλύτερη συζήτηση με τον κτηνίατρο ξεκινάει εδώ.",
+            cta_band_btn="✦ Ξεκίνα αξιολόγηση συμπτωμάτων",
+            nav_start="Ξεκίνα τώρα",
+        )
+    else:
+        d = dict(
+            kicker="THE RIGHT INFO. BETTER CARE.",
+            h1="Describe what", h1_accent="you're noticing",
+            h1_end="in your pet.",
+            sub="PetAiNurse organizes your pet's symptoms and observations so you have a clearer picture before contacting a vet.",
+            cta_primary="✦ Start symptom assessment",
+            cta_secondary="📄 Create a report for your vet",
+            disclaimer="PetAiNurse does not provide veterinary diagnosis and does not replace your vet. In emergencies, contact an animal health professional immediately.",
+            card1="Logging symptoms and behaviour",
+            card2="Identifying possible factors",
+            card3="A report for your vet with organized information",
+            steps_title="How it works",
+            steps=[
+                ("1","💬","You log","symptoms and observations"),
+                ("2","🧠","PetAiNurse organizes","the information"),
+                ("3","🔍","It identifies","possible factors worth discussing"),
+                ("4","📄","It creates","a report for your vet"),
+                ("5","👤","The final assessment","is always made by a vet"),
+            ],
+            audience_title="For everyone who cares for animals",
+            aud1_t="For Pet Parents", aud1_d="Better understand your pet's symptoms and communicate more effectively with your vet.",
+            aud2_t="For Pet Sitters", aud2_d="Accurately log observations while caring for an animal and responsibly inform the owner or vet.",
+            aud3_t="For Vets", aud3_d="An additional tool for collecting organized history and preparing for the visit.",
+            more_label="Learn more →",
+            cta_band_t="Start now and care with confidence.",
+            cta_band_s="A better conversation with your vet starts here.",
+            cta_band_btn="✦ Start symptom assessment",
+            nav_start="Get started",
+        )
+
+    css = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+.pan-hr-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0 18px; font-family: 'Inter', system-ui, sans-serif;
+}
+.pan-hr-logo { font-size: 19px; font-weight: 800; color: #1A1A2E; display: flex; align-items: center; gap: 8px; }
+.pan-hr-hero {
+  background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 60%, white 100%);
+  border-radius: 28px; padding: 40px 36px; margin-bottom: 28px;
+  font-family: 'Inter', system-ui, sans-serif; position: relative; overflow: hidden;
+}
+.pan-hr-kicker {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #059669;
+  margin-bottom: 14px;
+}
+.pan-hr-h1 {
+  font-size: 38px; font-weight: 800; line-height: 1.18; color: #1A1A2E;
+  letter-spacing: -1px; margin-bottom: 16px; max-width: 480px;
+}
+.pan-hr-h1 .accent { color: #059669; }
+.pan-hr-sub {
+  font-size: 15px; color: #4B5563; max-width: 440px; line-height: 1.6;
+  margin-bottom: 22px;
+}
+.pan-hr-mascots {
+  display: flex; justify-content: center; align-items: flex-end; gap: 8px;
+  position: relative; padding: 20px 0 8px;
+}
+.pan-hr-mascots > div {
+  background: white; border-radius: 20px; padding: 10px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.pan-hr-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.pan-hr-card {
+  background: white; border: 1px solid #ECEEF3; border-radius: 14px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: #1A1A2E;
+  box-shadow: 0 3px 10px rgba(26,26,46,0.04);
+}
+.pan-hr-card .ic {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.pan-hr-card.c1 .ic { background: #ECFDF5; }
+.pan-hr-card.c2 .ic { background: #EEF2FF; }
+.pan-hr-card.c3 .ic { background: #ECFDF5; }
+.pan-hr-card .check {
+  margin-left: auto; width: 18px; height: 18px; border-radius: 50%;
+  background: #059669; color: white; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.pan-hr-disclaimer {
+  background: white; border: 1px solid #E5E7EB; border-radius: 12px;
+  padding: 12px 16px; font-size: 12px; color: #6B7280; line-height: 1.5;
+  margin-top: 22px; display: flex; gap: 10px; align-items: flex-start;
+}
+.pan-hr-steps { margin: 8px 0 30px; font-family: 'Inter', system-ui, sans-serif; }
+.pan-hr-steps-title {
+  text-align: center; font-size: 22px; font-weight: 800; color: #1A1A2E;
+  margin-bottom: 24px;
+}
+.pan-hr-steps-row {
+  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px;
+}
+.pan-hr-step {
+  flex: 1 1 160px; min-width: 140px; text-align: center;
+}
+.pan-hr-step-num {
+  width: 30px; height: 30px; border-radius: 50%; background: #059669; color: white;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+  font-size: 13px; margin: 0 auto 10px;
+}
+.pan-hr-step-icon { font-size: 26px; margin-bottom: 8px; }
+.pan-hr-step-title { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
+.pan-hr-step-sub { font-size: 12px; color: #6B7280; line-height: 1.4; }
+.pan-hr-aud-title {
+  text-align: center; font-size: 22px; font-weight: 800; color: #1A1A2E;
+  margin: 8px 0 20px; font-family: 'Inter', system-ui, sans-serif;
+}
+.pan-hr-aud-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+.pan-hr-aud-card {
+  flex: 1 1 240px; background: white; border: 1px solid #ECEEF3; border-radius: 16px;
+  padding: 18px 18px 16px; font-family: 'Inter', system-ui, sans-serif;
+}
+.pan-hr-aud-icon {
+  width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; margin-bottom: 12px;
+}
+.pan-hr-aud-card.a1 .pan-hr-aud-icon { background: #ECFDF5; }
+.pan-hr-aud-card.a2 .pan-hr-aud-icon { background: #EEF2FF; }
+.pan-hr-aud-card.a3 .pan-hr-aud-icon { background: #FEF2F2; }
+.pan-hr-aud-card h4 { font-size: 16px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px; }
+.pan-hr-aud-card p { font-size: 12.5px; color: #6B7280; line-height: 1.55; margin-bottom: 10px; }
+.pan-hr-aud-card .more { font-size: 12.5px; font-weight: 700; color: #059669; }
+@media (max-width: 640px) {
+  .pan-hr-hero { padding: 26px 18px; border-radius: 20px; }
+  .pan-hr-h1 { font-size: 28px; }
+  .pan-hr-steps-row { gap: 10px; }
+  .pan-hr-step { min-width: 120px; }
+}
+</style>
+"""
+
+    body_top = f"""
+<div class="pan-hr-hero">
+  <div class="pan-hr-kicker">✦ {d['kicker']}</div>
+  <div class="pan-hr-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span> {d['h1_end']}</div>
+  <div class="pan-hr-sub">{d['sub']}</div>
+"""
+    st.markdown(css + body_top, unsafe_allow_html=True)
+
+    # CTA buttons (real Streamlit buttons so they can route the app)
+    c1, c2 = st.columns([1.4,1])
+    with c1:
+        cta1 = st.button(d["cta_primary"], type="primary", use_container_width=True, key="hero_cta_primary")
+    with c2:
+        cta2 = st.button(d["cta_secondary"], use_container_width=True, key="hero_cta_secondary")
+
+    # Mascots + floating feature cards
+    st.markdown(f"""
+  <div class="pan-hr-mascots">
+    <div>{render_mascot("dog", size=110)}</div>
+    <div>{render_mascot("cat", size=110)}</div>
+  </div>
+  <div class="pan-hr-cards">
+    <div class="pan-hr-card c1"><span class="ic">🐾</span>{d['card1']}<span class="check">✓</span></div>
+    <div class="pan-hr-card c2"><span class="ic">🔎</span>{d['card2']}<span class="check">✓</span></div>
+    <div class="pan-hr-card c3"><span class="ic">📄</span>{d['card3']}<span class="check">✓</span></div>
+  </div>
+  <div class="pan-hr-disclaimer"><span>ℹ️</span><span>{d['disclaimer']}</span></div>
+</div>
+""", unsafe_allow_html=True)
+
+    # "How it works" steps
+    steps_html = "".join(
+        f'<div class="pan-hr-step"><div class="pan-hr-step-num">{num}</div>'
+        f'<div class="pan-hr-step-icon">{icon}</div>'
+        f'<div class="pan-hr-step-title">{title}</div>'
+        f'<div class="pan-hr-step-sub">{sub}</div></div>'
+        for (num, icon, title, sub) in d["steps"]
+    )
+    st.markdown(f"""
+<div class="pan-hr-steps">
+  <div class="pan-hr-steps-title">{d['steps_title']}</div>
+  <div class="pan-hr-steps-row">{steps_html}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    # Audience cards
+    st.markdown(f"""
+<div class="pan-hr-aud-title">{d['audience_title']}</div>
+<div class="pan-hr-aud-row">
+  <div class="pan-hr-aud-card a1">
+    <div class="pan-hr-aud-icon">🐶</div>
+    <h4>{d['aud1_t']}</h4><p>{d['aud1_d']}</p>
+    <div class="more">{d['more_label']}</div>
+  </div>
+  <div class="pan-hr-aud-card a2">
+    <div class="pan-hr-aud-icon">🧑‍🤝‍🧑</div>
+    <h4>{d['aud2_t']}</h4><p>{d['aud2_d']}</p>
+    <div class="more">{d['more_label']}</div>
+  </div>
+  <div class="pan-hr-aud-card a3">
+    <div class="pan-hr-aud-icon">🩺</div>
+    <h4>{d['aud3_t']}</h4><p>{d['aud3_d']}</p>
+    <div class="more">{d['more_label']}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # Bottom CTA band
+    st.markdown(f"""
+<div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border-radius:20px;
+            padding:24px 28px;text-align:center;font-family:'Inter',system-ui,sans-serif;
+            margin-bottom:20px">
+  <div style="font-size:18px;font-weight:800;color:#1A1A2E;margin-bottom:6px">{d['cta_band_t']}</div>
+  <div style="font-size:13px;color:#6B7280">{d['cta_band_s']}</div>
+</div>
+""", unsafe_allow_html=True)
+    cta3 = st.button(d["cta_band_btn"], type="primary", use_container_width=True, key="hero_cta_band")
+
+    if cta1 or cta2 or cta3:
+        st.session_state["_hero_seen"] = True
+        if not auth_enabled() or is_logged_in():
+            st.session_state.screen = "intake"
+        st.rerun()
+
+
 def render_login_hero(lang):
     """Compact hero strip for the login screen — logo, one-line value prop,
     and mascots, all above the fold so the login form isn't pushed down by
@@ -3333,6 +3616,20 @@ if _STX_OK and auth_enabled():
                 st.rerun()
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
+if not st.session_state.get("_hero_seen") and st.session_state.screen == "home":
+    _hl = st.session_state.lang
+    c1, c2 = st.columns([6,1])
+    with c1:
+        st.markdown(
+            f'<div style="font-size:19px;font-weight:800;color:#1A1A2E;'
+            f'font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;gap:8px;padding-top:6px">'
+            f'🐾 PetAiNurse</div>', unsafe_allow_html=True)
+    with c2:
+        if st.button("🇬🇧 EN" if _hl=="el" else "🇬🇷 ΕΛ", key="hero_lang"):
+            st.session_state.lang = "en" if _hl=="el" else "el"; st.rerun()
+    render_hero_screen()
+    st.stop()
+
 if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
