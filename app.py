@@ -24,9 +24,10 @@ except Exception:
 
 # Lifestyle illustrations (Vecteezy, licensed for commercial use)
 try:
-    from assets_illustrations import ILLUSTRATIONS
+    from assets_illustrations import ILLUSTRATIONS, MASCOT_IMAGES
 except Exception:
     ILLUSTRATIONS = {}
+    MASCOT_IMAGES = {}
 
 # HEIC support (iPhone photos)
 try:
@@ -1008,71 +1009,34 @@ def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" els
 
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
-MASCOT_SVG = {
-"dog": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse dog hero mascot">
-  <title>Paula</title>
-  <path d="M58 96 Q40 150 56 188 Q100 172 144 188 Q160 150 142 96 Z" fill="#0EA5E9"/>
-  <path d="M58 96 Q40 150 56 188 Q78 180 100 178 L100 96 Z" fill="#38BDF8"/>
-  <ellipse cx="52" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(-18 52 78)"/>
-  <ellipse cx="148" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(18 148 78)"/>
-  <circle cx="100" cy="104" r="62" fill="#F3C99A"/>
-  <ellipse cx="100" cy="128" rx="34" ry="26" fill="#FFF8EE"/>
-  <ellipse cx="100" cy="116" rx="11" ry="8" fill="#1A1A2E"/>
-  <path d="M100 124 Q100 136 86 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M100 124 Q100 136 114 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M58 78 Q76 66 92 78 Q92 96 76 98 Q60 96 58 78 Z" fill="#059669"/>
-  <path d="M142 78 Q124 66 108 78 Q108 96 124 98 Q140 96 142 78 Z" fill="#059669"/>
-  <path d="M86 80 Q100 74 114 80" stroke="#059669" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <circle cx="76" cy="86" r="6.5" fill="#1A1A2E"/>
-  <circle cx="124" cy="86" r="6.5" fill="#1A1A2E"/>
-  <circle cx="78.3" cy="83.6" r="2.1" fill="white"/>
-  <circle cx="126.3" cy="83.6" r="2.1" fill="white"/>
-  <path d="M82 154 L100 146 L118 154 L118 174 Q100 188 100 188 Q100 188 82 174 Z" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="3"/>
-  <ellipse cx="100" cy="172" rx="8" ry="6.5" fill="#0EA5E9"/>
-  <ellipse cx="91" cy="161" rx="3.6" ry="4.6" fill="#0EA5E9"/>
-  <ellipse cx="100" cy="157" rx="3.6" ry="4.6" fill="#0EA5E9"/>
-  <ellipse cx="109" cy="161" rx="3.6" ry="4.6" fill="#0EA5E9"/>
-</svg>''',
-"cat": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse cat hero mascot">
-  <title>Mimi</title>
-  <path d="M58 96 Q40 150 56 188 Q100 172 144 188 Q160 150 142 96 Z" fill="#059669"/>
-  <path d="M58 96 Q40 150 56 188 Q78 180 100 178 L100 96 Z" fill="#10B981"/>
-  <path d="M48 70 L34 24 L82 56 Z" fill="#9CA3AF"/>
-  <path d="M152 70 L166 24 L118 56 Z" fill="#9CA3AF"/>
-  <path d="M52 64 L42 34 L74 54 Z" fill="#F3D9C9"/>
-  <path d="M148 64 L158 34 L126 54 Z" fill="#F3D9C9"/>
-  <circle cx="100" cy="104" r="62" fill="#B7BFC9"/>
-  <ellipse cx="100" cy="130" rx="36" ry="24" fill="#F4F6F8"/>
-  <path d="M100 112 L92 122 L108 122 Z" fill="#F472B6"/>
-  <path d="M100 122 Q100 132 86 134" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M100 122 Q100 132 114 134" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M62 124 L34 118 M62 132 L32 132 M62 140 L34 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <path d="M138 124 L166 118 M138 132 L168 132 M138 140 L166 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <path d="M58 78 Q76 66 92 78 Q92 96 76 98 Q60 96 58 78 Z" fill="#0EA5E9"/>
-  <path d="M142 78 Q124 66 108 78 Q108 96 124 98 Q140 96 142 78 Z" fill="#0EA5E9"/>
-  <path d="M86 80 Q100 74 114 80" stroke="#0EA5E9" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <ellipse cx="76" cy="86" rx="6.5" ry="8" fill="#1A1A2E"/>
-  <ellipse cx="124" cy="86" rx="6.5" ry="8" fill="#1A1A2E"/>
-  <circle cx="78.3" cy="83" r="2.1" fill="white"/>
-  <circle cx="126.3" cy="83" r="2.1" fill="white"/>
-  <path d="M82 154 L100 146 L118 154 L118 174 Q100 188 100 188 Q100 188 82 174 Z" fill="#FFFFFF" stroke="#059669" stroke-width="3"/>
-  <path d="M100 176 Q86 164 90 154 Q94 148 100 156 Q106 148 110 154 Q114 164 100 176 Z" fill="#059669"/>
-</svg>''',
+MASCOT_IMG = {
+    "dog": MASCOT_IMAGES.get("perro", ""),
+    "cat": MASCOT_IMAGES.get("gato", ""),
 }
+MASCOT_NAMES = {"dog": "Perro", "cat": "Gato"}
 
-def render_mascot(species_key="dog", size=72, style=""):
-    """Render a mascot SVG inline. species_key: 'dog', 'cat', or anything else
-    (falls back to dog+cat shown side by side as a generic 'pet' duo)."""
-    svg = MASCOT_SVG.get(species_key)
+def render_mascot(species_key="dog", size=72, style="", circle=False):
+    """Render a mascot image inline. species_key: 'dog', 'cat', or anything else
+    (falls back to dog+cat shown side by side as a generic 'pet' duo).
+    If circle=True, crops to a circular frame (for doc-header badges)."""
+    b64 = MASCOT_IMG.get(species_key)
     base_style = f"width:{size}px;height:{size}px;flex-shrink:0;{style}"
-    if svg:
-        return f'<span style="display:inline-block;{base_style}">{svg}</span>'
-    # unknown species → show both mascots smaller, side by side
+    img_style = "width:100%;height:100%;object-fit:contain;display:block"
+    if circle:
+        img_style = "width:100%;height:100%;object-fit:cover;border-radius:50%;display:block"
+    if b64:
+        name = MASCOT_NAMES.get(species_key, "PetAiNurse")
+        return (f'<span style="display:inline-block;{base_style}">'
+                f'<img src="data:image/jpeg;base64,{b64}" alt="{name}" style="{img_style}"/></span>')
+    # unknown species or missing image → show both mascots smaller, side by side
     half = int(size*0.62)
-    dog = MASCOT_SVG["dog"]; cat = MASCOT_SVG["cat"]
-    return (f'<span style="display:inline-flex;gap:2px;{base_style}">'
-            f'<span style="width:{half}px;height:{half}px">{dog}</span>'
-            f'<span style="width:{half}px;height:{half}px;margin-top:auto">{cat}</span></span>')
+    parts = []
+    for k in ("dog","cat"):
+        b = MASCOT_IMG.get(k)
+        if b:
+            n = MASCOT_NAMES.get(k,"")
+            parts.append(f'<span style="width:{half}px;height:{half}px"><img src="data:image/jpeg;base64,{b}" alt="{n}" style="{img_style}"/></span>')
+    return f'<span style="display:inline-flex;gap:2px;{base_style}">' + "".join(parts) + '</span>'
 
 def mascot_for_pet(pet=None):
     """Return the mascot key ('dog'/'cat'/None) for the given pet profile."""
@@ -1987,9 +1951,9 @@ def render_home():
             st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
 
     st.markdown(f'''<div class="pet-hero">
-        <div style="display:flex;justify-content:center;gap:6px;margin-bottom:4px">
-            {render_mascot("dog", size=92)}
-            {render_mascot("cat", size=92)}
+        <div style="display:flex;justify-content:center;gap:10px;margin-bottom:4px">
+            <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("dog", size=120)}</div>
+            <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("cat", size=120)}</div>
         </div>
         <h1>{t("title")}</h1>
         <p>{t("subtitle")}</p>
