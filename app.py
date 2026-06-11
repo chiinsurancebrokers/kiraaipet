@@ -29,6 +29,12 @@ except Exception:
     ILLUSTRATIONS = {}
     MASCOT_IMAGES = {}
 
+# Real pet photographs (replace the SVG illustrations the user disliked)
+try:
+    from assets_photos import PET_PHOTOS
+except Exception:
+    PET_PHOTOS = {}
+
 # HEIC support (iPhone photos)
 try:
     import pillow_heif as _heif
@@ -268,7 +274,7 @@ or no major issue was found, give sensible preventive/wellness guidance instead.
     if result.startswith("⚠️"):
         return {}
     try:
-        cleaned = result.strip()
+        cleaned = _CJK_RANGES.sub("", result).strip()
         if cleaned.startswith("```"):
             cleaned = cleaned.split("```")[1]
             if cleaned.startswith("json"):
@@ -605,6 +611,44 @@ def claude(messages, system="", max_tokens=3000, timeout=60):
         if "timed out" in str(e).lower(): return "⚠️ Request timed out. Please try again."
         return f"⚠️ Claude error: {e}"
     except Exception as e: return f"⚠️ Claude error: {e}"
+
+
+# ── AI OUTPUT SANITIZER ───────────────────────────────────────────────────────
+# Strips stray CJK glyphs (e.g. 气 leaking from the second-opinion model) and
+# repairs the truncated "🔔 ΣΥΣΤΑΣΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ" blockquote that rendered as
+# "ξεμπάρκο" (a cut-off "> 🟡 **Ε…"). Applied to every model output before display.
+import re as _re_san
+
+# CJK + fullwidth/half-width forms + Hiragana/Katakana + Hangul
+_CJK_RANGES = _re_san.compile(
+    "[\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF"
+    "\uF900-\uFAFF\uFF00-\uFFEF\uAC00-\uD7AF]+"
+)
+
+def sanitize_ai_text(text):
+    """Remove non-Greek/Latin stray glyphs and clean up dangling markdown so the
+    report never shows Chinese characters or a half-written blockquote header."""
+    if not text or not isinstance(text, str):
+        return text or ""
+    # 1) drop CJK / fullwidth runs entirely
+    text = _CJK_RANGES.sub("", text)
+    # 2) remove a blockquote line that was cut off mid-sentence (no closing on
+    #    a bold marker, e.g. "> 🟡 **Ε") which is what produced the garbled text
+    cleaned = []
+    for line in text.split("\n"):
+        s = line.strip()
+        if s.startswith(">"):
+            inner = s.lstrip(">").strip()
+            # an unbalanced ** count means the bold/blockquote was truncated
+            if inner.count("**") % 2 == 1 or len(inner) <= 4:
+                continue
+        cleaned.append(line)
+    text = "\n".join(cleaned)
+    # 3) collapse any orphan markdown markers and trailing whitespace
+    text = _re_san.sub(r"\*\*\s*$", "", text)
+    text = _re_san.sub(r"[ \t]+\n", "\n", text)
+    text = _re_san.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 # ── AUTH (Supabase email-OTP — optional) ──────────────────────────────────────
@@ -1194,31 +1238,31 @@ def mascot_for_pet(pet=None):
 
 
 def render_lifestyle_strip(lang="el"):
-    """Three lifestyle illustration cards (walks, vet visits, daily care) —
-    grounds the product in real pet-owner moments. Vecteezy, licensed."""
-    if not ILLUSTRATIONS:
+    """Three lifestyle cards (walks, vet visits, daily care) using real pet
+    photographs — grounds the product in real pet-owner moments."""
+    if not PET_PHOTOS:
         return
     if lang == "el":
         items = [
-            ("walking", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
-            ("vet",     "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
-            ("care",    "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
+            ("dog_cavapoo", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
+            ("cat_couch",   "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
+            ("dog_cocker",  "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
         ]
     else:
         items = [
-            ("walking", "Daily walks", "Keep track of how your pet feels every day"),
-            ("vet",     "Vet visits", "Arrive prepared, with a structured assessment"),
-            ("care",    "Home care", "Track symptoms, medications and history"),
+            ("dog_cavapoo", "Daily walks", "Keep track of how your pet feels every day"),
+            ("cat_couch",   "Vet visits", "Arrive prepared, with a structured assessment"),
+            ("dog_cocker",  "Home care", "Track symptoms, medications and history"),
         ]
     cols = st.columns(3)
     for col, (key, title, sub) in zip(cols, items):
-        b64 = ILLUSTRATIONS.get(key)
+        b64 = PET_PHOTOS.get(key)
         if not b64:
             continue
         with col:
             st.markdown(
                 f'''<div style="border-radius:14px;overflow:hidden;border:1px solid #E5E7EB;background:white">
-                    <img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:110px" />
+                    <img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:130px" />
                     <div style="padding:10px 12px">
                         <div style="font-size:13px;font-weight:700;color:#1A1A2E">{title}</div>
                         <div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sub}</div>
@@ -1278,67 +1322,47 @@ def render_nearby_vets_geo(lang="el"):
     location and opens Google Maps search for nearby veterinary clinics
     using those coordinates. Falls back gracefully if location is denied —
     the static EMERGENCY_VETS list (rendered separately) still applies."""
+    # NOTE: Streamlit's st.markdown(unsafe_allow_html=True) STRIPS <script> tags,
+    # so the old navigator.geolocation button never fired. We instead use a plain
+    # anchor that opens Google Maps' location-aware "near me" search — the browser
+    # / Google resolves the user's location automatically, no JS or iframe needed.
     if lang == "el":
         title    = "📍 Βρες κοντινά κτηνιατρεία"
-        sub      = "Χρησιμοποιεί την τοποθεσία της συσκευής σου — δεν αποθηκεύεται πουθενά."
+        sub      = "Ανοίγει τους χάρτες Google με κτηνιατρεία κοντά στην τοποθεσία σου."
         btn      = "📍 Εύρεση κοντινών κτηνιατρείων"
-        denied   = "⚠️ Δεν δόθηκε πρόσβαση στην τοποθεσία. Ενεργοποίησε το geolocation στον browser σου ή χρησιμοποίησε τη λίστα παρακάτω."
-        loading  = "Εντοπισμός τοποθεσίας..."
-        opening  = "✅ Άνοιγμα Google Maps με κοντινά κτηνιατρεία..."
+        btn_open = "🚨 Επείγον κτηνιατρείο 24ω κοντά μου"
+        q_near   = "κτηνιατρείο κοντά μου"
+        q_open   = "επείγον κτηνιατρείο 24 ώρες κοντά μου"
     else:
         title    = "📍 Find nearby vet clinics"
-        sub      = "Uses your device's location — never stored anywhere."
+        sub      = "Opens Google Maps with vet clinics near your current location."
         btn      = "📍 Find nearby vet clinics"
-        denied   = "⚠️ Location access was denied. Enable geolocation in your browser, or use the list below."
-        loading  = "Locating..."
-        opening  = "✅ Opening Google Maps with nearby vet clinics..."
+        btn_open = "🚨 24h emergency vet near me"
+        q_near   = "veterinary clinic near me"
+        q_open   = "24 hour emergency veterinary clinic near me"
+
+    from urllib.parse import quote
+    url_near = "https://www.google.com/maps/search/" + quote(q_near)
+    url_open = "https://www.google.com/maps/search/" + quote(q_open)
 
     st.markdown(f"""
 <style>
 .pan-geo-card{{background:white;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-bottom:14px}}
 .pan-geo-card h3{{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7280;margin-bottom:6px}}
 .pan-geo-sub{{font-size:12px;color:#6B7280;margin-bottom:12px}}
-.pan-geo-btn{{background:#059669;color:white;border:none;border-radius:8px;padding:10px 18px;
-  font-size:13px;font-weight:700;cursor:pointer;width:100%}}
-.pan-geo-btn:hover{{background:#047857}}
-.pan-geo-status{{font-size:12px;color:#6B7280;margin-top:10px;min-height:18px}}
-.pan-geo-status.err{{color:#B91C1C}}
-.pan-geo-status.ok{{color:#065F46}}
+.pan-geo-btn{{display:block;text-align:center;text-decoration:none;border-radius:8px;padding:11px 18px;
+  font-size:13px;font-weight:700;width:100%;box-sizing:border-box;margin-bottom:8px}}
+.pan-geo-btn.primary{{background:#059669;color:white}}
+.pan-geo-btn.primary:hover{{background:#047857}}
+.pan-geo-btn.danger{{background:#DC2626;color:white}}
+.pan-geo-btn.danger:hover{{background:#B91C1C}}
 </style>
 <div class="pan-geo-card">
   <h3>{title}</h3>
   <div class="pan-geo-sub">{sub}</div>
-  <button class="pan-geo-btn" onclick="panFindNearbyVets()">{btn}</button>
-  <div id="pan_geo_status" class="pan-geo-status"></div>
+  <a class="pan-geo-btn primary" href="{url_near}" target="_blank" rel="noopener">{btn}</a>
+  <a class="pan-geo-btn danger"  href="{url_open}" target="_blank" rel="noopener">{btn_open}</a>
 </div>
-<script>
-function panFindNearbyVets() {{
-  var statusEl = document.getElementById("pan_geo_status");
-  statusEl.className = "pan-geo-status";
-  statusEl.textContent = "{loading}";
-  if (!navigator.geolocation) {{
-    statusEl.className = "pan-geo-status err";
-    statusEl.textContent = "{denied}";
-    return;
-  }}
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {{
-      var lat = pos.coords.latitude;
-      var lng = pos.coords.longitude;
-      var query = encodeURIComponent("veterinary clinic");
-      var url = "https://www.google.com/maps/search/" + query + "/@" + lat + "," + lng + ",14z";
-      statusEl.className = "pan-geo-status ok";
-      statusEl.textContent = "{opening}";
-      window.open(url, "_blank");
-    }},
-    function(err) {{
-      statusEl.className = "pan-geo-status err";
-      statusEl.textContent = "{denied}";
-    }},
-    {{enableHighAccuracy: true, timeout: 8000}}
-  );
-}}
-</script>
 """, unsafe_allow_html=True)
 
 
@@ -3111,7 +3135,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                 st.error(result)
                 if st.button("🔄 Retry"): st.rerun()
                 return
-            st.session_state.report = result
+            st.session_state.report = sanitize_ai_text(result)
             st.session_state.report_gpt = ""
             st.session_state["_gpt_integrated"] = False
 
@@ -3229,9 +3253,9 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             if not st.session_state.report_gpt:
                 if st.button("Get GPT-4o Veterinary Second Opinion", type="secondary"):
                     with st.spinner("GPT-4o reviewing..."):
-                        st.session_state.report_gpt = gpt4o(
+                        st.session_state.report_gpt = sanitize_ai_text(gpt4o(
                             prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}\n\nDo you agree with this veterinary assessment? Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
-                            system=petainurse_system(), max_tokens=3000)
+                            system=petainurse_system(), max_tokens=3000))
                     st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
