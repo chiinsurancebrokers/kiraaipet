@@ -867,6 +867,8 @@ defaults = {
     "_voice_widget_counter": 0,
     "medications": [], "med_inputs": [],
     "symptom_chips": [],
+    "intake_step": 0,     # 0-3 — grouped intake form steps
+    "intake_draft": {},   # holds field values across intake steps
 }
 for k, v in defaults.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -2253,70 +2255,168 @@ def render_home():
 
 
 
+def _render_intake_progress(step, total, lang):
+    """Small inline progress bar for the grouped intake sub-steps."""
+    pct = int(((step+1)/total)*100)
+    label = (f"Βήμα {step+1} από {total}" if lang=="el" else f"Step {step+1} of {total}")
+    st.markdown(f"""
+<div style="margin:4px 0 14px">
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;
+              font-weight:600;letter-spacing:.04em;margin-bottom:6px">
+    <span>{label}</span><span>{pct}%</span>
+  </div>
+  <div style="background:#F3F4F6;border-radius:99px;height:6px;overflow:hidden">
+    <div style="background:#059669;width:{pct}%;height:6px;border-radius:99px;transition:width .2s"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+
 def render_intake():
     render_stepper("intake")
     lang = st.session_state.lang
     pet = st.session_state.pet
+    draft = st.session_state.intake_draft
+    step = st.session_state.intake_step
+
+    STEP_HEADERS = {
+        0: dict(icon="🐾",
+                title_el="Πες μας για το κατοικίδιό σου", title_en="Tell us about your pet",
+                sub_el="Ποιος συμπληρώνει, όνομα και είδος", sub_en="Who's filling this in, name and species"),
+        1: dict(icon="📏",
+                title_el="Βασικά στοιχεία", title_en="Basic details",
+                sub_el="Φυλή, ηλικία, φύλο, βάρος", sub_en="Breed, age, sex, weight"),
+        2: dict(icon="🩹",
+                title_el="Ιστορικό υγείας", title_en="Health history",
+                sub_el="Microchip, εμβολιασμοί, παθήσεις/αλλεργίες", sub_en="Microchip, vaccinations, conditions/allergies"),
+        3: dict(icon="💊",
+                title_el="Φάρμακα & κτηνίατρος", title_en="Medications & vet",
+                sub_el="Τρέχουσα αγωγή και στοιχεία κτηνιάτρου (προαιρετικά)",
+                sub_en="Current medications and vet details (optional)"),
+    }
+    hdr = STEP_HEADERS[step]
     render_doc_header(
-        "Πες μας για το κατοικίδιό σου", "Tell us about your pet",
-        icon="🐾",
-        sub_el="Όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό",
-        sub_en="Name, species, breed, age, weight, history",
+        hdr["title_el"], hdr["title_en"], icon=hdr["icon"],
+        sub_el=hdr["sub_el"], sub_en=hdr["sub_en"],
     )
     _render_disclaimer_strip()
+    _render_intake_progress(step, 4, lang)
 
-    filler_opts_el = ["Ιδιοκτήτης", "Pet Sitter", "Κτηνίατρος/Προσωπικό κλινικής"]
-    filler_opts_en = ["Owner", "Pet Sitter", "Vet/Clinic staff"]
-    filler_opts = filler_opts_el if lang=="el" else filler_opts_en
-    prev_filler = pet.get("filled_by", filler_opts[0])
-    if prev_filler not in filler_opts: prev_filler = filler_opts[0]
-    filled_by = st.selectbox(
-        ("Η αναφορά συμπληρώνεται από" if lang=="el" else "This assessment is being filled in by"),
-        filler_opts, index=filler_opts.index(prev_filler))
-    if filled_by != filler_opts[0]:
-        st.caption(("ℹ️ Η αναφορά θα αναφέρει ότι συμπληρώθηκε από " + filled_by.lower()
-                    + " — χρήσιμο όταν στέλνεις την αναφορά στον ιδιοκτήτη ή τον κτηνίατρο.")
-                   if lang=="el" else
-                   ("ℹ️ The report will note it was filled in by a " + filled_by.lower()
-                    + " — useful when sharing it with the owner or vet."))
+    # ── STEP 0: who's filling this in + name + species ────────────────────────
+    if step == 0:
+        filler_opts_el = ["Ιδιοκτήτης", "Pet Sitter", "Κτηνίατρος/Προσωπικό κλινικής"]
+        filler_opts_en = ["Owner", "Pet Sitter", "Vet/Clinic staff"]
+        filler_opts = filler_opts_el if lang=="el" else filler_opts_en
+        prev_filler = draft.get("filled_by", pet.get("filled_by", filler_opts[0]))
+        if prev_filler not in filler_opts: prev_filler = filler_opts[0]
+        filled_by = st.selectbox(
+            ("Η αναφορά συμπληρώνεται από" if lang=="el" else "This assessment is being filled in by"),
+            filler_opts, index=filler_opts.index(prev_filler))
+        if filled_by != filler_opts[0]:
+            st.caption(("ℹ️ Η αναφορά θα αναφέρει ότι συμπληρώθηκε από " + filled_by.lower()
+                        + " — χρήσιμο όταν στέλνεις την αναφορά στον ιδιοκτήτη ή τον κτηνίατρο.")
+                       if lang=="el" else
+                       ("ℹ️ The report will note it was filled in by a " + filled_by.lower()
+                        + " — useful when sharing it with the owner or vet."))
 
-    c1,c2 = st.columns([2,1])
-    with c1: name = st.text_input(t("pet_name"), value=pet.get("name",""), placeholder="Μπόμπης")
-    with c2:
-        species_opts = SPECIES[lang]
-        prev_sp = pet.get("species_label", species_opts[0])
-        if prev_sp not in species_opts: prev_sp = species_opts[0]
-        species_label = st.selectbox(t("species"), species_opts,
-                                     index=species_opts.index(prev_sp))
-    species_key = SPECIES_KEY.get(species_label, "dog")
+        c1,c2 = st.columns([2,1])
+        with c1:
+            name = st.text_input(t("pet_name"), value=draft.get("name", pet.get("name","")), placeholder="Μπόμπης")
+        with c2:
+            species_opts = SPECIES[lang]
+            prev_sp = draft.get("species_label", pet.get("species_label", species_opts[0]))
+            if prev_sp not in species_opts: prev_sp = species_opts[0]
+            species_label = st.selectbox(t("species"), species_opts,
+                                         index=species_opts.index(prev_sp))
 
-    # Breed dropdown based on species
-    if species_key == "dog":
-        breeds = DOG_BREEDS_EL if lang=="el" else DOG_BREEDS_EN
-    elif species_key == "cat":
-        breeds = CAT_BREEDS_EL if lang=="el" else CAT_BREEDS_EN
-    else:
-        breeds = ["—"]
-    breed = st.selectbox(t("breed"), breeds)
+        col_b, col_n = st.columns([1,3])
+        with col_b:
+            if st.button(t("back")): st.session_state.screen="home"; st.rerun()
+        with col_n:
+            if st.button(t("next"), type="primary", use_container_width=True):
+                if name:
+                    draft["filled_by"] = filled_by
+                    draft["name"] = name
+                    draft["species_label"] = species_label
+                    draft["species_key"] = SPECIES_KEY.get(species_label, "dog")
+                    st.session_state.intake_draft = draft
+                    st.session_state.intake_step = 1
+                    st.rerun()
+                else:
+                    st.warning("Παρακαλώ εισάγετε το όνομα του κατοικίδιου." if lang=="el" else "Please enter your pet's name.")
+        return
 
-    c1,c2,c3,c4 = st.columns(4)
-    with c1: age_y = st.number_input(t("age_y"), min_value=0, max_value=30, value=pet.get("age_y",0))
-    with c2: age_m = st.number_input(t("age_m"), min_value=0, max_value=11, value=pet.get("age_m",0))
-    with c3:
-        sex_opts = [t("male"), t("female"), t("neutered")]
-        sex = st.selectbox(t("sex"), sex_opts)
-    with c4: weight = st.number_input(t("weight"), min_value=0.0, max_value=150.0,
-                                       value=(float(pet.get("weight")) if pet.get("weight") else None), placeholder="5.0", format="%.1f")
+    # ── STEP 1: breed, age, sex, weight ────────────────────────────────────────
+    if step == 1:
+        species_key = draft.get("species_key", "dog")
+        if species_key == "dog":
+            breeds = DOG_BREEDS_EL if lang=="el" else DOG_BREEDS_EN
+        elif species_key == "cat":
+            breeds = CAT_BREEDS_EL if lang=="el" else CAT_BREEDS_EN
+        else:
+            breeds = ["—"]
+        prev_breed = draft.get("breed", pet.get("breed", breeds[0]))
+        if prev_breed not in breeds: prev_breed = breeds[0]
+        breed = st.selectbox(t("breed"), breeds, index=breeds.index(prev_breed))
 
-    microchip = st.text_input(t("microchip"), value=pet.get("microchip",""), placeholder="941000123456789")
-    vax_opts = [t("yes"), t("no"), t("unknown")]
-    vaccinations = st.selectbox(t("vaccinations"), vax_opts)
-    conditions = st.text_area(t("conditions"), value=pet.get("conditions",""), height=80,
-                               placeholder="Π.χ. Αλλεργία σε πρωτεΐνες σιταριού, χρόνια γαστρίτιδα")
+        c1,c2,c3,c4 = st.columns(4)
+        with c1: age_y = st.number_input(t("age_y"), min_value=0, max_value=30,
+                                          value=draft.get("age_y", pet.get("age_y",0)))
+        with c2: age_m = st.number_input(t("age_m"), min_value=0, max_value=11,
+                                          value=draft.get("age_m", pet.get("age_m",0)))
+        with c3:
+            sex_opts = [t("male"), t("female"), t("neutered")]
+            prev_sex = draft.get("sex", pet.get("sex", sex_opts[0]))
+            if prev_sex not in sex_opts: prev_sex = sex_opts[0]
+            sex = st.selectbox(t("sex"), sex_opts, index=sex_opts.index(prev_sex))
+        with c4:
+            prev_weight = draft.get("weight", pet.get("weight"))
+            weight = st.number_input(t("weight"), min_value=0.0, max_value=150.0,
+                                       value=(float(prev_weight) if prev_weight else None),
+                                       placeholder="5.0", format="%.1f")
 
+        col_b, col_n = st.columns([1,3])
+        with col_b:
+            if st.button(t("back")): st.session_state.intake_step = 0; st.rerun()
+        with col_n:
+            if st.button(t("next"), type="primary", use_container_width=True):
+                draft["breed"] = breed
+                draft["age_y"] = age_y
+                draft["age_m"] = age_m
+                draft["sex"] = sex
+                draft["weight"] = weight
+                st.session_state.intake_draft = draft
+                st.session_state.intake_step = 2
+                st.rerun()
+        return
+
+    # ── STEP 2: microchip, vaccinations, conditions ────────────────────────────
+    if step == 2:
+        microchip = st.text_input(t("microchip"), value=draft.get("microchip", pet.get("microchip","")),
+                                   placeholder="941000123456789")
+        vax_opts = [t("yes"), t("no"), t("unknown")]
+        prev_vax = draft.get("vaccinations", pet.get("vaccinations", vax_opts[0]))
+        if prev_vax not in vax_opts: prev_vax = vax_opts[0]
+        vaccinations = st.selectbox(t("vaccinations"), vax_opts, index=vax_opts.index(prev_vax))
+        conditions = st.text_area(t("conditions"), value=draft.get("conditions", pet.get("conditions","")), height=80,
+                                   placeholder="Π.χ. Αλλεργία σε πρωτεΐνες σιταριού, χρόνια γαστρίτιδα")
+
+        col_b, col_n = st.columns([1,3])
+        with col_b:
+            if st.button(t("back")): st.session_state.intake_step = 1; st.rerun()
+        with col_n:
+            if st.button(t("next"), type="primary", use_container_width=True):
+                draft["microchip"] = microchip
+                draft["vaccinations"] = vaccinations
+                draft["conditions"] = conditions
+                st.session_state.intake_draft = draft
+                st.session_state.intake_step = 3
+                st.rerun()
+        return
+
+    # ── STEP 3: medications + vet, then submit ─────────────────────────────────
     st.markdown(f"**{t('meds')}**")
     if not st.session_state.med_inputs:
-        prev = pet.get("meds_raw","")
+        prev = draft.get("meds_raw", pet.get("meds_raw",""))
         st.session_state.med_inputs = [m.strip() for m in prev.split(",") if m.strip()] or [""]
     for mi, mv in enumerate(st.session_state.med_inputs):
         mc1,mc2 = st.columns([5,1])
@@ -2329,31 +2429,36 @@ def render_intake():
         st.session_state.med_inputs.append(""); st.rerun()
     meds_raw = ", ".join(m for m in st.session_state.med_inputs if m.strip())
 
-    vet_name = st.text_input(t("vet_name"), value=pet.get("vet_name",""),
+    vet_name = st.text_input(t("vet_name"), value=draft.get("vet_name", pet.get("vet_name","")),
                               placeholder="Π.χ. Κτηνιατρείο Αθήνας, Δρ. Παπαδόπουλος")
 
     col_b, col_n = st.columns([1,3])
     with col_b:
-        if st.button(t("back")): st.session_state.screen="home"; st.rerun()
+        if st.button(t("back")): st.session_state.intake_step = 2; st.rerun()
     with col_n:
         if st.button(t("next"), type="primary", use_container_width=True):
-            if name:
-                # Toxicity check on medications
-                tox_warns = check_toxicity(species_key, meds_raw)
-                if tox_warns:
-                    for w in tox_warns:
-                        st.error(w)
-                    st.stop()
-                st.session_state.pet = {
-                    "name":name,"species_key":species_key,"species_label":species_label,
-                    "breed":breed,"age_y":age_y,"age_m":age_m,"sex":sex,
-                    "weight":weight,"microchip":microchip,"vaccinations":vaccinations,
-                    "conditions":conditions,"meds_raw":meds_raw,"vet_name":vet_name,
-                    "filled_by":filled_by,
-                }
-                st.session_state.screen="vitals"; st.rerun()
-            else:
-                st.warning("Παρακαλώ εισάγετε το όνομα του κατοικίδιου." if lang=="el" else "Please enter your pet's name.")
+            # Toxicity check on medications
+            species_key = draft.get("species_key", "dog")
+            tox_warns = check_toxicity(species_key, meds_raw)
+            if tox_warns:
+                for w in tox_warns:
+                    st.error(w)
+                st.stop()
+            st.session_state.pet = {
+                "name": draft.get("name",""), "species_key": species_key,
+                "species_label": draft.get("species_label",""),
+                "breed": draft.get("breed",""), "age_y": draft.get("age_y",0),
+                "age_m": draft.get("age_m",0), "sex": draft.get("sex",""),
+                "weight": draft.get("weight"), "microchip": draft.get("microchip",""),
+                "vaccinations": draft.get("vaccinations",""),
+                "conditions": draft.get("conditions",""),
+                "meds_raw": meds_raw, "vet_name": vet_name,
+                "filled_by": draft.get("filled_by",""),
+            }
+            st.session_state.intake_step = 0
+            st.session_state.intake_draft = {}
+            st.session_state.screen = "vitals"
+            st.rerun()
 
 
 def render_vitals():
@@ -2513,7 +2618,11 @@ def render_vitals():
 
     col_b,col_s,col_n = st.columns([1,1,2])
     with col_b:
-        if st.button(t("back")): st.session_state.screen="intake"; st.rerun()
+        if st.button(t("back")):
+            st.session_state.intake_step = 3
+            st.session_state.intake_draft = dict(st.session_state.pet)
+            st.session_state.med_inputs = []  # re-derive from pet.meds_raw
+            st.session_state.screen="intake"; st.rerun()
     with col_s:
         if st.button(t("skip_vitals")): st.session_state.vitals={}; st.session_state.screen="triage"; st.rerun()
     with col_n:
@@ -3042,38 +3151,99 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                            help="Open in browser → Ctrl+P → Save as PDF")
 
 # ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
+def render_login_hero(lang):
+    """Compact hero strip for the login screen — logo, one-line value prop,
+    and mascots, all above the fold so the login form isn't pushed down by
+    the full marketing banner."""
+    if lang == "el":
+        kicker = "PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ"
+        title  = "Πες τι παρατηρείς."
+        accent = "Λάβε εκτίμηση."
+        sub    = "Δομημένη σύνοψη με κτηνιατρικές αναφορές, σε λίγα λεπτά — πριν ή αντί για το ιατρείο."
+    else:
+        kicker = "PETAINURSE · AI VET NURSE"
+        title  = "Tell us what's going on."
+        accent = "Get an assessment."
+        sub    = "A structured summary with veterinary references, in minutes — before or alongside your vet visit."
+
+    st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800;1,900&family=Inter:wght@400;500;600;700;800&display=swap');
+.pan-hero {{
+  background: linear-gradient(180deg, #F0FDF4 0%, #ECFDF5 100%);
+  border: 1px solid rgba(5,150,105,0.08);
+  border-radius: 24px; padding: 28px 32px; margin: 8px 0 18px;
+  text-align: center; font-family: 'Inter', system-ui, sans-serif;
+}}
+.pan-hero-kicker {{
+  display: inline-flex; align-items: center; gap: 8px;
+  background: white; border: 1px solid #E5E7EB; border-radius: 999px;
+  padding: 6px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  color: #059669; margin-bottom: 14px;
+}}
+.pan-hero-title {{
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 34px; font-weight: 800; line-height: 1.15;
+  color: #1A1A2E; letter-spacing: -1px; margin: 0 0 6px;
+}}
+.pan-hero-title .accent {{ color: #0EA5E9; font-style: italic; }}
+.pan-hero-sub {{
+  font-size: 14px; color: #4B5563; max-width: 480px;
+  margin: 0 auto; line-height: 1.55;
+}}
+.pan-hero-mascots {{
+  display: flex; justify-content: center; gap: 14px; margin-top: 18px;
+}}
+.pan-hero-mascots > div {{
+  background: white; border-radius: 16px; padding: 6px 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}}
+@media (max-width: 640px) {{
+  .pan-hero {{ padding: 22px 18px; border-radius: 18px; }}
+  .pan-hero-title {{ font-size: 26px; }}
+  .pan-hero-sub {{ font-size: 13px; }}
+}}
+</style>
+<div class="pan-hero">
+  <div class="pan-hero-kicker">🐾 {kicker}</div>
+  <div class="pan-hero-title">{title} <span class="accent">{accent}</span></div>
+  <div class="pan-hero-sub">{sub}</div>
+  <div class="pan-hero-mascots">
+    <div>{render_mascot("dog", size=64)}</div>
+    <div>{render_mascot("cat", size=64)}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+
 def render_login_screen():
     """Full-page login shown at the very start when auth is enabled.
-    Wraps the login form with the ad banner, disclaimer, and explainer —
-    same structure as the home screen so first-time visitors see the value
-    proposition before/while signing in."""
+    Compact 'hero' layout: lang switch, short value-prop strip with mascots,
+    and the login form — all above the fold. The full marketing banner and
+    'how it works' walkthrough are tucked into an expander below so curious
+    visitors can still see them without the login form being pushed down."""
     lang = st.session_state.lang
     c1, c2 = st.columns([6,1])
     with c2:
         if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ", key="login_lang"):
             st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
 
-    # Value-prop banner
-    render_ad_banner(lang)
+    # Compact hero — logo, one-line value prop, mascots
+    render_login_hero(lang)
 
-    # Mascots — same friendly "AI Nurse Heroes" as the home screen, shown
-    # above the login form so first-time visitors see them immediately.
-    st.markdown(f'''
-    <div style="display:flex;justify-content:center;gap:18px;margin:6px 0 18px">
-      <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("dog", size=88)}</div>
-      <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">{render_mascot("cat", size=88)}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-    # Login form
+    # Login form — front and center
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         render_login_gate()
 
-    # "How it works" walkthrough
-    render_explainer_video(lang)
-
     _render_disclaimer_strip()
+
+    # Full marketing content — collapsed by default so it doesn't push the
+    # login form below the fold, but still discoverable.
+    more_label = "✨ Περισσότερα για το PetAiNurse" if lang=="el" else "✨ More about PetAiNurse"
+    with st.expander(more_label, expanded=False):
+        render_ad_banner(lang)
+        render_explainer_video(lang)
 
 
 # ── COOKIE MANAGER (once) — persistent login ──────────────────────────────────
