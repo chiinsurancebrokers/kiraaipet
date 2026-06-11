@@ -336,25 +336,6 @@ def render_pet_recommendations(recs, sp, lang="el"):
     )
 
 
-    """Return curated MSD Vet Manual links based on symptom keywords.
-    NOTE: MSD has no public API. Claude's built-in veterinary knowledge
-    (trained on MSD, WSAVA, Merck Vet Manual) drives the diagnosis.
-    These links provide the owner with reference reading material."""
-    articles = MSD_ARTICLES.get(species, MSD_ARTICLES["dog"])
-    query_lower = query.lower()
-    found = []
-    for keyword, url in articles.items():
-        if keyword != "default" and keyword in query_lower:
-            label = keyword.replace("-"," ").title()
-            found.append({"title": f"MSD Vet Manual — {label}", "url": url})
-        if len(found) >= n: break
-    if not found:
-        default_url = articles["default"]
-        found.append({"title": f"MSD Veterinary Manual — {species.title()} Health", "url": default_url})
-    # Always add WSAVA guidelines link
-    found.append({"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"})
-    return found[:n]
-
 # ── VETERINARY DRUG CHECK (Claude-powered) ────────────────────────────────────
 # Hard-coded toxicity rules — always applied regardless of AI
 TOXIC_CATS = ["paracetamol","acetaminophen","ibuprofen","aspirin","naproxen","diclofenac",
@@ -1881,6 +1862,157 @@ def _render_pet_health_pillars(pet, vitals, status_map, report_text, lang):
 # MARKETING / EXPLAINER COMPONENTS (pet-themed, adapted from Asklepios)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def render_travel_ad_banner(lang):
+    """Embeddable, responsive version of the 'Pet Travel Checklist' suitcase
+    poster (petainurse_travel_ad.html) for the home screen — same branding
+    and copy, but fluid-width instead of a fixed 1080x1920 story poster."""
+    if lang == "en":
+        d = dict(
+            tag_icon="🐾", tag="PETAINURSE · TRAVEL ESSENTIALS",
+            h1="4 things", h1_accent="before you go.",
+            sub_strong="The packing list for your pet.",
+            sub="Because you never know when you'll need it.",
+            ttl="🧳 Pet Travel Checklist", ttl_sub="Don't travel without these",
+            items=[
+                ("01","📘","Pet passport","+ vaccination booklet & microchip", False),
+                ("02","🦮","Leash & collar","+ ID tag with contact details", False),
+                ("03","💊","Medications & parasite prevention","Food, water, current medication list", False),
+                ("04","🩺","PetAiNurse","AI vet nurse in your pocket", True),
+            ],
+            tagline="\u201cTell us what you're noticing. Get an assessment. Anywhere.\u201d",
+            url="petainurse.com",
+            pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Free"],
+        )
+    else:
+        d = dict(
+            tag_icon="🐾", tag="PETAINURSE · TRAVEL ESSENTIALS",
+            h1="4 πράγματα", h1_accent="πριν φύγετε.",
+            sub_strong="Η packing list για το κατοικίδιό σου.",
+            sub="Γιατί δεν ξέρεις πότε θα τον χρειαστείς.",
+            ttl="🧳 Pet Travel Checklist", ttl_sub="Δεν ταξιδεύετε χωρίς αυτά",
+            items=[
+                ("01","📘","Διαβατήριο κατοικιδίου","+ βιβλιάριο εμβολίων & microchip", False),
+                ("02","🦮","Λουρί & κολάρο","+ ταμπελάκι με στοιχεία επικοινωνίας", False),
+                ("03","💊","Φάρμακα & αντιπαρασιτικά","Τρόφιμα, νερό, λίστα τρέχουσας αγωγής", False),
+                ("04","🩺","PetAiNurse","AI κτηνιατρικός νοσηλευτής στην τσέπη σου", True),
+            ],
+            tagline="«Πες τι παρατηρείς. Λάβε εκτίμηση. Παντού.»",
+            url="petainurse.com",
+            pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Δωρεάν"],
+        )
+
+    items_html = ""
+    for num, icon, label, sub, is_hero in d["items"]:
+        cls = "pan-ta-item pan-ta-item-hero" if is_hero else "pan-ta-item"
+        items_html += f'''
+        <div class="{cls}">
+          <div class="pan-ta-num">{num}</div>
+          <div class="pan-ta-check">✓</div>
+          <div class="pan-ta-icon">{icon}</div>
+          <div class="pan-ta-text">
+            <div class="pan-ta-label">{label}</div>
+            <div class="pan-ta-sub">{sub}</div>
+          </div>
+        </div>'''
+
+    pills_html = "".join(f'<span class="pan-ta-pill">{p}</span>' for p in d["pills"])
+
+    st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800;1,900&family=Inter:wght@400;500;600;700;800&display=swap');
+.pan-ta-wrap {{
+  background: linear-gradient(180deg, #FFF7ED 0%, #FEF3C7 45%, #E0F2FE 100%);
+  border-radius: 24px; padding: 32px 28px;
+  margin: 12px 0 24px; font-family: 'Inter', system-ui, sans-serif;
+  position: relative; overflow: hidden;
+}}
+.pan-ta-tag {{
+  display: inline-flex; align-items: center; gap: 8px;
+  background: white; border-radius: 999px; padding: 8px 18px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+  color: #EA580C; box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+  margin-bottom: 18px;
+}}
+.pan-ta-h1 {{
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 34px; font-weight: 800; line-height: 1.05;
+  color: #1A1A2E; letter-spacing: -1px; margin-bottom: 10px;
+}}
+.pan-ta-h1 .accent {{ display: block; color: #DB2777; font-style: italic; }}
+.pan-ta-sub {{
+  font-size: 14px; color: #4B5563; line-height: 1.55; margin-bottom: 22px; max-width: 460px;
+}}
+.pan-ta-sub strong {{ color: #1A1A2E; font-weight: 700; }}
+.pan-ta-suitcase {{
+  background: white; border: 2px solid #1A1A2E; border-radius: 20px;
+  padding: 22px 22px 18px; max-width: 640px; margin: 0 auto;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.10);
+}}
+.pan-ta-ttl {{ text-align: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 2px dashed #D1D5DB; }}
+.pan-ta-ttl .t {{ font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #1A1A2E; margin-bottom: 4px; }}
+.pan-ta-ttl .s {{ font-size: 12.5px; color: #6B7280; font-weight: 500; }}
+.pan-ta-item {{
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 14px; background: #F9FAFB; border: 2px solid #E5E7EB;
+  border-radius: 14px; margin-bottom: 10px;
+}}
+.pan-ta-item-hero {{
+  background: linear-gradient(135deg, #FFF7ED 0%, #FCE7F3 100%);
+  border: 2px solid #EA580C; box-shadow: 0 6px 16px rgba(234,88,12,0.15);
+}}
+.pan-ta-num {{
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: 22px; color: rgba(0,0,0,0.13); width: 30px; text-align: center; flex-shrink: 0;
+}}
+.pan-ta-item-hero .pan-ta-num {{ color: rgba(234,88,12,0.30); }}
+.pan-ta-check {{
+  width: 28px; height: 28px; border: 2px solid #1A1A2E; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 900; color: #1A1A2E; background: white; flex-shrink: 0;
+}}
+.pan-ta-item-hero .pan-ta-check {{ background: #EA580C; border-color: #EA580C; color: white; }}
+.pan-ta-icon {{ font-size: 28px; flex-shrink: 0; }}
+.pan-ta-text {{ flex: 1; min-width: 0; }}
+.pan-ta-label {{ font-size: 14.5px; font-weight: 800; color: #1A1A2E; line-height: 1.2; }}
+.pan-ta-item-hero .pan-ta-label {{ color: #9A3412; }}
+.pan-ta-sub-line {{ font-size: 12px; color: #6B7280; font-weight: 500; }}
+.pan-ta-item .pan-ta-sub {{ font-size: 12px; color: #6B7280; font-weight: 500; margin: 0; max-width: none; }}
+.pan-ta-item-hero .pan-ta-sub {{ color: #C2410C; font-weight: 600; }}
+.pan-ta-footer {{ text-align: center; margin-top: 16px; padding-top: 14px; border-top: 2px dashed #D1D5DB; }}
+.pan-ta-tagline {{ font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 15px; color: #1A1A2E; margin-bottom: 8px; }}
+.pan-ta-url {{ font-size: 15px; font-weight: 800; color: #EA580C; }}
+.pan-ta-url .arrow {{ color: #DB2777; margin-right: 6px; }}
+.pan-ta-pills {{
+  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px;
+}}
+.pan-ta-pill {{
+  background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #4B5563;
+}}
+@media (max-width: 640px) {{
+  .pan-ta-wrap {{ padding: 22px 16px; border-radius: 18px; }}
+  .pan-ta-h1 {{ font-size: 26px; }}
+  .pan-ta-suitcase {{ padding: 16px 14px 14px; }}
+}}
+</style>
+<div class="pan-ta-wrap">
+  <div class="pan-ta-tag">{d['tag_icon']} {d['tag']}</div>
+  <div class="pan-ta-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span></div>
+  <div class="pan-ta-sub"><strong>{d['sub_strong']}</strong><br>{d['sub']}</div>
+  <div class="pan-ta-suitcase">
+    <div class="pan-ta-ttl"><div class="t">{d['ttl']}</div><div class="s">{d['ttl_sub']}</div></div>
+    {items_html}
+    <div class="pan-ta-footer">
+      <div class="pan-ta-tagline">{d['tagline']}</div>
+      <div class="pan-ta-url"><span class="arrow">→</span>{d['url']}</div>
+    </div>
+  </div>
+  <div class="pan-ta-pills">{pills_html}</div>
+</div>
+""", unsafe_allow_html=True)
+
+
 def render_ad_banner(lang):
     """Editorial-style value-prop banner for the home/login screen.
     Pet-themed (green/teal), honest claims only — no diagnostic promises."""
@@ -2244,8 +2376,8 @@ def render_home():
 
     _render_disclaimer_strip()
 
-    # Editorial value-prop banner
-    render_ad_banner(lang)
+    # Pet Travel Checklist banner (suitcase/checklist style)
+    render_travel_ad_banner(lang)
 
     render_lifestyle_strip(lang)
 
@@ -3557,9 +3689,7 @@ def render_login_hero(lang):
 def render_login_screen():
     """Full-page login shown at the very start when auth is enabled.
     Compact 'hero' layout: lang switch, short value-prop strip with mascots,
-    and the login form — all above the fold. The full marketing banner and
-    'how it works' walkthrough are tucked into an expander below so curious
-    visitors can still see them without the login form being pushed down."""
+    and the login form — all above the fold."""
     lang = st.session_state.lang
     c1, c2 = st.columns([6,1])
     with c2:
@@ -3575,13 +3705,6 @@ def render_login_screen():
         render_login_gate()
 
     _render_disclaimer_strip()
-
-    # Full marketing content — collapsed by default so it doesn't push the
-    # login form below the fold, but still discoverable.
-    more_label = "✨ Περισσότερα για το PetAiNurse" if lang=="el" else "✨ More about PetAiNurse"
-    with st.expander(more_label, expanded=False):
-        render_ad_banner(lang)
-        render_explainer_video(lang)
 
 
 # ── COOKIE MANAGER (once) — persistent login ──────────────────────────────────
