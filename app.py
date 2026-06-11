@@ -555,7 +555,7 @@ def save_draft(email, payload):
         return
     try:
         blob = _fernet().encrypt(json.dumps(payload, ensure_ascii=False).encode()).decode()
-        sb.table("drafts").upsert({"user_email": email, "data": blob}, on_conflict="user_email").execute()
+        sb.table("pet_drafts").upsert({"user_email": email, "data": blob}, on_conflict="user_email").execute()
     except Exception:
         pass
 
@@ -564,7 +564,7 @@ def load_draft(email):
     if not sb or not email or not _ENC_OK:
         return None
     try:
-        res = sb.table("drafts").select("data").eq("user_email", email).limit(1).execute()
+        res = sb.table("pet_drafts").select("data").eq("user_email", email).limit(1).execute()
         rows = res.data or []
         if rows and rows[0].get("data"):
             dec = _fernet().decrypt(rows[0]["data"].encode()).decode()
@@ -578,7 +578,7 @@ def delete_draft(email):
     if not sb or not email:
         return
     try:
-        sb.table("drafts").delete().eq("user_email", email).execute()
+        sb.table("pet_drafts").delete().eq("user_email", email).execute()
     except Exception:
         pass
 
