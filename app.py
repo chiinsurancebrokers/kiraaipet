@@ -869,6 +869,7 @@ defaults = {
     "symptom_chips": [],
     "intake_step": 0,     # 0-3 — grouped intake form steps
     "intake_draft": {},   # holds field values across intake steps
+    "_intake_show_errors": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -2321,6 +2322,11 @@ def render_intake():
         c1,c2 = st.columns([2,1])
         with c1:
             name = st.text_input(t("pet_name"), value=draft.get("name", pet.get("name","")), placeholder="Μπόμπης")
+            if st.session_state.get("_intake_show_errors") and not name:
+                st.markdown(
+                    '<div style="color:#DC2626;font-size:12px;margin:-8px 0 8px">'
+                    + ("⚠️ Το όνομα είναι απαραίτητο" if lang=="el" else "⚠️ Name is required")
+                    + '</div>', unsafe_allow_html=True)
         with c2:
             species_opts = SPECIES[lang]
             prev_sp = draft.get("species_label", pet.get("species_label", species_opts[0]))
@@ -2340,9 +2346,11 @@ def render_intake():
                     draft["species_key"] = SPECIES_KEY.get(species_label, "dog")
                     st.session_state.intake_draft = draft
                     st.session_state.intake_step = 1
+                    st.session_state["_intake_show_errors"] = False
                     st.rerun()
                 else:
-                    st.warning("Παρακαλώ εισάγετε το όνομα του κατοικίδιου." if lang=="el" else "Please enter your pet's name.")
+                    st.session_state["_intake_show_errors"] = True
+                    st.rerun()
         return
 
     # ── STEP 1: breed, age, sex, weight ────────────────────────────────────────
@@ -2393,6 +2401,8 @@ def render_intake():
     if step == 2:
         microchip = st.text_input(t("microchip"), value=draft.get("microchip", pet.get("microchip","")),
                                    placeholder="941000123456789")
+        st.caption("💡 Προαιρετικό — μπορείς να το προσθέσεις αργότερα." if lang=="el"
+                   else "💡 Optional — you can add this later.")
         vax_opts = [t("yes"), t("no"), t("unknown")]
         prev_vax = draft.get("vaccinations", pet.get("vaccinations", vax_opts[0]))
         if prev_vax not in vax_opts: prev_vax = vax_opts[0]
@@ -2415,6 +2425,8 @@ def render_intake():
 
     # ── STEP 3: medications + vet, then submit ─────────────────────────────────
     st.markdown(f"**{t('meds')}**")
+    st.caption("💡 Προαιρετικό — άφησέ το κενό αν δεν παίρνει φάρμακα." if lang=="el"
+               else "💡 Optional — leave blank if no medications.")
     if not st.session_state.med_inputs:
         prev = draft.get("meds_raw", pet.get("meds_raw",""))
         st.session_state.med_inputs = [m.strip() for m in prev.split(",") if m.strip()] or [""]
@@ -2431,6 +2443,8 @@ def render_intake():
 
     vet_name = st.text_input(t("vet_name"), value=draft.get("vet_name", pet.get("vet_name","")),
                               placeholder="Π.χ. Κτηνιατρείο Αθήνας, Δρ. Παπαδόπουλος")
+    st.caption("💡 Προαιρετικό — μπορείς να το προσθέσεις αργότερα." if lang=="el"
+               else "💡 Optional — you can add this later.")
 
     col_b, col_n = st.columns([1,3])
     with col_b:
@@ -3132,7 +3146,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
 
     # Actions
     fname = f"petainurse_report_{pet.get('name','pet')}_{datetime.now().strftime('%Y%m%d')}"
-    c1,c2,c3 = st.columns(3)
+    c1,c2,c3,c4 = st.columns(4)
     with c1:
         if st.button("← "+("Νέα Εκτίμηση" if lang=="el" else "New Assessment"), use_container_width=True):
             for k,v in defaults.items(): st.session_state[k]=v
@@ -3149,6 +3163,47 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                                                           species_key=sp),
                            file_name=fname+".html", mime="text/html", use_container_width=True,
                            help="Open in browser → Ctrl+P → Save as PDF")
+    with c4:
+        import re as _re_wa
+        v = st.session_state.vitals or {}
+        wa_lines = [
+            "🐾 PetAiNurse",
+            f"{('Κατοικίδιο' if lang=='el' else 'Pet')}: {pet.get('name','')} "
+            f"{pet.get('species_label','')} ({pet.get('breed','')}), "
+            f"{pet.get('age_y',0)}y {pet.get('age_m',0)}m · {pet.get('sex','')}",
+        ]
+        vbits = []
+        if v.get("hr"):   vbits.append(f"HR {v['hr']}bpm")
+        if v.get("br"):   vbits.append(f"BR {v['br']}/min")
+        if v.get("temp"): vbits.append(f"T {v['temp']}°C")
+        if v.get("spo2"): vbits.append(f"SpO2 {v['spo2']}%")
+        if vbits:
+            wa_lines.append(("Ζωτικά: " if lang=="el" else "Vitals: ") + ", ".join(vbits))
+        # Clean markdown so it reads well in WhatsApp
+        rep = _re_wa.sub(r"[#*>`|]", "", st.session_state.report or "").strip()
+        rep = _re_wa.sub(r"\n{3,}", "\n\n", rep)
+        # Cap length — wa.me pre-fill fails on very long URLs
+        if len(rep) > 1500:
+            rep = rep[:1500].rsplit("\n",1)[0].rstrip() + ("\n…(πλήρης αναφορά στο PDF)" if lang=="el" else "\n…(full report in PDF)")
+        if rep:
+            wa_lines += ["", rep]
+        # Personalized recommendations (plain emoji-prefixed lines)
+        _r = st.session_state.get("report_recs")
+        if _r and any(_r.get(k) for k in ("activity","nutrition","lifestyle")):
+            wa_lines += ["", ("📍 Συστάσεις:" if lang=="el" else "📍 Recommendations:")]
+            if _r.get("activity"):  wa_lines.append(("🏃 Δραστηριότητα: " if lang=="el" else "🏃 Activity: ") + _r["activity"])
+            if _r.get("nutrition"): wa_lines.append(("🥗 Διατροφή: " if lang=="el" else "🥗 Nutrition: ") + _r["nutrition"])
+            if _r.get("lifestyle"): wa_lines.append(("🌿 Φροντίδα: " if lang=="el" else "🌿 Home Care: ") + _r["lifestyle"])
+        wa_lines += ["", "---", "⚠️ AI-generated. petainurse.com"]
+        wa_msg = "\n".join(wa_lines)
+        wa_url = "https://wa.me/?text=" + urllib.parse.quote(wa_msg)
+        st.markdown(
+            f'<a href="{wa_url}" target="_blank" '
+            f'style="display:flex;align-items:center;justify-content:center;height:38.4px;'
+            f'border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;'
+            f'color:white;background:#25D366">📤 WhatsApp</a>',
+            unsafe_allow_html=True,
+        )
 
 # ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
 def render_login_hero(lang):
