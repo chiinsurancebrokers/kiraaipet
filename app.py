@@ -22,6 +22,12 @@ try:
 except Exception:
     _STX_OK = False
 
+# Lifestyle illustrations (Vecteezy, licensed for commercial use)
+try:
+    from assets_illustrations import ILLUSTRATIONS
+except Exception:
+    ILLUSTRATIONS = {}
+
 # HEIC support (iPhone photos)
 try:
     import pillow_heif as _heif
@@ -1003,8 +1009,10 @@ def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" els
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
 MASCOT_SVG = {
-"dog": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse dog mascot">
-  <title>Dr. Pawlo</title>
+"dog": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse dog hero mascot">
+  <title>Paula</title>
+  <path d="M58 96 Q40 150 56 188 Q100 172 144 188 Q160 150 142 96 Z" fill="#0EA5E9"/>
+  <path d="M58 96 Q40 150 56 188 Q78 180 100 178 L100 96 Z" fill="#38BDF8"/>
   <ellipse cx="52" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(-18 52 78)"/>
   <ellipse cx="148" cy="78" rx="26" ry="34" fill="#D97757" transform="rotate(18 148 78)"/>
   <circle cx="100" cy="104" r="62" fill="#F3C99A"/>
@@ -1012,23 +1020,23 @@ MASCOT_SVG = {
   <ellipse cx="100" cy="116" rx="11" ry="8" fill="#1A1A2E"/>
   <path d="M100 124 Q100 136 86 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
   <path d="M100 124 Q100 136 114 138" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <circle cx="76" cy="92" r="7" fill="#1A1A2E"/>
-  <circle cx="124" cy="92" r="7" fill="#1A1A2E"/>
-  <circle cx="78.5" cy="89.5" r="2.2" fill="white"/>
-  <circle cx="126.5" cy="89.5" r="2.2" fill="white"/>
-  <path d="M66 80 Q76 74 86 80" stroke="#B5703F" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M114 80 Q124 74 134 80" stroke="#B5703F" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M58 56 Q100 30 142 56" stroke="#0EA5E9" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <circle cx="100" cy="48" r="11" fill="#E5F6FE"/>
-  <circle cx="100" cy="48" r="6" fill="#0EA5E9"/>
-  <path d="M72 158 Q72 180 100 180 Q128 180 128 158" stroke="#059669" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <circle cx="72" cy="156" r="7" fill="#059669"/>
-  <circle cx="128" cy="156" r="7" fill="#059669"/>
-  <circle cx="100" cy="180" r="10" fill="#047857"/>
-  <circle cx="100" cy="180" r="5" fill="#A7F3D0"/>
+  <path d="M58 78 Q76 66 92 78 Q92 96 76 98 Q60 96 58 78 Z" fill="#059669"/>
+  <path d="M142 78 Q124 66 108 78 Q108 96 124 98 Q140 96 142 78 Z" fill="#059669"/>
+  <path d="M86 80 Q100 74 114 80" stroke="#059669" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="76" cy="86" r="6.5" fill="#1A1A2E"/>
+  <circle cx="124" cy="86" r="6.5" fill="#1A1A2E"/>
+  <circle cx="78.3" cy="83.6" r="2.1" fill="white"/>
+  <circle cx="126.3" cy="83.6" r="2.1" fill="white"/>
+  <path d="M82 154 L100 146 L118 154 L118 174 Q100 188 100 188 Q100 188 82 174 Z" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="3"/>
+  <ellipse cx="100" cy="172" rx="8" ry="6.5" fill="#0EA5E9"/>
+  <ellipse cx="91" cy="161" rx="3.6" ry="4.6" fill="#0EA5E9"/>
+  <ellipse cx="100" cy="157" rx="3.6" ry="4.6" fill="#0EA5E9"/>
+  <ellipse cx="109" cy="161" rx="3.6" ry="4.6" fill="#0EA5E9"/>
 </svg>''',
-"cat": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse cat mascot">
-  <title>Nurse Mimi</title>
+"cat": '''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PetAiNurse cat hero mascot">
+  <title>Mimi</title>
+  <path d="M58 96 Q40 150 56 188 Q100 172 144 188 Q160 150 142 96 Z" fill="#059669"/>
+  <path d="M58 96 Q40 150 56 188 Q78 180 100 178 L100 96 Z" fill="#10B981"/>
   <path d="M48 70 L34 24 L82 56 Z" fill="#9CA3AF"/>
   <path d="M152 70 L166 24 L118 56 Z" fill="#9CA3AF"/>
   <path d="M52 64 L42 34 L74 54 Z" fill="#F3D9C9"/>
@@ -1040,19 +1048,15 @@ MASCOT_SVG = {
   <path d="M100 122 Q100 132 114 134" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
   <path d="M62 124 L34 118 M62 132 L32 132 M62 140 L34 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   <path d="M138 124 L166 118 M138 132 L168 132 M138 140 L166 146" stroke="#9CA3AF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="76" cy="92" rx="7" ry="9" fill="#1A1A2E"/>
-  <ellipse cx="124" cy="92" rx="7" ry="9" fill="#1A1A2E"/>
-  <circle cx="78.5" cy="88.5" r="2.2" fill="white"/>
-  <circle cx="126.5" cy="88.5" r="2.2" fill="white"/>
-  <path d="M62 60 Q100 32 138 60 L138 70 Q100 50 62 70 Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
-  <rect x="92" y="44" width="16" height="16" fill="#059669" rx="2"/>
-  <rect x="96" y="40" width="8" height="24" fill="#059669" rx="2"/>
-  <rect x="84" y="48" width="32" height="8" fill="#059669" rx="2"/>
-  <circle cx="100" cy="166" r="18" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="2"/>
-  <ellipse cx="100" cy="170" rx="9" ry="7" fill="#059669"/>
-  <ellipse cx="89" cy="158" rx="4" ry="5" fill="#059669"/>
-  <ellipse cx="100" cy="153" rx="4" ry="5" fill="#059669"/>
-  <ellipse cx="111" cy="158" rx="4" ry="5" fill="#059669"/>
+  <path d="M58 78 Q76 66 92 78 Q92 96 76 98 Q60 96 58 78 Z" fill="#0EA5E9"/>
+  <path d="M142 78 Q124 66 108 78 Q108 96 124 98 Q140 96 142 78 Z" fill="#0EA5E9"/>
+  <path d="M86 80 Q100 74 114 80" stroke="#0EA5E9" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <ellipse cx="76" cy="86" rx="6.5" ry="8" fill="#1A1A2E"/>
+  <ellipse cx="124" cy="86" rx="6.5" ry="8" fill="#1A1A2E"/>
+  <circle cx="78.3" cy="83" r="2.1" fill="white"/>
+  <circle cx="126.3" cy="83" r="2.1" fill="white"/>
+  <path d="M82 154 L100 146 L118 154 L118 174 Q100 188 100 188 Q100 188 82 174 Z" fill="#FFFFFF" stroke="#059669" stroke-width="3"/>
+  <path d="M100 176 Q86 164 90 154 Q94 148 100 156 Q106 148 110 154 Q114 164 100 176 Z" fill="#059669"/>
 </svg>''',
 }
 
@@ -1077,6 +1081,41 @@ def mascot_for_pet(pet=None):
     if sp in ("dog","cat"):
         return sp
     return None
+
+
+def render_lifestyle_strip(lang="el"):
+    """Three lifestyle illustration cards (walks, vet visits, daily care) —
+    grounds the product in real pet-owner moments. Vecteezy, licensed."""
+    if not ILLUSTRATIONS:
+        return
+    if lang == "el":
+        items = [
+            ("walking", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
+            ("vet",     "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
+            ("care",    "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
+        ]
+    else:
+        items = [
+            ("walking", "Daily walks", "Keep track of how your pet feels every day"),
+            ("vet",     "Vet visits", "Arrive prepared, with a structured assessment"),
+            ("care",    "Home care", "Track symptoms, medications and history"),
+        ]
+    cols = st.columns(3)
+    for col, (key, title, sub) in zip(cols, items):
+        b64 = ILLUSTRATIONS.get(key)
+        if not b64:
+            continue
+        with col:
+            st.markdown(
+                f'''<div style="border-radius:14px;overflow:hidden;border:1px solid #E5E7EB;background:white">
+                    <img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:110px" />
+                    <div style="padding:10px 12px">
+                        <div style="font-size:13px;font-weight:700;color:#1A1A2E">{title}</div>
+                        <div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sub}</div>
+                    </div>
+                </div>''',
+                unsafe_allow_html=True,
+            )
 
 
 # ── EMERGENCY VET CLINICS (Athens + major Greek cities) ───────────────────────
@@ -1961,6 +2000,8 @@ def render_home():
 
     # Editorial value-prop banner
     render_ad_banner(lang)
+
+    render_lifestyle_strip(lang)
 
     col1,col2,col3 = st.columns([1,2,1])
     with col2:
