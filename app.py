@@ -595,17 +595,34 @@ def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="record
 
 
 def gpt4o(prompt, system="", max_tokens=3000):
+    """Call OpenAI's chat completions with GPT-4o. Returns the assistant text
+    on success, or a "GPT-4o unavailable: <reason>" string on any failure —
+    network, auth, or API error body. We never swallow the underlying error
+    silently because that leaves admins guessing why a feature 'didn't work'.
+    """
     try:
         oai = get_openai_key()
-        if not oai: return None
+        if not oai:
+            return "GPT-4o unavailable: OPENAI_API_KEY is not configured"
         body = json.dumps({"model":"gpt-4o","max_tokens":max_tokens,
             "messages":[{"role":"system","content":system},{"role":"user","content":prompt}] if system
                         else [{"role":"user","content":prompt}]}).encode()
         req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=body,
             headers={"Content-Type":"application/json","Authorization":f"Bearer {oai}"})
-        with urllib.request.urlopen(req, timeout=25) as r:
-            return json.loads(r.read())["choices"][0]["message"]["content"]
-    except Exception as e: return f"GPT-4o unavailable: {e}"
+        try:
+            with urllib.request.urlopen(req, timeout=25) as r:
+                return json.loads(r.read())["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as he:
+            # Read the response body so the real OpenAI error (auth, quota,
+            # content policy, model-not-found, etc.) is visible instead of a
+            # bare "HTTP Error 400".
+            try:
+                err_body = he.read().decode("utf-8", "replace")
+            except Exception:
+                err_body = ""
+            return f"GPT-4o unavailable: HTTP {he.code} — {err_body[:500]}"
+    except Exception as e:
+        return f"GPT-4o unavailable: {type(e).__name__}: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
 def claude(messages, system="", max_tokens=3000, timeout=60):
@@ -4100,10 +4117,96 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                             _evid += f"\n\nPHOTO ANALYSIS FINDINGS:\n{_pctx}"
                         if _lctx:
                             _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
-                        st.session_state.report_gpt = sanitize_ai_text(gpt4o(
-                            prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}{_evid}\n\nDo you agree with this veterinary assessment? Take the photo and lab findings above into account. Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
-                            system=petainurse_system(pet), max_tokens=4000))
-                    st.rerun()
+
+                        # Dedicated veterinary-reviewer system prompt. The
+                        # main petainurse_system() is written for Claude in a
+                        # role-playing nurse-hero persona ("you are Perro,
+                        # ask one question at a time") which trips OpenAI's
+                        # content guardrails when applied to a clinical
+                        # second-opinion task — the model returns "I'm sorry,
+                        # I can't assist with that". Framing it as an
+                        # educational veterinary peer review on an existing
+                        # AI-generated report (not a primary diagnosis, not
+                        # role-play, explicitly animal-only) keeps GPT-4o
+                        # compliant and useful.
+                        _review_lang = ("Greek (Ελληνικά)" if lang == "el" else "English")
+                        gpt_system = (
+                            "You are a veterinary clinical reasoning assistant helping review an "
+                            "AI-generated educational summary about a pet (a companion animal — "
+                            "dog, cat, rabbit, or bird). This is an educational review, NOT a "
+                            "diagnosis and NOT human medical advice. The pet owner will discuss "
+                            "all findings with a licensed veterinarian before any treatment.\n\n"
+                            "Your job: read the PetAiNurse AI summary below and provide a "
+                            "constructive peer review — note what the summary handles well, "
+                            "flag anything you would add or reconsider, suggest alternative "
+                            "differentials the veterinarian might want to rule out, and call "
+                            "out any red flags. Cite reasoning, not authority. Keep it concise "
+                            "(≤350 words), structured, and species-appropriate. Always end with "
+                            "the reminder that only a licensed veterinarian can diagnose or "
+                            "prescribe.\n\n"
+                            f"Write your review in {_review_lang}."
+                        )
+
+                        user_prompt = (
+                            f"PET: {pet.get('name')}, {pet.get('species_label')} "
+                            f"({pet.get('breed')}), {pet.get('age_y')}y\n\n"
+                            f"PETAINURSE AI EDUCATIONAL SUMMARY (to be reviewed):\n"
+                            f"---\n{st.session_state.report}\n---{_evid}\n\n"
+                            f"Provide your peer review of the summary above. Note strengths, "
+                            f"suggest additions or alternative differentials the veterinarian "
+                            f"should consider, and highlight any red flags. Be specific and "
+                            f"species-appropriate. End by reminding the owner to consult a "
+                            f"licensed veterinarian."
+                        )
+
+                        gpt_result = gpt4o(prompt=user_prompt, system=gpt_system, max_tokens=4000)
+                        # If GPT refused or the API errored, surface that to
+                        # the admin instead of saving a useless "I'm sorry…"
+                        # into the report. The string-check matches both
+                        # OpenAI refusal phrasing and our own "GPT-4o
+                        # unavailable: …" sentinel from gpt4o().
+                        _gr_low = (gpt_result or "").strip().lower()
+                        _is_refusal = (
+                            _gr_low.startswith("i'm sorry") or
+                            _gr_low.startswith("i am sorry") or
+                            _gr_low.startswith("i can't") or
+                            _gr_low.startswith("i cannot") or
+                            "can't assist" in _gr_low or
+                            "cannot assist" in _gr_low
+                        )
+                        _is_error = _gr_low.startswith("gpt-4o unavailable")
+                        # If the model produced a triage-style intro (mascot
+                        # name + "superhero" wording + asking follow-up
+                        # questions) it's role-playing PetAiNurse instead of
+                        # reviewing the report — discard and ask the admin
+                        # to retry. This happens when an old/cached prompt
+                        # bleeds into the GPT call.
+                        _hero_intro_markers = [
+                            "superhero της petainurse",
+                            "superhero of petainurse",
+                            "petainurse's superhero",
+                            "είμαι ο perro", "είμαι η gata",
+                            "είμαι ο gaz",   "είμαι ο ave",
+                            "i'm perro",     "i'm gata",
+                            "i'm gaz",       "i'm ave",
+                        ]
+                        _is_wrong_role = any(m in _gr_low for m in _hero_intro_markers)
+                        if _is_refusal or _is_error or _is_wrong_role:
+                            _why = ("⚠️ Wrong-role response — το μοντέλο ξεκίνησε νέα συνομιλία τριάζ αντί για review."
+                                    if _is_wrong_role else
+                                    ("⚠️ Refusal" if _is_refusal else "⚠️ API error"))
+                            st.error(
+                                (f"{_why}\n\n"
+                                 f"**Απάντηση μοντέλου:** `{(gpt_result or '')[:500]}`\n\n"
+                                 "Δοκίμασε ξανά σε λίγο."
+                                 if lang == "el" else
+                                 f"{_why}\n\n"
+                                 f"**Model response:** `{(gpt_result or '')[:500]}`\n\n"
+                                 "Try again shortly.")
+                            )
+                        else:
+                            st.session_state.report_gpt = sanitize_ai_text(gpt_result)
+                            st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
                 # Integration: if the second opinion adds value, the user can fold
