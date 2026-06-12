@@ -1047,6 +1047,39 @@ COMMON_CONDITIONS = {
     },
 }
 
+
+def _render_common_conditions(species_label, lang):
+    """Render the '🔎 Common conditions for <species>' expander with quick
+    heads-up info cards. Used in both the intake step and the triage screen
+    so owners can see what's typically reported for their pet's species."""
+    _sp_key = SPECIES_KEY.get(species_label, "other")
+    _cc = COMMON_CONDITIONS.get(_sp_key, {}).get(lang) or []
+    if not _cc:
+        return
+    with st.expander(
+        ("🔎 Συχνές παθήσεις για " + species_label) if lang == "el"
+        else ("🔎 Common conditions for " + species_label),
+        expanded=False
+    ):
+        st.caption(
+            "Αυτά είναι από τα πιο συχνά περιστατικά — όχι λίστα διάγνωσης για το δικό σου κατοικίδιο."
+            if lang == "el" else
+            "These are common cases — not a diagnostic list for your specific pet."
+        )
+        _grid = "".join(
+            f'<div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;'
+            f'padding:10px 12px"><div style="font-size:20px;line-height:1">{ic}</div>'
+            f'<div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-top:4px">{ti}</div>'
+            f'<div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sb}</div></div>'
+            for ic, ti, sb in _cc
+        )
+        st.markdown(
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));'
+            f'gap:10px;margin-top:6px">{_grid}</div>',
+            unsafe_allow_html=True,
+        )
+
+
 DOG_BREEDS_EL = ["Μικτή φυλή","Λαμπραντόρ","Γκόλντεν Ριτρίβερ","Τσοπανόσκυλο Γερμανίας",
     "Μπουλντόγκ","Μπιγκλ","Πούντελ","Ροτβάιλερ","Γιόρκσαϊρ Τεριέ","Σιβηριανό Χάσκι",
     "Γκόλντεν Ντούντλ","Σπίτζ","Αγ. Βερνάρδος","Ντόμπερμαν","Μπόξερ","Ακίτα",
@@ -2838,31 +2871,7 @@ def render_intake():
 
         # Show common conditions for the chosen species — mirrors Asklepios
         # giving owners a quick heads-up of what to watch for in their species.
-        _sp_key = SPECIES_KEY.get(species_label, "other")
-        _cc = COMMON_CONDITIONS.get(_sp_key, {}).get(lang) or []
-        if _cc:
-            with st.expander(
-                ("🔎 Συχνές παθήσεις για " + species_label) if lang == "el"
-                else ("🔎 Common conditions for " + species_label),
-                expanded=False
-            ):
-                st.caption(
-                    "Αυτά είναι από τα πιο συχνά περιστατικά — όχι λίστα διάγνωσης για το δικό σου κατοικίδιο."
-                    if lang == "el" else
-                    "These are common cases — not a diagnostic list for your specific pet."
-                )
-                _grid = "".join(
-                    f'<div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;'
-                    f'padding:10px 12px"><div style="font-size:20px;line-height:1">{ic}</div>'
-                    f'<div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-top:4px">{ti}</div>'
-                    f'<div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sb}</div></div>'
-                    for ic, ti, sb in _cc
-                )
-                st.markdown(
-                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));'
-                    f'gap:10px;margin-top:6px">{_grid}</div>',
-                    unsafe_allow_html=True,
-                )
+        _render_common_conditions(species_label, lang)
 
         col_b, col_n = st.columns([1,3])
         with col_b:
@@ -3271,6 +3280,10 @@ def render_triage():
                 "You can upload **lab results** or an already-uploaded **photo** — they're folded into the assessment. "
                 "Once there's enough information, the **“Generate Veterinary Report”** button unlocks.",
     )
+
+    # Common conditions for this pet's species — same heads-up shown during
+    # intake, surfaced again here since this is where symptoms are discussed.
+    _render_common_conditions(pet.get("species_label",""), lang)
 
     # Symptom tracker (browser-only, localStorage)
     _render_pet_symptom_tracker(lang)
@@ -4465,6 +4478,16 @@ def render_login_screen():
 
 
 # ── COOKIE MANAGER (once) — persistent login ──────────────────────────────────
+# IMPORTANT: the forced st.rerun() below (waiting for the async CookieManager
+# component to deliver its value) must NOT fire while the user is still on the
+# pre-login marketing screens (welcome/hero) — otherwise every page load
+# auto-reruns 3x through those screens before the user can interact, which
+# looks like an infinite loop. Only perform the wait once we're actually past
+# those screens (i.e. about to show the login gate or an authenticated screen).
+_past_marketing_screens = (
+    st.session_state.get("_welcome_seen") and st.session_state.get("_hero_seen")
+)
+
 if _STX_OK and auth_enabled():
     if "CM" not in st.session_state:
         st.session_state["CM"] = stx.CookieManager(key="pan_cookie_mgr")
@@ -4482,7 +4505,7 @@ if _STX_OK and auth_enabled():
         # session_state lost auth_user due to a fresh browser session).
         st.session_state["auth_user"] = _email
         st.session_state["_cookie_check_tries"] = 0
-    elif not is_logged_in():
+    elif not is_logged_in() and _past_marketing_screens:
         if _tok is None:
             # CookieManager's underlying component is async: on early runs of
             # a session it may not have delivered the cookie value yet, even
