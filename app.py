@@ -4442,7 +4442,7 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     with f3:
         st.markdown(f'<div class="card"><div style="font-size:32px">🕐</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
     with f4:
-        st.markdown(f'<a href="https://pet.gov.gr" target="_blank" class="card" style="text-decoration:none;color:inherit;display:block"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></div></a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://pet.gov.gr" target="_blank" class="card" style="text-decoration:none;color:inherit;display:block;height:100%"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></a>', unsafe_allow_html=True)
 
     render_lifestyle_strip(lang)
 
