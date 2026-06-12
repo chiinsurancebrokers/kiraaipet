@@ -3507,6 +3507,12 @@ def render_triage():
                         voice_text = edited
                         st.session_state._voice_widget_counter += 1
 
+    st.markdown(
+        f'<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;'
+        f'padding:8px 14px;margin-bottom:6px;font-weight:600;color:#065F46;font-size:14px">'
+        f'✍️ {"Γράψε εδώ" if lang=="el" else "Write here"}</div>',
+        unsafe_allow_html=True)
+
     user_input = st.chat_input(t("triage_placeholder"), key="triage_input")
     if voice_text:
         user_input = voice_text
@@ -4407,13 +4413,13 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     _f2_body  = ("Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες."
                  if lang=="el" else
                  "Automatic detection of toxic substances — especially critical for cats.")
-    _f3_title = "Για Pet Sitters" if lang=="el" else "For Pet Sitters"
-    _f3_body  = ("Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο."
+    _f3_title = "24/7 Διαθεσιμότητα" if lang=="el" else "Available 24/7"
+    _f3_body  = ("Άμεση πρόσβαση σε αξιολόγηση συμπτωμάτων και καθοδήγηση οποιαδήποτε ώρα, ημέρα ή νύχτα."
                   if lang=="el" else
-                  "Looking after someone else's pet? Create a quick report for the owner or vet.")
-    _f4_body  = ("Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς."
+                  "Instant access to symptom assessment and guidance any time, day or night.")
+    _f4_body  = ("Άμεση πρόσβαση στις 7 επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς: ηλεκτρονικό βιβλιάριο υγείας, δήλωση απώλειας/εύρεσης ζώου, κτηνιατρικός φάκελος, QR ταυτοποίηση και άλλα."
                   if lang=="el" else
-                  "Links to the official services of the National Pet Registry.")
+                  "Direct access to the 7 official services of the National Pet Registry: digital health booklet, lost/found pet reports, veterinary record, QR identification and more.")
     if lang == "el":
         _chips_html = (
             '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>'
@@ -4434,9 +4440,9 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
             <p style="font-size:13px;color:#6B7280">{_f2_body}</p>
             <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">{_chips_html}</div></div>''', unsafe_allow_html=True)
     with f3:
-        st.markdown(f'<div class="card"><div style="font-size:32px">👥</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div style="font-size:32px">🕐</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
     with f4:
-        st.markdown(f'<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://pet.gov.gr" target="_blank" class="card" style="text-decoration:none;color:inherit;display:block"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></div></a>', unsafe_allow_html=True)
 
     render_lifestyle_strip(lang)
 
