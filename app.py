@@ -1596,6 +1596,48 @@ def mascot_for_pet(pet=None):
     return None
 
 
+# Matches the superhero/supervillain emoji 🦸 / 🦹 with any optional skin-tone
+# modifier, ZWJ gender sign (♀️/♂️) and variation selectors.
+import re as _re
+_HERO_EMOJI_RE = _re.compile(
+    "[\U0001F9B8\U0001F9B9]"          # 🦸 superhero / 🦹 supervillain
+    "[\U0001F3FB-\U0001F3FF]?"        # optional skin tone
+    "(?:\u200D[\u2640\u2642]\uFE0F?)?"  # optional ZWJ + gender + VS16
+)
+
+
+def _hero_inline_img_html(pet=None):
+    """Inline <img> (base64) of the species-appropriate superhero, sized to sit
+    next to text like an emoji. Prefers the transparent PNG so it looks clean
+    on coloured chat bubbles; falls back to the JPEG. Returns "" if no art."""
+    key = mascot_for_pet(pet) or "dog"
+    b64 = HERO_PNGS.get(key)
+    mime = "image/png"
+    if not b64:
+        b64 = MASCOT_IMG.get(key)
+        mime = "image/jpeg"
+    if not b64:
+        return ""
+    nm = MASCOT_NAMES.get(key, "")
+    return (
+        f'<img src="data:{mime};base64,{b64}" alt="{nm}" '
+        f'style="height:1.45em;width:auto;vertical-align:-0.35em;'
+        f'margin:0 1px;display:inline-block" />'
+    )
+
+
+def replace_hero_emoji(text, pet=None):
+    """Swap any superhero emoji in `text` for the species-appropriate hero
+    picture (Perro/Gata/Gaz/Ave). Returns (html, changed). If we have no
+    artwork for this pet, the text is returned unchanged."""
+    if not text or not _HERO_EMOJI_RE.search(text):
+        return text, False
+    img = _hero_inline_img_html(pet)
+    if not img:
+        return text, False
+    return _HERO_EMOJI_RE.sub(img, text), True
+
+
 def render_lifestyle_strip(lang="el"):
     """Three lifestyle cards (walks, vet visits, daily care) using the
     illustrated 'life action' artwork — warmer, brand-consistent feel."""
@@ -3655,7 +3697,11 @@ def render_triage():
     _avatar = _hero_avatar(pet)
     for msg in st.session_state.triage_chat:
         with st.chat_message(msg["role"], avatar=_avatar if msg["role"]=="assistant" else None):
-            st.markdown(msg["content"])
+            if msg["role"] == "assistant":
+                _html, _changed = replace_hero_emoji(msg["content"], pet)
+                st.markdown(_html, unsafe_allow_html=_changed)
+            else:
+                st.markdown(msg["content"])
 
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
     last_assistant = next((m["content"].lower() for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), "")
