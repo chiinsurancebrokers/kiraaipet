@@ -1902,13 +1902,6 @@ def render_emergency_vets(lang="el"):
     static (admin-configurable) emergency vets directory for Athens /
     Thessaloniki, with the featured/partner clinic pinned on top."""
     render_nearby_vets_geo(lang)
-    st.markdown(
-        '<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;'
-        'padding:8px 12px;font-size:12px;color:#92400E;margin-bottom:10px">'
-        + ("📞 Πριν μετακινηθείς, τηλεφώνησε πρώτα για να επιβεβαιώσεις ότι το κτηνιατρείο είναι ανοιχτό και μπορεί να σε δεχτεί."
-           if lang=="el" else
-           "📞 Before heading out, call first to confirm the clinic is open and able to see you.")
-        + '</div>', unsafe_allow_html=True)
     vets_html = ""
     for v in _emergency_vets_ordered():
         maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(v['name']+' '+v['area'])}"
