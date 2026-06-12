@@ -281,7 +281,7 @@ Be specific to this pet's actual condition/symptoms — not generic advice. If t
 or no major issue was found, give sensible preventive/wellness guidance instead."""
 
     result = claude([{"role":"user","content":prompt}],
-                    system=petainurse_system(), max_tokens=1400, timeout=60)
+                    system=petainurse_system(pet), max_tokens=1400, timeout=60)
     if result.startswith("⚠️"):
         return {}
     try:
@@ -1201,6 +1201,22 @@ T = {
 }
 def t(key): return T[st.session_state.lang].get(key, key)
 
+TRIAGE_PLACEHOLDERS = {
+    "dog":   {"el":"Π.χ. Ο σκύλος μου δεν τρώει από χθες και έχει εμετό...",
+              "en":"E.g. My dog hasn't eaten since yesterday and is vomiting..."},
+    "cat":   {"el":"Π.χ. Η γάτα μου δεν τρώει από χθες και έχει εμετό...",
+              "en":"E.g. My cat hasn't eaten since yesterday and is vomiting..."},
+    "rabbit":{"el":"Π.χ. Το κουνέλι μου δεν τρώει από χθες και είναι φουσκωμένο...",
+              "en":"E.g. My rabbit hasn't eaten since yesterday and is bloated..."},
+    "bird":  {"el":"Π.χ. Το πουλί μου είναι λήθαργο και δεν τρώει από χθες...",
+              "en":"E.g. My bird is lethargic and hasn't eaten since yesterday..."},
+}
+def triage_placeholder_for(pet):
+    sp = pet.get("species_key","dog")
+    lang = st.session_state.lang
+    d = TRIAGE_PLACEHOLDERS.get(sp, TRIAGE_PLACEHOLDERS["dog"])
+    return d.get(lang, d["el"])
+
 def _render_disclaimer_strip(lang=None):
     """Compact 'not a medical/veterinary tool' disclaimer — shown on every screen."""
     lang = lang or st.session_state.lang
@@ -1379,6 +1395,7 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
+- ΜΟΡΦΗ ΕΡΩΤΗΣΕΩΝ: ΠΟΤΕ μη γράφεις τίτλους όπως «Ερώτηση Τριάζ #1» ή «Ερώτηση #2». Μίλα απευθείας, σαν να ρωτάει ο/η {hero_name} (ο/η νοσηλευτής/τρια-ήρωας του κατοικιδίου) — π.χ. ξεκίνα φυσικά με «Για να σε βοηθήσω καλύτερα...» ή κατευθείαν με την ερώτηση, χωρίς αριθμημένους τίτλους ή ετικέτες "Τριάζ".
 - ΓΛΩΣΣΑ: Γράφε ΑΠΟΚΛΕΙΣΤΙΚΑ στα Ελληνικά. ΠΟΤΕ μη χρησιμοποιείς κινέζικους/ιαπωνικούς/κορεάτικους ή άλλους μη-ελληνικούς/λατινικούς χαρακτήρες (π.χ. όχι «腹水»). Αν χρειαστείς ιατρικό όρο, γράψ' τον στα Ελληνικά ή Λατινικά.
 - ΥΦΟΣ: Χρησιμοποίησε «Πηγαίνετε» (όχι «Πάντε») και σωστά ελληνικά προστακτικής.
 - Όταν έχεις αρκετά: "Έχω αρκετά στοιχεία — μπορούμε να δημιουργήσουμε κτηνιατρική αναφορά." """
@@ -1398,10 +1415,15 @@ Rules:
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
+- QUESTION FORMAT: NEVER write headings like "Triage Question #1" or "Question #2". Speak directly, as if {hero_name} (the pet's nurse-hero) is asking — e.g. start naturally with "To help you better..." or go straight into the question, with no numbered titles or "Triage" labels.
 - LANGUAGE: Write ONLY in English. NEVER use Chinese/Japanese/Korean or any non-Latin characters (e.g. no «腹水»). Use Latin medical terms if needed.
 - When ready: "I have enough information — we can generate a veterinary report." """
 
-def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" else PETAINURSE_EN
+def petainurse_system(pet=None):
+    base = PETAINURSE_EL if st.session_state.lang=="el" else PETAINURSE_EN
+    sp = (pet or {}).get("species_key","dog")
+    hero_name = MASCOT_NAMES.get(sp, "PetAiNurse")
+    return base.replace("{hero_name}", hero_name)
 
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
@@ -3071,14 +3093,40 @@ def render_vitals():
                     if lang=="el" else "Upload photo of eye, skin, ear, gums or body"))
 
         SCAN_OPTS = {
-            "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
-                   ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                   ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες")],
-            "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
-                   ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                   ("body","🐾 Body"),("paw","🐶 Paws")],
+            "dog": {
+                "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
+                       ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες")],
+                "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
+                       ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
+                       ("body","🐾 Body"),("paw","🐶 Paws")],
+            },
+            "cat": {
+                "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
+                       ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες")],
+                "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
+                       ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
+                       ("body","🐾 Body"),("paw","🐱 Paws")],
+            },
+            "rabbit": {
+                "el": [("eye","👁️ Μάτια"),("skin","🔬 Τρίχωμα/Δέρμα"),
+                       ("ear","👂 Αυτιά"),("mouth","🦷 Δόντια/Στόμα"),
+                       ("body","🐰 Γενική Εμφάνιση"),("paw","🐾 Πατούσες")],
+                "en": [("eye","👁️ Eyes"),("skin","🔬 Fur/Skin"),
+                       ("ear","👂 Ears"),("mouth","🦷 Teeth/Mouth"),
+                       ("body","🐰 Body"),("paw","🐾 Paws")],
+            },
+            "bird": {
+                "el": [("eye","👁️ Μάτια"),("skin","🪶 Φτέρωμα/Δέρμα"),
+                       ("mouth","🦷 Ράμφος/Στόμα"),
+                       ("body","🐦 Γενική Εμφάνιση"),("paw","🐾 Πόδια/Νύχια")],
+                "en": [("eye","👁️ Eyes"),("skin","🪶 Feathers/Skin"),
+                       ("mouth","🦷 Beak/Mouth"),
+                       ("body","🐦 Body"),("paw","🐾 Feet/Claws")],
+            },
         }
-        opts = SCAN_OPTS[lang]
+        opts = SCAN_OPTS.get(sp, SCAN_OPTS["dog"])[lang]
         scan_labels = [o[1] for o in opts]
         scan_keys   = [o[0] for o in opts]
         sel_idx = st.radio(
@@ -3232,7 +3280,7 @@ def render_vitals():
                               f"Φυσ. εύρος: HR {hr_range[0]}-{hr_range[1]}, BR {br_range[0]}-{br_range[1]}, "
                               f"Temp {temp_range[0]}-{temp_range[1]}°C. Σημείωσε ό,τι χρήζει προσοχής.")
                     st.session_state.vitals_analysis = claude(
-                        [{"role":"user","content":prompt}], system=petainurse_system(), max_tokens=3000)
+                        [{"role":"user","content":prompt}], system=petainurse_system(pet), max_tokens=3000)
             st.session_state.screen="triage"; st.rerun()
     with col_s:
         if st.button(t("skip_vitals")): st.session_state.vitals={}; st.session_state.screen="triage"; st.rerun()
@@ -3299,7 +3347,7 @@ def render_triage():
                            f"Παθήσεις: {p.get('conditions','—')}\nΦάρμακα: {p.get('meds_raw','—')}\nΚτηνίατρος: {p.get('vet_name','—')}{photo_ctx}")
             vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
                           if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
-            system_ctx = petainurse_system() + f"\n\n{profile_ctx}\n{vitals_ctx}"
+            system_ctx = petainurse_system(pet) + f"\n\n{profile_ctx}\n{vitals_ctx}"
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
             reply = sanitize_ai_text(reply)
@@ -3510,10 +3558,13 @@ def render_triage():
     st.markdown(
         f'<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;'
         f'padding:8px 14px;margin-bottom:6px;font-weight:600;color:#065F46;font-size:14px">'
-        f'✍️ {"Γράψε εδώ" if lang=="el" else "Write here"}</div>',
+        f'✍️ {"Γράψε εδώ" if lang=="el" else "Write here"} '
+        f'<span style="font-weight:400;color:#047857;font-size:12px">'
+        f'{"(στο πλαίσιο στο κάτω μέρος της οθόνης) ⬇️" if lang=="el" else "(in the box at the bottom of the screen) ⬇️"}'
+        f'</span></div>',
         unsafe_allow_html=True)
 
-    user_input = st.chat_input(t("triage_placeholder"), key="triage_input")
+    user_input = st.chat_input(triage_placeholder_for(pet), key="triage_input")
     if voice_text:
         user_input = voice_text
     if user_input:
@@ -3644,7 +3695,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
 
         with st.spinner("⏳ Περιμένετε, ετοιμάζεται η αναφορά..." if lang=="el" else "⏳ Please wait, preparing the report..."):
             result = claude([{"role":"user","content":report_prompt}],
-                            system=petainurse_system(), max_tokens=6000, timeout=180)
+                            system=petainurse_system(pet), max_tokens=6000, timeout=180)
             if result.startswith("⚠️"):
                 st.error(result)
                 if st.button("🔄 Retry"): st.rerun()
@@ -3775,7 +3826,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                             _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
                         st.session_state.report_gpt = sanitize_ai_text(gpt4o(
                             prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}{_evid}\n\nDo you agree with this veterinary assessment? Take the photo and lab findings above into account. Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
-                            system=petainurse_system(), max_tokens=4000))
+                            system=petainurse_system(pet), max_tokens=4000))
                     st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
