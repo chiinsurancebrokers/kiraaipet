@@ -86,6 +86,9 @@ st.markdown("""
 }
 .pet-hero h1 { font-size: 52px; font-weight: 700; margin: 0; letter-spacing: -1px; }
 .pet-hero p  { font-size: 18px; opacity: 0.85; margin: 12px 0 0; }
+.pet-hero-intro { font-size: 13.5px; opacity: 0.92; line-height: 1.5; max-width: 560px;
+    margin: 4px auto 18px; }
+.pet-hero-intro strong { font-weight: 700; }
 .pet-tagline { font-size: 13px; opacity: 0.65; margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
 
 .card { background: white; border-radius: 16px; padding: 24px 28px; margin-bottom: 20px;
@@ -2693,55 +2696,38 @@ def render_explainer_video(lang):
 def render_home():
     lang = st.session_state.lang
 
-    # Brand character peek — shown once per session on the home screen.
-    # The 4 superheroes (Perro, Gata, Gaz, Ave) are the brand, not interactive
-    # elements. Cursor: default and a clear caption signal "not clickable".
-    if not st.session_state.get("_mascot_peek_dismissed") and MASCOT_IMG:
-        thumbs = ""
-        for k, nm in (("dog","Perro"), ("cat","Gata"), ("rabbit","Gaz"), ("bird","Ave")):
-            b = MASCOT_IMG.get(k)
-            if b:
-                thumbs += (f'<div style="text-align:center"><img src="data:image/jpeg;base64,{b}" '
-                           f'alt="{nm}" style="width:72px;height:72px;object-fit:contain;'
-                           f'background:white;border-radius:14px;padding:4px;'
-                           f'box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:default;display:block"/>'
-                           f'<div style="font-size:10px;font-weight:800;color:#1F2937;'
-                           f'letter-spacing:.06em;margin-top:3px">{nm.upper()}</div></div>')
-        if thumbs:
-            intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
-                     "**ο Perro, η Gata, ο Gaz και ο Ave** — εδώ για να φροντίζουμε τα κατοικίδιά σου."
-                     if lang == "el" else
-                     "We are the PetAiNurse hero squad: "
-                     "**Perro, Gata, Gaz and Ave** — here to look after your pets.")
-            st.markdown(
-                f"""
-<div style="background:linear-gradient(135deg,#ECFDF5,#E0F2FE);
-border:1px solid #BAE6FD;border-radius:20px;padding:18px 20px 14px;margin:6px 0 14px;
-font-family:Inter,system-ui,sans-serif;cursor:default">
-<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:10px">{thumbs}</div>
-<div style="font-size:13.5px;color:#0F2A24;text-align:center;line-height:1.5">{intro}</div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-            cc1, cc2 = st.columns([5, 1])
-            with cc2:
-                if st.button(("Κατάλαβα ✕" if lang == "el" else "Got it ✕"),
-                             key="mascot_peek_close", use_container_width=True):
-                    st.session_state["_mascot_peek_dismissed"] = True
-                    st.rerun()
-
     c1,c2 = st.columns([6,1])
     with c2:
         if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ"):
             st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
 
+    # Brand character intro — the 4 superheroes (Perro, Gata, Gaz, Ave) inside
+    # the green hero band, with a one-time intro line + dismiss button.
+    # (Previously duplicated in a separate band above this one — merged here.)
+    _intro_html = ""
+    if not st.session_state.get("_mascot_peek_dismissed"):
+        intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
+                 "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
+                 if lang == "el" else
+                 "We are the PetAiNurse hero squad: "
+                 "<strong>Perro, Gata, Gaz and Ave</strong> — here to look after your pets.")
+        _intro_html = f'<div class="pet-hero-intro">{intro}</div>'
+
     st.markdown(f'''<div class="pet-hero">
         {render_hero_group(size=110, show_names=True)}
+        {_intro_html}
         <h1>{t("title")}</h1>
         <p>{t("subtitle")}</p>
         <div class="pet-tagline">{t("tagline")}</div>
     </div>''', unsafe_allow_html=True)
+
+    if not st.session_state.get("_mascot_peek_dismissed"):
+        cc1, cc2 = st.columns([5, 1])
+        with cc2:
+            if st.button(("Κατάλαβα ✕" if lang == "el" else "Got it ✕"),
+                         key="mascot_peek_close", use_container_width=True):
+                st.session_state["_mascot_peek_dismissed"] = True
+                st.rerun()
 
     _render_disclaimer_strip()
 
@@ -3270,15 +3256,17 @@ def render_triage():
     _render_page_helper(
         "triage",
         "Πώς λειτουργεί η εκτίμηση συμπτωμάτων",
-        "Η PetAiNurse κάνει **μία ερώτηση κάθε φορά** για να καταλάβει τι συμβαίνει. "
-        "Απάντησε με δικά σου λόγια (ή με φωνή 🎙️), ή πάτησε μια **γρήγορη επιλογή** πιο κάτω. "
-        "Μπορείς να ανεβάσεις **εξετάσεις** ή να έχεις ήδη ανεβάσει **φωτογραφία** — ενσωματώνονται στην εκτίμηση. "
-        "Όταν συγκεντρωθούν αρκετά στοιχεία, ενεργοποιείται το κουμπί **«Δημιουργία Κτηνιατρικής Αναφοράς»**.",
+        "Η PetAiNurse κάνει **μία ερώτηση κάθε φορά** για να καταλάβει τι συμβαίνει — απάντησε με δικά σου λόγια ή με φωνή 🎙️. "
+        "Παρακάτω θα βρεις: **🔎 Συχνές παθήσεις** για το είδος του κατοικίδιου σου (καθαρά ενημερωτικά, όχι διάγνωση), "
+        "**📅 Ημερολόγιο συμπτωμάτων** για καταγραφή στο χρόνο, **🧪 Εργαστηριακές εξετάσεις** για ανέβασμα αποτελεσμάτων, "
+        "και **γρήγορες επιλογές** συμπτωμάτων που μπορείς να επιλέξεις με ένα κλικ — όλα ενσωματώνονται αυτόματα στην εκτίμηση. "
+        "Μπορείς επίσης να ανεβάσεις **φωτογραφία**. Όταν συγκεντρωθούν αρκετά στοιχεία, ενεργοποιείται το «Δημιουργία Κτηνιατρικής Αναφοράς».",
         title_en="How the symptom assessment works",
-        body_en="PetAiNurse asks **one question at a time** to understand what's going on. "
-                "Answer in your own words (or by voice 🎙️), or tap a **quick option** below. "
-                "You can upload **lab results** or an already-uploaded **photo** — they're folded into the assessment. "
-                "Once there's enough information, the **“Generate Veterinary Report”** button unlocks.",
+        body_en="PetAiNurse asks **one question at a time** to understand what's going on — answer in your own words or by voice 🎙️. "
+                "Below you'll find: **🔎 Common conditions** for your pet's species (informational only, not a diagnosis), "
+                "**📅 Symptom log** for tracking over time, **🧪 Lab results** for uploading test results, "
+                "and **quick-select symptoms** you can tap with one click — everything is automatically folded into the assessment. "
+                "You can also upload a **photo**. Once there's enough information, the “Generate Veterinary Report” button unlocks.",
     )
 
     # Common conditions for this pet's species — same heads-up shown during
@@ -3359,22 +3347,24 @@ def render_triage():
         },
     }
     chips = CHIPS.get(sp, CHIPS["dog"])[lang]
+    # Fold in the "common conditions" titles for this species as extra quick
+    # options too — appended just before "Other"/"Άλλο" so the most common
+    # named conditions (e.g. "Στοματική νόσος", "Παράσιτα") are one tap away,
+    # not just inside the collapsed "Συχνές παθήσεις" expander above.
+    _cc_titles = [ti for (_ic, ti, _sb) in (COMMON_CONDITIONS.get(sp, {}).get(lang) or [])]
+    _other = chips[-1] if chips and chips[-1] in ("Άλλο", "Other") else None
+    _base = chips[:-1] if _other else chips
+    chips = _base + [c for c in _cc_titles if c not in _base] + ([_other] if _other else [])
+
     st.caption("Γρήγορη επιλογή:" if lang=="el" else "Quick select:")
-    row1,row2 = chips[:8], chips[8:]
-    cr1 = st.columns(len(row1))
-    for ci,chip in enumerate(row1):
-        with cr1[ci]:
-            sel = chip in st.session_state.symptom_chips
-            if st.button(("✓ " if sel else "")+chip, key=f"chip_{ci}", use_container_width=True):
-                if chip in st.session_state.symptom_chips: st.session_state.symptom_chips.remove(chip)
-                else: st.session_state.symptom_chips.append(chip)
-                st.rerun()
-    if row2:
-        cr2 = st.columns(len(row2))
-        for ci,chip in enumerate(row2):
-            with cr2[ci]:
+    _CHIP_ROW = 8
+    for row_start in range(0, len(chips), _CHIP_ROW):
+        row = chips[row_start:row_start+_CHIP_ROW]
+        cols = st.columns(_CHIP_ROW)
+        for ci, chip in enumerate(row):
+            with cols[ci]:
                 sel = chip in st.session_state.symptom_chips
-                if st.button(("✓ " if sel else "")+chip, key=f"chip2_{ci}", use_container_width=True):
+                if st.button(("✓ " if sel else "")+chip, key=f"chip_{row_start+ci}", use_container_width=True):
                     if chip in st.session_state.symptom_chips: st.session_state.symptom_chips.remove(chip)
                     else: st.session_state.symptom_chips.append(chip)
                     st.rerun()
@@ -4339,20 +4329,9 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
 </div>
 """, unsafe_allow_html=True)
 
-    # "How it works" steps
-    steps_html = "".join(
-        f'<div class="pan-hr-step"><div class="pan-hr-step-num">{num}</div>'
-        f'<div class="pan-hr-step-icon">{icon}</div>'
-        f'<div class="pan-hr-step-title">{title}</div>'
-        f'<div class="pan-hr-step-sub">{sub}</div></div>'
-        for (num, icon, title, sub) in d["steps"]
-    )
-    st.markdown(f"""
-<div class="pan-hr-steps">
-  <div class="pan-hr-steps-title">{d['steps_title']}</div>
-  <div class="pan-hr-steps-row">{steps_html}</div>
-</div>
-""", unsafe_allow_html=True)
+    # "How it works" — detailed 7-step walkthrough (merged in from the old
+    # 'home' screen, which duplicated most of this hero screen's content).
+    render_explainer_video(lang)
 
     # Audience cards
     st.markdown(f"""
@@ -4375,6 +4354,45 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
   </a>
 </div>
 """, unsafe_allow_html=True)
+
+    # Trust / feature cards + lifestyle strip — merged in from the old 'home'
+    # screen, which duplicated most of this hero screen's content.
+    _f2_title = "Τοξικότητα & Ασφάλεια" if lang=="el" else "Toxicity & Safety"
+    _f2_body  = ("Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες."
+                 if lang=="el" else
+                 "Automatic detection of toxic substances — especially critical for cats.")
+    _f3_title = "Για Pet Sitters" if lang=="el" else "For Pet Sitters"
+    _f3_body  = ("Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο."
+                  if lang=="el" else
+                  "Looking after someone else's pet? Create a quick report for the owner or vet.")
+    _f4_body  = ("Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς."
+                  if lang=="el" else
+                  "Links to the official services of the National Pet Registry.")
+    if lang == "el":
+        _chips_html = (
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>'
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Κρεμμύδι</span>'
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Παρακεταμόλη</span>'
+        )
+    else:
+        _chips_html = (
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Chocolate</span>'
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Onion</span>'
+            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Paracetamol</span>'
+        )
+    f1,f2,f3,f4 = st.columns(4)
+    with f1:
+        st.markdown(f'<div class="card"><div style="font-size:32px">📋</div><h3 style="margin-top:12px">MSD Veterinary Manual</h3><p style="font-size:13px;color:#6B7280">{"Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής." if lang=="el" else "Every report is backed by the MSD Vet Manual — the gold standard in veterinary medicine."}</p></div>', unsafe_allow_html=True)
+    with f2:
+        st.markdown(f'''<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">{_f2_title}</h3>
+            <p style="font-size:13px;color:#6B7280">{_f2_body}</p>
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">{_chips_html}</div></div>''', unsafe_allow_html=True)
+    with f3:
+        st.markdown(f'<div class="card"><div style="font-size:32px">👥</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
+    with f4:
+        st.markdown(f'<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></div>', unsafe_allow_html=True)
+
+    render_lifestyle_strip(lang)
 
     # Bottom CTA band
     st.markdown(f"""
@@ -4549,12 +4567,18 @@ if auth_enabled() and not is_logged_in():
     st.stop()
 
 screen = st.session_state.screen
-if   screen=="home":   render_home()
+if screen == "home":
+    # The standalone 'home' screen was merged into the hero screen (which is
+    # always shown first via _hero_seen gating above). Reaching screen=="home"
+    # here means the user is past the hero/login and ready to start —
+    # go straight into the intake flow.
+    st.session_state.screen = "intake"
+    st.rerun()
 elif screen=="intake": render_intake()
 elif screen=="vitals": render_vitals()
 elif screen=="triage": render_triage()
 elif screen=="report": render_report()
-else: render_home()
+else: render_intake()
 
 # Persist login cookie on a clean render pass after successful login
 if auth_enabled() and is_logged_in() and _STX_OK:
