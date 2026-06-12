@@ -29,6 +29,14 @@ except Exception:
     ILLUSTRATIONS = {}
     MASCOT_IMAGES = {}
 
+# Superhero mascots (Perro/Gata/Gaz/Ave) — the new brand characters
+try:
+    from assets_heroes import HERO_IMAGES, HERO_NAMES, HERO_PNGS
+except Exception:
+    HERO_IMAGES = {}
+    HERO_NAMES = {}
+    HERO_PNGS = {}
+
 # Real pet photographs (replace the SVG illustrations the user disliked)
 try:
     from assets_photos import PET_PHOTOS
@@ -1361,11 +1369,12 @@ def petainurse_system(): return PETAINURSE_EL if st.session_state.lang=="el" els
 
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
-MASCOT_IMG = {
+# ── MASCOTS (new superhero characters — Perro / Gata / Gaz / Ave) ────────────
+MASCOT_IMG = dict(HERO_IMAGES) if HERO_IMAGES else {
     "dog": MASCOT_IMAGES.get("perro", ""),
     "cat": MASCOT_IMAGES.get("gato", ""),
 }
-MASCOT_NAMES = {"dog": "Perro", "cat": "Gata"}
+MASCOT_NAMES = dict(HERO_NAMES) if HERO_NAMES else {"dog": "Perro", "cat": "Gata"}
 
 def render_mascot(species_key="dog", size=72, style="", circle=False):
     """Render a mascot image inline. species_key: 'dog', 'cat', or anything else
@@ -1380,21 +1389,51 @@ def render_mascot(species_key="dog", size=72, style="", circle=False):
         name = MASCOT_NAMES.get(species_key, "PetAiNurse")
         return (f'<span style="display:inline-block;{base_style}">'
                 f'<img src="data:image/jpeg;base64,{b64}" alt="{name}" style="{img_style}"/></span>')
-    # unknown species or missing image → show both mascots smaller, side by side
-    half = int(size*0.62)
+    # unknown species or missing image → show all available heroes side by side
+    keys = [k for k in ("dog","cat","rabbit","bird") if MASCOT_IMG.get(k)]
+    if not keys:
+        return ""
+    half = max(int(size / max(1.6, len(keys)*0.7)), 28)
     parts = []
-    for k in ("dog","cat"):
+    for k in keys:
         b = MASCOT_IMG.get(k)
         if b:
             n = MASCOT_NAMES.get(k,"")
-            parts.append(f'<span style="width:{half}px;height:{half}px"><img src="data:image/jpeg;base64,{b}" alt="{n}" style="{img_style}"/></span>')
+            parts.append(f'<span style="width:{half}px;height:{half}px;display:inline-block"><img src="data:image/jpeg;base64,{b}" alt="{n}" style="{img_style}"/></span>')
     return f'<span style="display:inline-flex;gap:2px;{base_style}">' + "".join(parts) + '</span>'
 
+
+def render_hero_group(size=110, show_names=True, bg="white", gap=14):
+    """Render all available superheroes in a row — Perro, Gata, Gaz, Ave.
+    Used as the new brand band on welcome / home / hero / login screens."""
+    keys = [k for k in ("dog","cat","rabbit","bird") if MASCOT_IMG.get(k)]
+    if not keys:
+        return ""
+    tiles = []
+    for k in keys:
+        b64 = MASCOT_IMG.get(k)
+        nm = MASCOT_NAMES.get(k, "")
+        name_html = (
+            f'<div style="font-size:11px;font-weight:800;color:#1F2937;'
+            f'letter-spacing:.08em;margin-top:6px;text-align:center">{nm.upper()}</div>'
+            if show_names and nm else ""
+        )
+        tiles.append(
+            f'<div style="background:{bg};border-radius:20px;padding:10px 12px 8px;'
+            f'box-shadow:0 6px 18px rgba(0,0,0,0.10);cursor:default;text-align:center">'
+            f'<img src="data:image/jpeg;base64,{b64}" alt="{nm}" '
+            f'style="width:{size}px;height:{size}px;object-fit:contain;display:block"/>'
+            f'{name_html}</div>'
+        )
+    return (f'<div style="display:flex;justify-content:center;flex-wrap:wrap;'
+            f'gap:{gap}px;margin:6px 0">' + "".join(tiles) + "</div>")
+
+
 def mascot_for_pet(pet=None):
-    """Return the mascot key ('dog'/'cat'/None) for the given pet profile."""
+    """Return the mascot key for the given pet profile, if we have art for it."""
     pet = pet or st.session_state.get("pet", {})
     sp = pet.get("species_key", "")
-    if sp in ("dog","cat"):
+    if sp in MASCOT_IMG and MASCOT_IMG.get(sp):
         return sp
     return None
 
@@ -2054,36 +2093,36 @@ def render_travel_ad_banner(lang):
     and copy, but fluid-width instead of a fixed 1080x1920 story poster."""
     if lang == "en":
         d = dict(
-            tag_icon="🐾", tag="PETAINURSE · TRAVEL ESSENTIALS",
-            h1="4 things", h1_accent="before you go.",
-            sub_strong="The packing list for your pet.",
-            sub="Because you never know when you'll need it.",
-            ttl="🧳 Pet Travel Checklist", ttl_sub="Don't travel without these",
+            tag_icon="☀️", tag="PETAINURSE · SUMMER ESSENTIALS",
+            h1="Heading on holiday", h1_accent="with your pet?",
+            sub_strong="4 things to pack before you leave.",
+            sub="A relaxed summer means being prepared.",
+            ttl="🧳 Pet Summer Checklist", ttl_sub="For the beach, the road, and everywhere in between",
             items=[
                 ("01","📘","Pet passport","+ vaccination booklet & microchip", False),
-                ("02","🦮","Leash & collar","+ ID tag with contact details", False),
-                ("03","💊","Medications & parasite prevention","Food, water, current medication list", False),
-                ("04","🩺","PetAiNurse","AI vet nurse in your pocket", True),
+                ("02","💧","Water, bowl & shade","Hydration + a beach umbrella for them too", False),
+                ("03","💊","Medications & parasite prevention","Heat-stable storage + current med list", False),
+                ("04","🩺","PetAiNurse","AI vet nurse in your pocket — wherever you travel", True),
             ],
             tagline="\u201cTell us what you're noticing. Get an assessment. Anywhere.\u201d",
-            url="petainurse.com",
+            url="https://petainurse.up.railway.app/",
             pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Free"],
         )
     else:
         d = dict(
-            tag_icon="🐾", tag="PETAINURSE · TRAVEL ESSENTIALS",
-            h1="4 πράγματα", h1_accent="πριν φύγετε.",
-            sub_strong="Η packing list για το κατοικίδιό σου.",
-            sub="Γιατί δεν ξέρεις πότε θα τον χρειαστείς.",
-            ttl="🧳 Pet Travel Checklist", ttl_sub="Δεν ταξιδεύετε χωρίς αυτά",
+            tag_icon="☀️", tag="PETAINURSE · SUMMER ESSENTIALS",
+            h1="Ετοιμάζεσαι για διακοπές", h1_accent="με το κατοικίδιό σου;",
+            sub_strong="4 πράγματα που πρέπει να πακετάρεις πριν φύγεις.",
+            sub="Ξέγνοιαστο καλοκαίρι σημαίνει να είσαι προετοιμασμένος.",
+            ttl="🧳 Pet Summer Checklist", ttl_sub="Για την παραλία, τον δρόμο, και παντού στο μεταξύ",
             items=[
                 ("01","📘","Διαβατήριο κατοικιδίου","+ βιβλιάριο εμβολίων & microchip", False),
-                ("02","🦮","Λουρί & κολάρο","+ ταμπελάκι με στοιχεία επικοινωνίας", False),
-                ("03","💊","Φάρμακα & αντιπαρασιτικά","Τρόφιμα, νερό, λίστα τρέχουσας αγωγής", False),
-                ("04","🩺","PetAiNurse","AI κτηνιατρικός νοσηλευτής στην τσέπη σου", True),
+                ("02","💧","Νερό, μπολ & σκιά","Ενυδάτωση + μια ομπρέλα παραλίας και γι' αυτόν", False),
+                ("03","💊","Φάρμακα & αντιπαρασιτικά","Φύλαξη μακριά από ζέστη + λίστα τρέχουσας αγωγής", False),
+                ("04","🩺","PetAiNurse","AI κτηνιατρικός νοσηλευτής στην τσέπη σου — όπου κι αν ταξιδέψεις", True),
             ],
             tagline="«Πες τι παρατηρείς. Λάβε εκτίμηση. Παντού.»",
-            url="petainurse.com",
+            url="https://petainurse.up.railway.app/",
             pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Δωρεάν"],
         )
 
@@ -2106,20 +2145,86 @@ def render_travel_ad_banner(lang):
 
     pills_html = "".join(f'<span class="pan-ta-pill">{p}</span>' for p in d["pills"])
 
+    # Inline summer beach scene — sand, sea, umbrella, palm. Perro and Gata
+    # sit under the umbrella as PNG overlays (transparent bg, so they blend in).
+    dog_png = HERO_PNGS.get("dog") or MASCOT_IMG.get("dog", "")
+    cat_png = HERO_PNGS.get("cat") or MASCOT_IMG.get("cat", "")
+    _dog_mime = "image/png" if HERO_PNGS.get("dog") else "image/jpeg"
+    _cat_mime = "image/png" if HERO_PNGS.get("cat") else "image/jpeg"
+    pets_html = ""
+    if cat_png:
+        pets_html += (f'<image href="data:{_cat_mime};base64,{cat_png}" x="260" y="120" '
+                      f'width="130" height="130" preserveAspectRatio="xMidYMid meet"/>')
+    if dog_png:
+        pets_html += (f'<image href="data:{_dog_mime};base64,{dog_png}" x="380" y="140" '
+                      f'width="120" height="120" preserveAspectRatio="xMidYMid meet"/>')
+    beach_svg = f"""
+<div class="pan-ta-beach">
+<svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block">
+  <defs>
+    <linearGradient id="ptSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7DD3FC"/><stop offset="100%" stop-color="#BAE6FD"/>
+    </linearGradient>
+    <linearGradient id="ptSea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0891B2"/><stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="ptSand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDE68A"/><stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="800" height="170" fill="url(#ptSky)"/>
+  <rect x="0" y="160" width="800" height="50" fill="url(#ptSea)"/>
+  <path d="M0,200 Q200,180 400,200 T800,200 L800,280 L0,280 Z" fill="url(#ptSand)"/>
+  <circle cx="650" cy="70" r="38" fill="#FCD34D"/>
+  <circle cx="650" cy="70" r="50" fill="#FCD34D" opacity="0.3"/>
+  <!-- Beach umbrella -->
+  <rect x="343" y="120" width="4" height="120" fill="#92400E"/>
+  <path d="M255,130 Q345,40 435,130 Z" fill="#DC2626"/>
+  <path d="M255,130 Q275,90 295,130 Z" fill="#FCA5A5"/>
+  <path d="M295,130 Q325,75 355,130 Z" fill="#FECACA"/>
+  <path d="M355,130 Q385,75 415,130 Z" fill="#FCA5A5"/>
+  <path d="M415,130 Q425,90 435,130 Z" fill="#FECACA"/>
+  <!-- Palm tree -->
+  <rect x="90" y="140" width="9" height="100" fill="#92400E"/>
+  <path d="M95,140 Q40,110 30,80 Q70,100 95,135 Z" fill="#16A34A"/>
+  <path d="M95,140 Q160,110 175,80 Q130,100 100,135 Z" fill="#15803D"/>
+  <path d="M95,140 Q50,160 30,180 Q70,150 100,140 Z" fill="#16A34A"/>
+  <!-- Beach ball -->
+  <circle cx="500" cy="230" r="14" fill="#DB2777"/>
+  <path d="M486,230 A14,14 0 0,1 514,230" fill="#FCD34D" opacity="0.8"/>
+  <!-- Pets overlay -->
+  {pets_html}
+</svg>
+</div>
+"""
+
     st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800;1,900&family=Inter:wght@400;500;600;700;800&display=swap');
 .pan-ta-wrap {{
-  background: linear-gradient(180deg, #FFF7ED 0%, #FEF3C7 45%, #E0F2FE 100%);
+  background: linear-gradient(180deg, #DBF4FF 0%, #BAE6FD 35%, #FEF3C7 90%, #FDE68A 100%);
   border-radius: 24px; padding: 32px 28px;
   margin: 12px 0 24px; font-family: 'Inter', system-ui, sans-serif;
   position: relative; overflow: hidden;
 }}
+.pan-ta-wrap::before {{
+  content: ""; position: absolute; top: 14px; right: 20px;
+  width: 70px; height: 70px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #FCD34D 0%, #F59E0B 70%, transparent 71%);
+  box-shadow: 0 0 60px rgba(252, 211, 77, 0.55);
+}}
+.pan-ta-wrap::after {{
+  content: ""; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 22%; background: linear-gradient(180deg, transparent, #FDE68A 30%, #FBBF24 100%);
+  border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
+  z-index: 0;
+}}
+.pan-ta-wrap > * {{ position: relative; z-index: 1; }}
 .pan-ta-tag {{
   display: inline-flex; align-items: center; gap: 8px;
   background: white; border-radius: 999px; padding: 8px 18px;
   font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
-  color: #EA580C; box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+  color: #0891B2; box-shadow: 0 3px 10px rgba(0,0,0,0.06);
   margin-bottom: 18px;
 }}
 .pan-ta-h1 {{
@@ -2127,7 +2232,7 @@ def render_travel_ad_banner(lang):
   font-size: 34px; font-weight: 800; line-height: 1.05;
   color: #1A1A2E; letter-spacing: -1px; margin-bottom: 10px;
 }}
-.pan-ta-h1 .accent {{ display: block; color: #DB2777; font-style: italic; }}
+.pan-ta-h1 .accent {{ display: block; color: #0891B2; font-style: italic; }}
 .pan-ta-sub {{
   font-size: 14px; color: #4B5563; line-height: 1.55; margin-bottom: 22px; max-width: 460px;
 }}
@@ -2146,30 +2251,32 @@ def render_travel_ad_banner(lang):
   border-radius: 14px; margin-bottom: 10px;
 }}
 .pan-ta-item-hero {{
-  background: linear-gradient(135deg, #FFF7ED 0%, #FCE7F3 100%);
-  border: 2px solid #EA580C; box-shadow: 0 6px 16px rgba(234,88,12,0.15);
+  background: linear-gradient(135deg, #E0F2FE 0%, #FEF3C7 100%);
+  border: 2px solid #0891B2; box-shadow: 0 6px 16px rgba(8,145,178,0.18);
 }}
 .pan-ta-num {{
   font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
   font-size: 22px; color: rgba(0,0,0,0.13); width: 30px; text-align: center; flex-shrink: 0;
 }}
-.pan-ta-item-hero .pan-ta-num {{ color: rgba(234,88,12,0.30); }}
+.pan-ta-item-hero .pan-ta-num {{ color: rgba(8,145,178,0.35); }}
 .pan-ta-check {{
   width: 28px; height: 28px; border: 2px solid #1A1A2E; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 15px; font-weight: 900; color: #1A1A2E; background: white; flex-shrink: 0;
 }}
-.pan-ta-item-hero .pan-ta-check {{ background: #EA580C; border-color: #EA580C; color: white; }}
+.pan-ta-item-hero .pan-ta-check {{ background: #0891B2; border-color: #0891B2; color: white; }}
 .pan-ta-icon {{ font-size: 28px; flex-shrink: 0; }}
 .pan-ta-text {{ flex: 1; min-width: 0; }}
 .pan-ta-label {{ font-size: 14.5px; font-weight: 800; color: #1A1A2E; line-height: 1.2; }}
-.pan-ta-item-hero .pan-ta-label {{ color: #9A3412; }}
+.pan-ta-item-hero .pan-ta-label {{ color: #075985; }}
 .pan-ta-sub-line {{ font-size: 12px; color: #6B7280; font-weight: 500; }}
 .pan-ta-item .pan-ta-sub {{ font-size: 12px; color: #6B7280; font-weight: 500; margin: 0; max-width: none; }}
-.pan-ta-item-hero .pan-ta-sub {{ color: #C2410C; font-weight: 600; }}
+.pan-ta-item-hero .pan-ta-sub {{ color: #0E7490; font-weight: 600; }}
 .pan-ta-footer {{ text-align: center; margin-top: 16px; padding-top: 14px; border-top: 2px dashed #D1D5DB; }}
 .pan-ta-tagline {{ font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 15px; color: #1A1A2E; margin-bottom: 8px; }}
-.pan-ta-url {{ font-size: 15px; font-weight: 800; color: #EA580C; }}
+.pan-ta-url {{ font-size: 14px; font-weight: 800; color: #0891B2; word-break: break-all; }}
+.pan-ta-url a {{ color: #0891B2; text-decoration: none; }}
+.pan-ta-url a:hover {{ text-decoration: underline; }}
 .pan-ta-url .arrow {{ color: #DB2777; margin-right: 6px; }}
 .pan-ta-pills {{
   display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
@@ -2178,6 +2285,10 @@ def render_travel_ad_banner(lang):
 .pan-ta-pill {{
   background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.06);
   border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #4B5563;
+}}
+.pan-ta-beach {{
+  border-radius: 18px; overflow: hidden; max-width: 640px; margin: 0 auto 16px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.10); aspect-ratio: 800 / 280; line-height: 0;
 }}
 @media (max-width: 640px) {{
   .pan-ta-wrap {{ padding: 22px 16px; border-radius: 18px; }}
@@ -2189,12 +2300,13 @@ def render_travel_ad_banner(lang):
 <div class="pan-ta-tag">{d['tag_icon']} {d['tag']}</div>
 <div class="pan-ta-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span></div>
 <div class="pan-ta-sub"><strong>{d['sub_strong']}</strong><br>{d['sub']}</div>
+{beach_svg}
 <div class="pan-ta-suitcase">
 <div class="pan-ta-ttl"><div class="t">{d['ttl']}</div><div class="s">{d['ttl_sub']}</div></div>
 {items_html}
 <div class="pan-ta-footer">
 <div class="pan-ta-tagline">{d['tagline']}</div>
-<div class="pan-ta-url"><span class="arrow">→</span>{d['url']}</div>
+<div class="pan-ta-url"><span class="arrow">→</span><a href="{d['url']}" target="_blank" rel="noopener">{d['url']}</a></div>
 </div>
 </div>
 <div class="pan-ta-pills">{pills_html}</div>
@@ -2549,31 +2661,32 @@ def render_home():
     lang = st.session_state.lang
 
     # Brand character peek — shown once per session on the home screen.
-    # Perro (sidekick) and Gata (sidekick) are the mascots; they're a *brand*
-    # element, not an interactive element, so they get a clear caption and
-    # cursor: default. Dismissible via the ✕.
-    if not st.session_state.get("_mascot_peek_dismissed"):
-        dog_b64 = MASCOT_IMG.get("dog")
-        cat_b64 = MASCOT_IMG.get("cat")
-        if dog_b64 and cat_b64:
-            p1, p2 = ("Γεια! Είμαι ο Perro." , "Κι εγώ η Gata!") if lang == "el" \
-                     else ("Hi! I'm Perro.", "And I'm Gata!")
-            tag = ("Οι φύλακες-ήρωες της PetAiNurse"
-                   if lang == "el" else
-                   "The hero-guardians of PetAiNurse")
+    # The 4 superheroes (Perro, Gata, Gaz, Ave) are the brand, not interactive
+    # elements. Cursor: default and a clear caption signal "not clickable".
+    if not st.session_state.get("_mascot_peek_dismissed") and MASCOT_IMG:
+        thumbs = ""
+        for k, nm in (("dog","Perro"), ("cat","Gata"), ("rabbit","Gaz"), ("bird","Ave")):
+            b = MASCOT_IMG.get(k)
+            if b:
+                thumbs += (f'<div style="text-align:center"><img src="data:image/jpeg;base64,{b}" '
+                           f'alt="{nm}" style="width:72px;height:72px;object-fit:contain;'
+                           f'background:white;border-radius:14px;padding:4px;'
+                           f'box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:default;display:block"/>'
+                           f'<div style="font-size:10px;font-weight:800;color:#1F2937;'
+                           f'letter-spacing:.06em;margin-top:3px">{nm.upper()}</div></div>')
+        if thumbs:
+            intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
+                     "**ο Perro, η Gata, ο Gaz και ο Ave** — εδώ για να φροντίζουμε τα κατοικίδιά σου."
+                     if lang == "el" else
+                     "We are the PetAiNurse hero squad: "
+                     "**Perro, Gata, Gaz and Ave** — here to look after your pets.")
             st.markdown(
                 f"""
-<div style="position:relative;background:linear-gradient(135deg,#ECFDF5,#E0F2FE);
-border:1px solid #BAE6FD;border-radius:18px;padding:16px 18px 14px;margin:6px 0 14px;
-display:flex;align-items:center;gap:14px;font-family:Inter,system-ui,sans-serif;cursor:default">
-<img src="data:image/jpeg;base64,{dog_b64}" alt="Perro" style="width:88px;height:88px;object-fit:cover;border-radius:14px;background:white;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:default"/>
-<img src="data:image/jpeg;base64,{cat_b64}" alt="Gata" style="width:88px;height:88px;object-fit:cover;border-radius:14px;background:white;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:default"/>
-<div style="flex:1;min-width:0">
-<div style="font-size:14px;font-weight:700;color:#0F2A24;line-height:1.4">
-<span style="color:#059669">{p1}</span> {p2}
-</div>
-<div style="font-size:12px;color:#475569;margin-top:4px">{tag}</div>
-</div>
+<div style="background:linear-gradient(135deg,#ECFDF5,#E0F2FE);
+border:1px solid #BAE6FD;border-radius:20px;padding:18px 20px 14px;margin:6px 0 14px;
+font-family:Inter,system-ui,sans-serif;cursor:default">
+<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:10px">{thumbs}</div>
+<div style="font-size:13.5px;color:#0F2A24;text-align:center;line-height:1.5">{intro}</div>
 </div>
 """,
                 unsafe_allow_html=True,
@@ -2591,10 +2704,7 @@ display:flex;align-items:center;gap:14px;font-family:Inter,system-ui,sans-serif;
             st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
 
     st.markdown(f'''<div class="pet-hero">
-        <div style="display:flex;justify-content:center;gap:18px;margin-bottom:4px">
-            <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10);cursor:default;text-align:center">{render_mascot("dog", size=120)}<div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.06em;margin-top:4px">PERRO</div></div>
-            <div style="background:white;border-radius:18px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,0.10);cursor:default;text-align:center">{render_mascot("cat", size=120)}<div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.06em;margin-top:4px">GATA</div></div>
-        </div>
+        {render_hero_group(size=110, show_names=True)}
         <h1>{t("title")}</h1>
         <p>{t("subtitle")}</p>
         <div class="pet-tagline">{t("tagline")}</div>
@@ -4204,12 +4314,9 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
         cta1 = st.button(d["cta_primary"], type="primary", use_container_width=True, key="hero_cta_primary")
     cta2 = False
 
-    # Mascots + floating feature cards
+    # Mascots + floating feature cards — full hero squad (Perro/Gata/Gaz/Ave)
     st.markdown(f"""
-  <div class="pan-hr-mascots">
-    <div>{render_mascot("dog", size=110)}</div>
-    <div>{render_mascot("cat", size=110)}</div>
-  </div>
+  {render_hero_group(size=120, show_names=True)}
   <div class="pan-hr-cards">
     <div class="pan-hr-card c1"><span class="ic">🐾</span>{d['card1']}<span class="check">✓</span></div>
     <div class="pan-hr-card c2"><span class="ic">🔎</span>{d['card2']}<span class="check">✓</span></div>
@@ -4331,10 +4438,7 @@ def render_login_hero(lang):
   <div class="pan-hero-kicker">🐾 {kicker}</div>
   <div class="pan-hero-title">{title} <span class="accent">{accent}</span></div>
   <div class="pan-hero-sub">{sub}</div>
-  <div class="pan-hero-mascots">
-    <div>{render_mascot("dog", size=64)}</div>
-    <div>{render_mascot("cat", size=64)}</div>
-  </div>
+  {render_hero_group(size=72, show_names=True, gap=10)}
 </div>
 """, unsafe_allow_html=True)
 
