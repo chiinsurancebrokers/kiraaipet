@@ -647,6 +647,9 @@ def sanitize_ai_text(text):
     text = _re_san.sub(r"\bΠΑΝΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
     text = _re_san.sub(r"\bΠάντε\b", "Πηγαίνετε", text)
     text = _re_san.sub(r"\bπάντε\b", "πηγαίνετε", text)
+    text = _re_san.sub(r"\bΠΑΓΑΙΝΕΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
+    text = _re_san.sub(r"\bΠαγαίνετε\b", "Πηγαίνετε", text)
+    text = _re_san.sub(r"\bπαγαίνετε\b", "πηγαίνετε", text)
     # 1c) tidy stray double-space left after stripping CJK, e.g. "腹水 (x)" -> " (x)"
     text = _re_san.sub(r"(?<=\S) {2,}\(", " (", text)
     # 2) remove a blockquote line that was cut off mid-sentence (no closing on
@@ -829,6 +832,54 @@ def logout():
         if "pe" in st.query_params: del st.query_params["pe"]
     except Exception:
         pass
+
+# ── ADMIN-CONFIGURABLE APP SETTINGS (B2B2C: featured vet, emergency vets, links) ──
+# Stored in a Supabase table "app_settings" (key TEXT primary key, value JSONB)
+# if Supabase is configured; otherwise falls back to a local JSON file. The
+# local file fallback is fine for development but does NOT persist across
+# redeploys on platforms like Railway — configure SUPABASE_URL/ANON_KEY for
+# production persistence.
+_LOCAL_SETTINGS_PATH = os.path.join(os.path.dirname(__file__), "_app_settings.json")
+
+def _load_local_settings():
+    try:
+        with open(_LOCAL_SETTINGS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_local_settings(data):
+    try:
+        with open(_LOCAL_SETTINGS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+def get_app_setting(key, default=None):
+    sb = _supabase_client()
+    if sb:
+        try:
+            res = sb.table("app_settings").select("value").eq("key", key).limit(1).execute()
+            rows = res.data or []
+            if rows and rows[0].get("value") is not None:
+                return rows[0]["value"]
+            return default
+        except Exception:
+            pass
+    return _load_local_settings().get(key, default)
+
+def set_app_setting(key, value):
+    sb = _supabase_client()
+    if sb:
+        try:
+            sb.table("app_settings").upsert({"key": key, "value": value}, on_conflict="key").execute()
+            return True
+        except Exception:
+            pass
+    data = _load_local_settings()
+    data[key] = value
+    return _save_local_settings(data)
 
 def render_login_gate():
     """Inline email->OTP login. Returns True once the user is logged in
@@ -1250,8 +1301,11 @@ def _render_page_helper(screen_key, title_el, body_el, title_en=None, body_en=No
 # page (which previously confused users).
 _EMERGENCY_KEYWORDS = (
     "επειγον", "κοκκινη σημαια", "πηγαινετε αμεσα", "πηγαινετε τωρα",
+    "παγαινετε αμεσα", "παγαινετε τωρα",
     "αμεσα στον κτηνιατρο", "αμεσα στο κτηνιατρειο",
+    "κρισιμη κατασταση", "απαιτειται αμεση δραση",
     "emergency", "red flag", "go to the vet immediately", "right now to the vet",
+    "critical situation", "immediate action required",
 )
 
 def _set_emergency_from_text(text):
@@ -1391,7 +1445,7 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
 
 Κανόνες:
 - ΠΑΝΤΑ συστήνεις κτηνίατρο για διάγνωση/θεραπεία
-- Κόκκινες σημαίες → ΑΜΕΣΟ επείγον κτηνιατρείο
+- Κόκκινες σημαίες → ΑΜΕΣΟ επείγον κτηνιατρείο. Σε αυτή την περίπτωση ΣΤΑΜΑΤΑ το τριάζ — ΜΗΝ κάνεις άλλη ερώτηση. Πες με μία σαφή, σύντομη πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ» και τελείωσε εκεί.
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
@@ -1411,7 +1465,7 @@ Role:
 
 Rules:
 - Always recommend a vet for diagnosis/treatment
-- Red flags → IMMEDIATE emergency vet
+- Red flags → IMMEDIATE emergency vet. In this case STOP the triage — do NOT ask any further questions. State in one clear, short sentence "🚨 GO TO A VET CLINIC IMMEDIATELY" and end there.
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
@@ -1621,6 +1675,7 @@ def render_nearby_vets_geo(lang="el"):
         btn_open = "🚨 Επείγον κτηνιατρείο 24ω κοντά μου"
         q_near   = "κτηνιατρείο κοντά μου"
         q_open   = "επείγον κτηνιατρείο 24 ώρες κοντά μου"
+        call_first = "📞 Πριν μετακινηθείς, τηλεφώνησε πρώτα στο κτηνιατρείο για να επιβεβαιώσεις ότι είναι ανοιχτό και ότι μπορεί να σε δεχτεί."
     else:
         title    = "📍 Find nearby vet clinics"
         sub      = "Opens Google Maps with vet clinics near your current location."
@@ -1628,6 +1683,7 @@ def render_nearby_vets_geo(lang="el"):
         btn_open = "🚨 24h emergency vet near me"
         q_near   = "veterinary clinic near me"
         q_open   = "24 hour emergency veterinary clinic near me"
+        call_first = "📞 Before heading out, call the clinic first to confirm it's open and able to see you."
 
     from urllib.parse import quote
     url_near = "https://www.google.com/maps/search/" + quote(q_near)
@@ -1644,31 +1700,95 @@ def render_nearby_vets_geo(lang="el"):
 .pan-geo-btn.primary:hover{{background:#047857}}
 .pan-geo-btn.danger{{background:#DC2626;color:white}}
 .pan-geo-btn.danger:hover{{background:#B91C1C}}
+.pan-geo-callfirst{{background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;
+  padding:8px 12px;font-size:12px;color:#92400E;margin-top:6px}}
 </style>
 <div class="pan-geo-card">
   <h3>{title}</h3>
   <div class="pan-geo-sub">{sub}</div>
   <a class="pan-geo-btn primary" href="{url_near}" target="_blank" rel="noopener">{btn}</a>
   <a class="pan-geo-btn danger"  href="{url_open}" target="_blank" rel="noopener">{btn_open}</a>
+  <div class="pan-geo-callfirst">{call_first}</div>
 </div>
 """, unsafe_allow_html=True)
 
 
-EMERGENCY_VETS = [
+# ── B2B2C: FEATURED / SPONSORED VET CLINIC ───────────────────────────────────
+# Set this to a clinic dict (same shape as the entries in EMERGENCY_VETS) to
+# have it appear FIRST in the emergency-vets directory and at the top of the
+# generated report — e.g. a partner clinic for a specific deployment/white-label.
+# Default is None (no featured partner). Admins can configure this on the
+# /?page=admin settings page — that value (stored via set_app_setting) takes
+# precedence over this default.
+FEATURED_VET_DEFAULT = None
+# Example:
+# FEATURED_VET_DEFAULT = {"name":"Partner Vet Clinic (24h)","area":"Αθήνα",
+#                  "phone":"210 1112222","address":"Λ. Παράδειγμα 1, Αθήνα",
+#                  "featured_label":{"el":"⭐ Συνεργαζόμενο Κτηνιατρείο","en":"⭐ Partner Clinic"}}
+
+EMERGENCY_VETS_DEFAULT = [
     {"name":"Αττικό Κτηνιατρικό Κέντρο (24h)","area":"Αθήνα","phone":"210 6012345","address":"Λ. Κηφισίας 100, Αθήνα"},
     {"name":"VetCity Emergency (24h)","area":"Αθήνα","phone":"210 7777777","address":"Λ. Συγγρού 50, Αθήνα"},
     {"name":"Animal Medical Center (24h)","area":"Αθήνα","phone":"210 8888888","address":"Λ. Βουλιαγμένης 80, Αθήνα"},
     {"name":"Κτηνιατρικό Επείγον Θεσσαλονίκη (24h)","area":"Θεσσαλονίκη","phone":"2310 123456","address":"Λ. Νίκης 10, Θεσσαλονίκη"},
 ]
 
-def render_emergency_vets(lang="el"):
+def get_featured_vet():
+    """Admin-configured featured/partner clinic, or None if not set."""
+    val = get_app_setting("featured_vet", FEATURED_VET_DEFAULT)
+    return val or None
+
+def get_emergency_vets():
+    """Admin-configured emergency vets list, falling back to the built-in default."""
+    val = get_app_setting("emergency_vets", None)
+    if isinstance(val, list) and val:
+        return val
+    return EMERGENCY_VETS_DEFAULT
+
+def _emergency_vets_ordered():
+    """Return the emergency vets list with the featured/partner clinic
+    prepended (if configured), de-duplicated by name."""
+    vets = get_emergency_vets()
+    featured = get_featured_vet()
+    if not featured:
+        return vets
+    rest = [v for v in vets if v.get("name") != featured.get("name")]
+    return [featured] + rest
+
+def get_petgovgr_url():
+    """Admin-configured pet.gov.gr URL, defaults to https://pet.gov.gr."""
+    return get_app_setting("petgovgr_url", "https://pet.gov.gr") or "https://pet.gov.gr"
+
+def get_insurance_text(lang="el"):
+    """Admin-configured description text for the pet.gov.gr card/CTA."""
+    defaults = {
+        "el": "Άμεση πρόσβαση στις 7 επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς: ηλεκτρονικό βιβλιάριο υγείας, δήλωση απώλειας/εύρεσης ζώου, κτηνιατρικός φάκελος, QR ταυτοποίηση και άλλα.",
+        "en": "Direct access to the 7 official services of the National Pet Registry: digital health booklet, lost/found pet reports, veterinary record, QR identification and more.",
+    }
+    val = get_app_setting("insurance_text", None)
+    if isinstance(val, dict) and val.get(lang):
+        return val[lang]
+    return defaults[lang]
+
+
     render_nearby_vets_geo(lang)
+    st.markdown(
+        '<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;'
+        'padding:8px 12px;font-size:12px;color:#92400E;margin-bottom:10px">'
+        + ("📞 Πριν μετακινηθείς, τηλεφώνησε πρώτα για να επιβεβαιώσεις ότι το κτηνιατρείο είναι ανοιχτό και μπορεί να σε δεχτεί."
+           if lang=="el" else
+           "📞 Before heading out, call first to confirm the clinic is open and able to see you.")
+        + '</div>', unsafe_allow_html=True)
     vets_html = ""
-    for v in EMERGENCY_VETS:
+    for v in _emergency_vets_ordered():
         maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(v['name']+' '+v['area'])}"
+        _featured = v.get("featured_label")
+        _badge = (f'<span style="background:#059669;color:white;font-size:10px;'
+                  f'font-weight:700;padding:2px 8px;border-radius:99px;margin-left:8px">'
+                  f'{_featured.get(lang, _featured.get("el",""))}</span>') if _featured else ""
         vets_html += f"""
         <div style="background:white;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:8px">
-            <div style="font-weight:700;font-size:14px">{v['name']}</div>
+            <div style="font-weight:700;font-size:14px">{v['name']}{_badge}</div>
             <div style="font-size:12px;color:#6B7280">{v['address']}</div>
             <div style="margin-top:6px;display:flex;gap:8px">
                 <a href="tel:{v['phone']}" style="background:#059669;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">📞 {v['phone']}</a>
@@ -1693,6 +1813,24 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
     vet    = _html.escape(str(pet.get("vet_name","") or "—"))
     filled_by = _html.escape(str(pet.get("filled_by","") or ""))
     ts     = datetime.now().strftime("%d %B %Y  %H:%M")
+
+    # B2B2C: optional featured/sponsored clinic shown at the top of the
+    # emergency section in the generated report (configured via admin page).
+    _featured_vet_html = ""
+    _fv = get_featured_vet()
+    if _fv:
+        _fv_name = _html.escape(str(_fv.get("name","")))
+        _fv_addr = _html.escape(str(_fv.get("address","")))
+        _fv_phone = _html.escape(str(_fv.get("phone","")))
+        _fv_label = (_fv.get("featured_label") or {}).get(lang, (_fv.get("featured_label") or {}).get("el","⭐"))
+        _featured_vet_html = (
+            f'<div style="background:white;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin:8px 0">'
+            f'<div style="font-weight:700;font-size:14px">{_fv_name} '
+            f'<span style="background:#059669;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px">{_html.escape(str(_fv_label))}</span></div>'
+            f'<div style="font-size:12px;color:#6B7280">{_fv_addr}</div>'
+            f'<div style="margin-top:6px"><a href="tel:{_fv_phone}" style="background:#059669;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">📞 {_fv_phone}</a></div>'
+            f'</div>'
+        )
 
     VLABELS={"hr":("Καρδιακός Ρυθμός","bpm"),"br":("Αναπνευστικός Ρυθμός","/min"),
               "temp":("Θερμοκρασία","°C"),"spo2":("SpO2","%"),"weight":("Βάρος","kg")}
@@ -1793,7 +1931,9 @@ table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 <div class="pet-detail"><strong>Κτηνίατρος:</strong> {vet}<br><strong>Παθήσεις/Αλλεργίες:</strong> {cond}<br><strong>Φάρμακα:</strong> {meds}{('<br><strong>Συμπληρώθηκε από:</strong> ' + filled_by) if filled_by and filled_by not in ('Ιδιοκτήτης','Owner') else ''}</div></div>
 {vitals_sec}<h2>Κτηνιατρική Αξιολόγηση</h2>{md2h(report_text or "")}{lab_html}{recs_html}{refs_html}
 <div class="emergency">🚨 ΣΕ ΕΠΕΙΓΟΝ: Επικοινωνήστε ΑΜΕΣΑ με κτηνίατρο ή επείγον κτηνιατρείο</div>
-<div class="cta"><a href="https://pet.gov.gr" target="_blank">🐾 Επίσημες Υπηρεσίες → pet.gov.gr</a></div>
+<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:8px 14px;font-size:11.5px;color:#92400E;margin:8px 0">📞 Πριν μετακινηθείτε, τηλεφωνήστε πρώτα στο κτηνιατρείο για να επιβεβαιώσετε ότι είναι ανοιχτό και μπορεί να σας δεχτεί.</div>
+{_featured_vet_html}
+<div class="cta"><a href="{get_petgovgr_url()}" target="_blank">🐾 Επίσημες Υπηρεσίες → pet.gov.gr</a></div>
 <div class="disclaimer">⚠️ AI-generated. Δεν αποτελεί κτηνιατρική διάγνωση. Απαιτείται επίσκεψη σε κτηνίατρο.</div>
 </body></html>""".encode("utf-8")
 
@@ -3885,8 +4025,8 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     st.markdown(f'''<div class="insurance-cta">
         <div style="font-size:28px;margin-bottom:8px">🐾</div>
         <div style="font-size:18px;font-weight:700;margin-bottom:6px">{t("insurance_cta")}</div>
-        <div style="opacity:.85;font-size:13px;margin-bottom:14px">{t("insurance_sub")}</div>
-        <a href="https://pet.gov.gr" target="_blank"
+        <div style="opacity:.85;font-size:13px;margin-bottom:14px">{get_insurance_text(lang)}</div>
+        <a href="{get_petgovgr_url()}" target="_blank"
            style="background:white;color:#059669;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
             {t("insurance_btn")}
         </a>
@@ -4468,9 +4608,7 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     _f3_body  = ("Άμεση πρόσβαση σε αξιολόγηση συμπτωμάτων και καθοδήγηση οποιαδήποτε ώρα, ημέρα ή νύχτα."
                   if lang=="el" else
                   "Instant access to symptom assessment and guidance any time, day or night.")
-    _f4_body  = ("Άμεση πρόσβαση στις 7 επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς: ηλεκτρονικό βιβλιάριο υγείας, δήλωση απώλειας/εύρεσης ζώου, κτηνιατρικός φάκελος, QR ταυτοποίηση και άλλα."
-                  if lang=="el" else
-                  "Direct access to the 7 official services of the National Pet Registry: digital health booklet, lost/found pet reports, veterinary record, QR identification and more.")
+    _f4_body  = get_insurance_text(lang)
     if lang == "el":
         _chips_html = (
             '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>'
@@ -4493,7 +4631,21 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     with f3:
         st.markdown(f'<div class="card"><div style="font-size:32px">🕐</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
     with f4:
-        st.markdown(f'<a href="https://pet.gov.gr" target="_blank" class="card" style="text-decoration:none;color:inherit;display:block;height:100%"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">{_f4_body}</p></a>', unsafe_allow_html=True)
+        _govgr_links = PETGOV_LINKS_EL if lang=="el" else PETGOV_LINKS_EN
+        _govgr_chips = "".join(
+            f'<a href="{url}" target="_blank" style="background:#F0FDF4;border:1px solid #A7F3D0;'
+            f'border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:600;color:#059669;'
+            f'text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin:2px">'
+            f'{icon} {label}</a>'
+            for icon, label, url in _govgr_links
+        )
+        st.markdown(
+            f'<div class="card" style="height:100%">'
+            f'<div style="font-size:32px">🇬🇷</div>'
+            f'<h3 style="margin-top:12px">pet.gov.gr</h3>'
+            f'<p style="font-size:13px;color:#6B7280">{_f4_body}</p>'
+            f'<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px">{_govgr_chips}</div>'
+            f'</div>', unsafe_allow_html=True)
 
     render_lifestyle_strip(lang)
 
@@ -4639,8 +4791,144 @@ if _STX_OK and auth_enabled():
                 st.session_state["_cookie_check_tries"] = tries + 1
                 st.rerun()
 
+# ── ADMIN PAGE (/?page=admin) ────────────────────────────────────────────────
+# Credentials come from environment variables / Railway "Variables" tab
+# (ADMIN_USER / ADMIN_PASS). Falls back to the previous defaults if not set,
+# so existing deployments keep working until the variables are configured.
+ADMIN_USER = _secret("ADMIN_USER", "petainurse")
+ADMIN_PASS = _secret("ADMIN_PASS", "YouM@tt3r!")
+
+def render_admin_page():
+    st.markdown("## 🛠️ PetAiNurse — Admin Settings")
+
+    if not st.session_state.get("admin_logged_in"):
+        st.caption("Πρόσβαση μόνο για διαχειριστές.")
+        with st.form("admin_login"):
+            u = st.text_input("Username")
+            p = st.text_input("Password", type="password")
+            ok = st.form_submit_button("Σύνδεση", type="primary")
+        if ok:
+            if u == ADMIN_USER and p == ADMIN_PASS:
+                st.session_state["admin_logged_in"] = True
+                st.rerun()
+            else:
+                st.error("Λάθος στοιχεία.")
+        return
+
+    col_logout, _ = st.columns([1,5])
+    with col_logout:
+        if st.button("🚪 Αποσύνδεση"):
+            st.session_state["admin_logged_in"] = False
+            st.rerun()
+
+    sb_status = "✅ Supabase (persistent)" if _supabase_client() else "⚠️ Local file (_app_settings.json) — δεν επιβιώνει σε redeploy χωρίς persistent volume"
+    st.caption(f"Αποθήκευση ρυθμίσεων: {sb_status}")
+
+    tab_featured, tab_emergency, tab_general = st.tabs([
+        "⭐ Featured Κτηνιατρείο", "🚨 Επείγοντα Κτηνιατρεία", "🔗 Γενικές Ρυθμίσεις"
+    ])
+
+    # ── Featured / partner vet ────────────────────────────────────────────
+    with tab_featured:
+        st.write("Αν συμπληρωθεί, αυτό το κτηνιατρείο θα εμφανίζεται **πρώτο** στη λίστα "
+                 "επειγόντων και στην αναφορά, με ένδειξη «⭐ Partner».")
+        cur = get_featured_vet() or {}
+        cur_label = cur.get("featured_label") or {}
+        with st.form("featured_vet_form"):
+            enabled = st.checkbox("Ενεργό", value=bool(cur))
+            f_name = st.text_input("Όνομα κτηνιατρείου", value=cur.get("name",""))
+            f_area = st.text_input("Περιοχή", value=cur.get("area",""))
+            f_phone = st.text_input("Τηλέφωνο", value=cur.get("phone",""))
+            f_addr = st.text_input("Διεύθυνση", value=cur.get("address",""))
+            c1,c2 = st.columns(2)
+            with c1:
+                f_label_el = st.text_input("Ένδειξη (Ελληνικά)", value=cur_label.get("el","⭐ Συνεργαζόμενο Κτηνιατρείο"))
+            with c2:
+                f_label_en = st.text_input("Ένδειξη (Αγγλικά)", value=cur_label.get("en","⭐ Partner Clinic"))
+            save = st.form_submit_button("💾 Αποθήκευση", type="primary")
+        if save:
+            if not enabled or not f_name.strip():
+                set_app_setting("featured_vet", None)
+                st.success("Το featured κτηνιατρείο απενεργοποιήθηκε.")
+            else:
+                set_app_setting("featured_vet", {
+                    "name": f_name.strip(), "area": f_area.strip(),
+                    "phone": f_phone.strip(), "address": f_addr.strip(),
+                    "featured_label": {"el": f_label_el.strip(), "en": f_label_en.strip()},
+                })
+                st.success("Αποθηκεύτηκε.")
+            st.rerun()
+
+    # ── Emergency vets list ────────────────────────────────────────────────
+    with tab_emergency:
+        st.write("Η λίστα κτηνιατρείων που εμφανίζεται στον «Κατάλογο Επειγόντων».")
+        vets = get_emergency_vets()
+        for i, v in enumerate(vets):
+            with st.expander(f"{i+1}. {v.get('name','—')}", expanded=False):
+                with st.form(f"vet_edit_{i}"):
+                    name = st.text_input("Όνομα", value=v.get("name",""), key=f"vn_{i}")
+                    area = st.text_input("Περιοχή", value=v.get("area",""), key=f"va_{i}")
+                    phone = st.text_input("Τηλέφωνο", value=v.get("phone",""), key=f"vp_{i}")
+                    addr = st.text_input("Διεύθυνση", value=v.get("address",""), key=f"vd_{i}")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        upd = st.form_submit_button("💾 Ενημέρωση")
+                    with c2:
+                        rem = st.form_submit_button("🗑️ Διαγραφή")
+                if upd:
+                    vets[i] = {"name": name.strip(), "area": area.strip(),
+                               "phone": phone.strip(), "address": addr.strip()}
+                    set_app_setting("emergency_vets", vets)
+                    st.success("Ενημερώθηκε.")
+                    st.rerun()
+                if rem:
+                    vets.pop(i)
+                    set_app_setting("emergency_vets", vets)
+                    st.success("Διαγράφηκε.")
+                    st.rerun()
+
+        st.markdown("---")
+        st.write("**➕ Νέο κτηνιατρείο**")
+        with st.form("vet_add"):
+            n_name = st.text_input("Όνομα", key="new_vn")
+            n_area = st.text_input("Περιοχή", key="new_va")
+            n_phone = st.text_input("Τηλέφωνο", key="new_vp")
+            n_addr = st.text_input("Διεύθυνση", key="new_vd")
+            add = st.form_submit_button("➕ Προσθήκη", type="primary")
+        if add:
+            if n_name.strip():
+                vets.append({"name": n_name.strip(), "area": n_area.strip(),
+                              "phone": n_phone.strip(), "address": n_addr.strip()})
+                set_app_setting("emergency_vets", vets)
+                st.success("Προστέθηκε.")
+                st.rerun()
+            else:
+                st.error("Συμπλήρωσε τουλάχιστον το όνομα.")
+
+    # ── General settings ───────────────────────────────────────────────────
+    with tab_general:
+        st.write("Σύνδεσμος και κείμενο για το κουμπί/κάρτα pet.gov.gr.")
+        cur_url = get_petgovgr_url()
+        cur_ins_el = get_insurance_text("el")
+        cur_ins_en = get_insurance_text("en")
+        with st.form("general_settings"):
+            url = st.text_input("pet.gov.gr URL", value=cur_url)
+            ins_el = st.text_area("Κείμενο pet.gov.gr (Ελληνικά)", value=cur_ins_el, height=100)
+            ins_en = st.text_area("Κείμενο pet.gov.gr (Αγγλικά)", value=cur_ins_en, height=100)
+            save_g = st.form_submit_button("💾 Αποθήκευση", type="primary")
+        if save_g:
+            set_app_setting("petgovgr_url", url.strip() or "https://pet.gov.gr")
+            set_app_setting("insurance_text", {"el": ins_el.strip(), "en": ins_en.strip()})
+            st.success("Αποθηκεύτηκαν οι γενικές ρυθμίσεις.")
+            st.rerun()
+
+
 # ── ROUTER ────────────────────────────────────────────────────────────────────
 _page_param = st.query_params.get("page")
+if _page_param == "admin":
+    render_admin_page()
+    st.stop()
+
 if _page_param in CATEGORY_SLUGS:
     render_category_page(_page_param)
     st.stop()
