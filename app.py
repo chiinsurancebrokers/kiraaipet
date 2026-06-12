@@ -1830,6 +1830,10 @@ def get_insurance_text(lang="el"):
     return defaults[lang]
 
 
+def render_emergency_vets(lang="el"):
+    """Show the geolocation-aware 'find nearby vets' widget followed by the
+    static (admin-configurable) emergency vets directory for Athens /
+    Thessaloniki, with the featured/partner clinic pinned on top."""
     render_nearby_vets_geo(lang)
     st.markdown(
         '<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;'
