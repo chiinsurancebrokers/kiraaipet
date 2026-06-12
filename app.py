@@ -864,22 +864,69 @@ def get_app_setting(key, default=None):
             rows = res.data or []
             if rows and rows[0].get("value") is not None:
                 return rows[0]["value"]
-            return default
-        except Exception:
-            pass
+            # Supabase responded but the row doesn't exist → fall through to
+            # local file (handles the case where a previous save went there).
+        except Exception as e:
+            # Stash the most recent read error so the admin page can show it.
+            try:
+                st.session_state["_settings_read_error"] = f"{type(e).__name__}: {e}"
+            except Exception:
+                pass
     return _load_local_settings().get(key, default)
 
 def set_app_setting(key, value):
+    """Persist a setting. Returns (ok, source, error_msg). Never swallows the
+    underlying exception silently — the admin form surfaces it so misconfig
+    (missing table / RLS blocking anon writes / read-only filesystem) is
+    obvious instead of leaving the user staring at a success message that
+    didn't actually save anything."""
     sb = _supabase_client()
+    sb_err = None
     if sb:
         try:
             sb.table("app_settings").upsert({"key": key, "value": value}, on_conflict="key").execute()
-            return True
-        except Exception:
-            pass
+            return True, "supabase", None
+        except Exception as e:
+            sb_err = f"{type(e).__name__}: {e}"
     data = _load_local_settings()
     data[key] = value
-    return _save_local_settings(data)
+    ok = _save_local_settings(data)
+    if ok:
+        # Supabase failed but local worked — flag it so admins know persistence
+        # is degraded (the local file doesn't survive Railway redeploys).
+        return True, ("local-after-supabase-error" if sb_err else "local"), sb_err
+    return False, "none", (sb_err or "Local file is not writable (read-only filesystem?)")
+
+
+def _admin_save(key, value, success_msg):
+    """Call set_app_setting and surface the real outcome in the admin UI.
+    Returns True iff persistence actually succeeded. On failure, shows the
+    error and stops the run so admins can't proceed thinking it worked."""
+    ok, source, err = set_app_setting(key, value)
+    if ok:
+        if err:  # Supabase failed, local saved
+            st.success(f"{success_msg}  ·  storage: {source}")
+            st.warning(
+                f"⚠️ Η Supabase αποθήκευση απέτυχε — γράφτηκε τοπικά στο `_app_settings.json` "
+                f"αλλά αυτό **δεν επιβιώνει σε redeploy στο Railway**.\n\nΣφάλμα: `{err}`\n\n"
+                "**Συχνότερη αιτία:** δεν υπάρχει ο πίνακας `app_settings`, ή RLS policy μπλοκάρει το anon key να γράφει.\n\n"
+                "**SQL** (Supabase → SQL editor):\n"
+                "```sql\n"
+                "create table if not exists app_settings (\n"
+                "  key text primary key,\n"
+                "  value jsonb,\n"
+                "  updated_at timestamptz default now()\n"
+                ");\n"
+                "alter table app_settings enable row level security;\n"
+                "create policy \"anon read-write app_settings\" on app_settings\n"
+                "  for all using (true) with check (true);\n"
+                "```"
+            )
+        else:
+            st.success(f"{success_msg}  ·  storage: {source}")
+        return True
+    st.error(f"❌ Δεν αποθηκεύτηκε. {err or ''}")
+    return False
 
 def render_login_gate():
     """Inline email->OTP login. Returns True once the user is logged in
@@ -1619,10 +1666,13 @@ def _hero_inline_img_html(pet=None):
     if not b64:
         return ""
     nm = MASCOT_NAMES.get(key, "")
+    # Cap at ~1em with a hard pixel ceiling so it never blows up inside
+    # markdown headers (h1/h2 can be 28–36px and would otherwise produce a
+    # giant illustration where an emoji was expected).
     return (
         f'<img src="data:{mime};base64,{b64}" alt="{nm}" '
-        f'style="height:1.45em;width:auto;vertical-align:-0.35em;'
-        f'margin:0 1px;display:inline-block" />'
+        f'style="height:1em;max-height:22px;width:auto;vertical-align:-0.15em;'
+        f'margin:0 2px;display:inline-block" />'
     )
 
 
@@ -3842,9 +3892,6 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
-        st.info("⏳ " + ("Περιμένετε, ετοιμάζεται η αναφορά σας… Αυτό μπορεί να πάρει λίγα δευτερόλεπτα."
-                        if lang=="el" else
-                        "Please wait, your report is being prepared… This may take a few seconds."))
         conversation = "\n".join(
             f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content']}"
             for m in st.session_state.triage_chat)
@@ -3852,13 +3899,31 @@ def render_report():
                        if st.session_state.vitals else "Not provided")
         rng = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
 
-        # MSD Vet Manual evidence search
+        # ── Progress UI: a single status block with explicit steps so the
+        # user can see exactly what's happening (instead of two stacked
+        # "please wait" messages with no clue about where we are).
+        _steps_el = [
+            "🔎 Αναζήτηση τεκμηρίωσης (MSD Veterinary Manual)…",
+            "🩺 Σύνταξη κτηνιατρικής αναφοράς από την AI…",
+            "📍 Εξατομικευμένες συστάσεις φροντίδας…",
+        ]
+        _steps_en = [
+            "🔎 Searching evidence (MSD Veterinary Manual)…",
+            "🩺 Drafting the veterinary report with AI…",
+            "📍 Personalised care recommendations…",
+        ]
+        _steps = _steps_el if lang == "el" else _steps_en
+        _status_label = ("⏳ Ετοιμάζεται η αναφορά για {nm}…" if lang=="el"
+                         else "⏳ Preparing the report for {nm}…").format(nm=nm or pet.get("species_label",""))
+        _progress = st.progress(0, text=f"{_status_label}  ·  {_steps[0]}")
+
+        # Step 1 — MSD Vet Manual evidence search
         last_user = next((m["content"] for m in reversed(st.session_state.triage_chat) if m["role"]=="user"),"")
         search_q = last_user[:60] if last_user else pet.get("species_label","dog")
-        with st.spinner("📋 MSD Veterinary Manual..." if lang=="el" else "📋 Searching MSD Vet Manual..."):
-            refs = msdvet_search(sp, search_q, n=3)
-            st.session_state.report_refs = refs
+        refs = msdvet_search(sp, search_q, n=3)
+        st.session_state.report_refs = refs
         msd_ctx = "\n".join(f"- {a['title']}: {a['url']}" for a in refs) if refs else "None found."
+        _progress.progress(33, text=f"{_status_label}  ·  {_steps[1]}")
 
         # Photo-scan + lab analyses as explicit evidence, so the assessment
         # actually incorporates them (not only the side cards / chat).
@@ -3900,21 +3965,25 @@ If PHOTO ANALYSIS FINDINGS or LAB / TEST RESULT ANALYSIS are provided above, you
 Language: {"Greek (Ελληνικά)" if lang=="el" else "English"}
 Be direct and clinical. Always recommend professional veterinary evaluation. End with AI disclaimer."""
 
-        with st.spinner("⏳ Περιμένετε, ετοιμάζεται η αναφορά..." if lang=="el" else "⏳ Please wait, preparing the report..."):
-            result = claude([{"role":"user","content":report_prompt}],
-                            system=petainurse_system(pet), max_tokens=6000, timeout=180)
-            if result.startswith("⚠️"):
-                st.error(result)
-                if st.button("🔄 Retry"): st.rerun()
-                return
-            st.session_state.report = sanitize_ai_text(result)
-            st.session_state.report_gpt = ""
-            st.session_state["_gpt_integrated"] = False
+        # Step 2 — AI report generation (the slow step)
+        result = claude([{"role":"user","content":report_prompt}],
+                        system=petainurse_system(pet), max_tokens=6000, timeout=180)
+        if result.startswith("⚠️"):
+            _progress.empty()
+            st.error(result)
+            if st.button("🔄 Retry"): st.rerun()
+            return
+        st.session_state.report = sanitize_ai_text(result)
+        st.session_state.report_gpt = ""
+        st.session_state["_gpt_integrated"] = False
+        _progress.progress(75, text=f"{_status_label}  ·  {_steps[2]}")
 
-        # Personalized recommendations (activity / nutrition / home-care)
-        with st.spinner("📍 Εξατομικευμένες συστάσεις..." if lang=="el" else "📍 Personalized recommendations..."):
-            st.session_state.report_recs = generate_pet_recommendations(
-                pet, vitals_text, conversation, st.session_state.report, lang)
+        # Step 3 — Personalized recommendations
+        st.session_state.report_recs = generate_pet_recommendations(
+            pet, vitals_text, conversation, st.session_state.report, lang)
+        _progress.progress(100, text=("✅ Έτοιμη η αναφορά!" if lang=="el" else "✅ Report ready!"))
+        _progress.empty()
+        st.rerun()
 
     if not st.session_state.report:
         if st.button("🔄 " + ("Δοκιμή ξανά" if lang=="el" else "Retry"), type="primary"): st.rerun()
@@ -4891,6 +4960,29 @@ def render_admin_page():
     sb_status = "✅ Supabase (persistent)" if _supabase_client() else "⚠️ Local file (_app_settings.json) — δεν επιβιώνει σε redeploy χωρίς persistent volume"
     st.caption(f"Αποθήκευση ρυθμίσεων: {sb_status}")
 
+    # Surface the most recent read error (if any) so silent Supabase failures
+    # don't stay hidden — e.g. missing table, RLS blocking anon select.
+    _read_err = st.session_state.pop("_settings_read_error", None)
+    if _read_err:
+        st.warning(f"⚠️ Πρόσφατο σφάλμα ανάγνωσης από Supabase: `{_read_err}`")
+
+    # Diagnostic — explicit round-trip test so admins can verify persistence
+    # actually works before configuring real data.
+    with st.expander("🔧 Διάγνωση αποθήκευσης (round-trip test)", expanded=False):
+        if st.button("Τρέξε τεστ αποθήκευσης", key="admin_diag_run"):
+            import time as _t
+            probe_key = "_diagnostic_probe"
+            probe_val = {"ts": int(_t.time()), "msg": "round-trip test"}
+            ok, source, err = set_app_setting(probe_key, probe_val)
+            st.write(f"**Write:** ok={ok}, source=`{source}`, error=`{err or '—'}`")
+            back = get_app_setting(probe_key)
+            st.write(f"**Read back:** `{back}`")
+            if back == probe_val:
+                st.success(f"✅ Persistence λειτουργεί ({source}).")
+            else:
+                st.error("❌ Round-trip απέτυχε — η τιμή δεν διαβάστηκε ίδια. "
+                         "Πιθανώς λείπει ο πίνακας `app_settings` ή RLS μπλοκάρει.")
+
     tab_featured, tab_emergency, tab_general = st.tabs([
         "⭐ Featured Κτηνιατρείο", "🚨 Επείγοντα Κτηνιατρεία", "🔗 Γενικές Ρυθμίσεις"
     ])
@@ -4915,16 +5007,22 @@ def render_admin_page():
             save = st.form_submit_button("💾 Αποθήκευση", type="primary")
         if save:
             if not enabled or not f_name.strip():
-                set_app_setting("featured_vet", None)
-                st.success("Το featured κτηνιατρείο απενεργοποιήθηκε.")
+                if _admin_save("featured_vet", None, "Το featured κτηνιατρείο απενεργοποιήθηκε."):
+                    st.rerun()
             else:
-                set_app_setting("featured_vet", {
+                payload = {
                     "name": f_name.strip(), "area": f_area.strip(),
                     "phone": f_phone.strip(), "address": f_addr.strip(),
                     "featured_label": {"el": f_label_el.strip(), "en": f_label_en.strip()},
-                })
-                st.success("Αποθηκεύτηκε.")
-            st.rerun()
+                }
+                if _admin_save("featured_vet", payload, f"✅ Αποθηκεύτηκε «{payload['name']}»."):
+                    # Verify round-trip — confirm the value reads back the way it was saved
+                    back = get_app_setting("featured_vet")
+                    if back != payload:
+                        st.error(f"⚠️ Verification failed — η τιμή που διαβάστηκε πίσω δεν ταιριάζει.\n\n"
+                                 f"Saved: `{payload}`\n\nRead back: `{back}`")
+                    else:
+                        st.rerun()
 
     # ── Emergency vets list ────────────────────────────────────────────────
     with tab_emergency:
@@ -4945,14 +5043,12 @@ def render_admin_page():
                 if upd:
                     vets[i] = {"name": name.strip(), "area": area.strip(),
                                "phone": phone.strip(), "address": addr.strip()}
-                    set_app_setting("emergency_vets", vets)
-                    st.success("Ενημερώθηκε.")
-                    st.rerun()
+                    if _admin_save("emergency_vets", vets, "Ενημερώθηκε."):
+                        st.rerun()
                 if rem:
                     vets.pop(i)
-                    set_app_setting("emergency_vets", vets)
-                    st.success("Διαγράφηκε.")
-                    st.rerun()
+                    if _admin_save("emergency_vets", vets, "Διαγράφηκε."):
+                        st.rerun()
 
         st.markdown("---")
         st.write("**➕ Νέο κτηνιατρείο**")
@@ -4966,9 +5062,8 @@ def render_admin_page():
             if n_name.strip():
                 vets.append({"name": n_name.strip(), "area": n_area.strip(),
                               "phone": n_phone.strip(), "address": n_addr.strip()})
-                set_app_setting("emergency_vets", vets)
-                st.success("Προστέθηκε.")
-                st.rerun()
+                if _admin_save("emergency_vets", vets, "Προστέθηκε."):
+                    st.rerun()
             else:
                 st.error("Συμπλήρωσε τουλάχιστον το όνομα.")
 
@@ -4984,10 +5079,13 @@ def render_admin_page():
             ins_en = st.text_area("Κείμενο pet.gov.gr (Αγγλικά)", value=cur_ins_en, height=100)
             save_g = st.form_submit_button("💾 Αποθήκευση", type="primary")
         if save_g:
-            set_app_setting("petgovgr_url", url.strip() or "https://pet.gov.gr")
-            set_app_setting("insurance_text", {"el": ins_el.strip(), "en": ins_en.strip()})
-            st.success("Αποθηκεύτηκαν οι γενικές ρυθμίσεις.")
-            st.rerun()
+            ok1, _, err1 = set_app_setting("petgovgr_url", url.strip() or "https://pet.gov.gr")
+            ok2, _, err2 = set_app_setting("insurance_text", {"el": ins_el.strip(), "en": ins_en.strip()})
+            if ok1 and ok2:
+                st.success("Αποθηκεύτηκαν οι γενικές ρυθμίσεις.")
+                st.rerun()
+            else:
+                st.error(f"❌ Σφάλμα αποθήκευσης. {err1 or err2 or ''}")
 
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
