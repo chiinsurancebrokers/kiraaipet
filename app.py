@@ -281,7 +281,7 @@ Be specific to this pet's actual condition/symptoms — not generic advice. If t
 or no major issue was found, give sensible preventive/wellness guidance instead."""
 
     result = claude([{"role":"user","content":prompt}],
-                    system=petainurse_system(), max_tokens=900, timeout=60)
+                    system=petainurse_system(), max_tokens=1400, timeout=60)
     if result.startswith("⚠️"):
         return {}
     try:
@@ -1439,9 +1439,11 @@ def render_mascot(species_key="dog", size=72, style="", circle=False):
     return f'<span style="display:inline-flex;gap:2px;{base_style}">' + "".join(parts) + '</span>'
 
 
-def render_hero_group(size=110, show_names=True, bg="white", gap=14):
+def render_hero_group(size=110, show_names=True, bg="white", gap=14, caption=False):
     """Render all available superheroes in a row — Perro, Gata, Gaz, Ave.
-    Used as the new brand band on welcome / home / hero / login screens."""
+    Used as the new brand band on welcome / home / hero / login screens.
+    If caption=True and all 4 heroes are present, adds an intro line below
+    introducing the squad by name."""
     keys = [k for k in ("dog","cat","rabbit","bird") if MASCOT_IMG.get(k)]
     if not keys:
         return ""
@@ -1461,8 +1463,35 @@ def render_hero_group(size=110, show_names=True, bg="white", gap=14):
             f'style="width:{size}px;height:{size}px;object-fit:contain;display:block"/>'
             f'{name_html}</div>'
         )
-    return (f'<div style="display:flex;justify-content:center;flex-wrap:wrap;'
+    html = (f'<div style="display:flex;justify-content:center;flex-wrap:wrap;'
             f'gap:{gap}px;margin:6px 0">' + "".join(tiles) + "</div>")
+
+    if caption and len(keys) == 4:
+        lang = st.session_state.get("lang", "el")
+        intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
+                 "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
+                 if lang == "el" else
+                 "We are the PetAiNurse hero squad: "
+                 "<strong>Perro, Gata, Gaz and Ave</strong> — here to look after your pets.")
+        html += (f'<div style="font-size:13.5px;color:#374151;text-align:center;'
+                 f'line-height:1.5;max-width:560px;margin:8px auto 0">{intro}</div>')
+    return html
+
+
+def _hero_avatar(pet=None):
+    """Return the species-appropriate superhero image (raw bytes) to use as
+    the chat avatar for PetAiNurse's replies — Perro for dogs, Gata for cats,
+    Gaz for rabbits, Ave for birds — falling back to the 🐾 emoji if no
+    artwork is available for this species."""
+    key = mascot_for_pet(pet) or "dog"
+    b64 = MASCOT_IMG.get(key)
+    if not b64:
+        return "🐾"
+    try:
+        return _b64.b64decode(b64)
+    except Exception:
+        return "🐾"
+
 
 
 def mascot_for_pet(pet=None):
@@ -3253,6 +3282,32 @@ def render_triage():
     render_vitals_summary()
     _render_disclaimer_strip()
 
+    def _send_to_petainurse(user_text):
+        """Append a user message to the triage chat and get PetAiNurse's
+        response — shared by both the chat input and the quick-select chips,
+        so picking a chip actually produces a visible reply instead of
+        silently doing nothing."""
+        st.session_state.triage_chat.append({"role":"user","content":user_text})
+        with st.spinner("PetAiNurse..."):
+            p = pet
+            photo_ctx = ""
+            if st.session_state.get("photo_scan_findings"):
+                pf = st.session_state["photo_scan_findings"]
+                photo_ctx = f"\nΦΩΤΟΓΡΑΦΙΑ ({pf.get('scan_label','')}): {pf.get('clinical_analysis','')[:400]}"
+            profile_ctx = (f"Κατοικίδιο: {p.get('name')}, {p.get('species_label')} ({p.get('breed')}), "
+                           f"{p.get('age_y')}y {p.get('age_m')}m, {p.get('sex')}, {p.get('weight','')}kg\n"
+                           f"Παθήσεις: {p.get('conditions','—')}\nΦάρμακα: {p.get('meds_raw','—')}\nΚτηνίατρος: {p.get('vet_name','—')}{photo_ctx}")
+            vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
+                          if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
+            system_ctx = petainurse_system() + f"\n\n{profile_ctx}\n{vitals_ctx}"
+            reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
+                           system=system_ctx, max_tokens=3000)
+            reply = sanitize_ai_text(reply)
+            _set_emergency_from_text(reply)
+            if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
+                reply = reply.rstrip() + " ..."
+        st.session_state.triage_chat.append({"role":"assistant","content":reply})
+
     _render_page_helper(
         "triage",
         "Πώς λειτουργεί η εκτίμηση συμπτωμάτων",
@@ -3370,10 +3425,18 @@ def render_triage():
                     st.rerun()
 
     if st.session_state.symptom_chips:
+        st.caption(
+            ("Επιλέξες: " if lang=="el" else "Selected: ")
+            + ", ".join(st.session_state.symptom_chips)
+            + (". Πάτησε «Αποστολή επιλεγμένων» για να τα στείλεις, ή γράψε από κάτω περισσότερες λεπτομέρειες (π.χ. πότε ξεκίνησαν, πόσο συχνά συμβαίνουν)."
+               if lang=="el" else
+               ". Tap “Send selected” to send them, or type more details below (e.g. when it started, how often it happens).")
+        )
         if st.button("➤ "+("Αποστολή επιλεγμένων" if lang=="el" else "Send selected"), type="primary"):
             msg = ("Κύρια συμπτώματα: " if lang=="el" else "Main symptoms: ")+", ".join(st.session_state.symptom_chips)
-            st.session_state.triage_chat.append({"role":"user","content":msg})
-            st.session_state.symptom_chips = []; st.rerun()
+            st.session_state.symptom_chips = []
+            _send_to_petainurse(msg)
+            st.rerun()
 
     # Toxicity check on symptom text
     all_symptoms = " ".join(st.session_state.symptom_chips)
@@ -3384,8 +3447,9 @@ def render_triage():
     st.divider()
 
     # Chat
+    _avatar = _hero_avatar(pet)
     for msg in st.session_state.triage_chat:
-        with st.chat_message(msg["role"], avatar="🐾" if msg["role"]=="assistant" else None):
+        with st.chat_message(msg["role"], avatar=_avatar if msg["role"]=="assistant" else None):
             st.markdown(msg["content"])
 
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
@@ -3447,26 +3511,8 @@ def render_triage():
     if voice_text:
         user_input = voice_text
     if user_input:
-        st.session_state.triage_chat.append({"role":"user","content":user_input})
-        with st.spinner("PetAiNurse..."):
-            p = pet
-            photo_ctx = ""
-            if st.session_state.get("photo_scan_findings"):
-                pf = st.session_state["photo_scan_findings"]
-                photo_ctx = f"\nΦΩΤΟΓΡΑΦΙΑ ({pf.get('scan_label','')}): {pf.get('clinical_analysis','')[:400]}"
-            profile_ctx = (f"Κατοικίδιο: {p.get('name')}, {p.get('species_label')} ({p.get('breed')}), "
-                           f"{p.get('age_y')}y {p.get('age_m')}m, {p.get('sex')}, {p.get('weight','')}kg\n"
-                           f"Παθήσεις: {p.get('conditions','—')}\nΦάρμακα: {p.get('meds_raw','—')}\nΚτηνίατρος: {p.get('vet_name','—')}{photo_ctx}")
-            vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
-                          if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
-            system_ctx = petainurse_system() + f"\n\n{profile_ctx}\n{vitals_ctx}"
-            reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
-                           system=system_ctx, max_tokens=3000)
-            reply = sanitize_ai_text(reply)
-            _set_emergency_from_text(reply)
-            if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
-                reply = reply.rstrip() + " ..."
-        st.session_state.triage_chat.append({"role":"assistant","content":reply}); st.rerun()
+        _send_to_petainurse(user_input)
+        st.rerun()
 
     col_b,col_r = st.columns([1,2])
     with col_b:
@@ -3592,7 +3638,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
 
         with st.spinner("⏳ Περιμένετε, ετοιμάζεται η αναφορά..." if lang=="el" else "⏳ Please wait, preparing the report..."):
             result = claude([{"role":"user","content":report_prompt}],
-                            system=petainurse_system(), max_tokens=3000, timeout=120)
+                            system=petainurse_system(), max_tokens=6000, timeout=180)
             if result.startswith("⚠️"):
                 st.error(result)
                 if st.button("🔄 Retry"): st.rerun()
@@ -3723,7 +3769,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                             _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
                         st.session_state.report_gpt = sanitize_ai_text(gpt4o(
                             prompt=f"Pet: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y\n\nPetAiNurse's assessment:\n{st.session_state.report}{_evid}\n\nDo you agree with this veterinary assessment? Take the photo and lab findings above into account. Provide additions, corrections, or alternative differentials. Be specific and species-appropriate.",
-                            system=petainurse_system(), max_tokens=3000))
+                            system=petainurse_system(), max_tokens=4000))
                     st.rerun()
             else:
                 st.markdown(st.session_state.report_gpt)
@@ -4319,7 +4365,7 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
 
     # Mascots + floating feature cards — full hero squad (Perro/Gata/Gaz/Ave)
     st.markdown(f"""
-  {render_hero_group(size=120, show_names=True)}
+  {render_hero_group(size=120, show_names=True, caption=True)}
   <div class="pan-hr-cards">
     <div class="pan-hr-card c1"><span class="ic">🐾</span>{d['card1']}<span class="check">✓</span></div>
     <div class="pan-hr-card c2"><span class="ic">🔎</span>{d['card2']}<span class="check">✓</span></div>
@@ -4469,7 +4515,7 @@ def render_login_hero(lang):
   <div class="pan-hero-kicker">🐾 {kicker}</div>
   <div class="pan-hero-title">{title} <span class="accent">{accent}</span></div>
   <div class="pan-hero-sub">{sub}</div>
-  {render_hero_group(size=72, show_names=True, gap=10)}
+  {render_hero_group(size=72, show_names=True, gap=10, caption=True)}
 </div>
 """, unsafe_allow_html=True)
 
