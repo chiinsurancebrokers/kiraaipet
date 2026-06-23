@@ -1705,6 +1705,227 @@ def replace_hero_emoji(text, pet=None):
     return _HERO_EMOJI_RE.sub(img, text), True
 
 
+def report_loading_banner_html(pet, lang="el"):
+    """Build the full-viewport superhero loading overlay shown while the
+    veterinary report is generating.
+
+    Why this exists: the report page has a tall header (stepper, doc header,
+    disclaimer, vitals summary) so the inline st.progress() bar lands below
+    the fold. Streamlit doesn't autoscroll on screen change, so users staring
+    at the page during the 20-40s Claude call have no clue anything is
+    happening. This overlay sits on top of everything via position:fixed
+    regardless of scroll, animates entirely via CSS (so it keeps moving
+    during the blocking API call), and uses the pet's species-specific
+    superhero mascot (Perro / Gata / Gaz / Ave) so each pet feels like its
+    own hero is generating the report.
+
+    Returns the HTML as a string — caller renders it with st.markdown(...,
+    unsafe_allow_html=True) inside an st.empty() so it can be cleared on
+    error before showing st.error()."""
+    sp = pet.get("species_key", "dog")
+    pet_name = (pet.get("name") or pet.get("species_label") or "").strip()
+    hero_name = MASCOT_NAMES.get(sp, "")
+
+    # Prefer transparent PNG (clean on the green card); fall back to JPEG
+    # mascot; final fallback to a species emoji so nothing renders broken.
+    b64 = HERO_PNGS.get(sp)
+    mime = "image/png"
+    if not b64:
+        b64 = MASCOT_IMG.get(sp)
+        mime = "image/jpeg"
+
+    if b64:
+        avatar_inner = (f'<img src="data:{mime};base64,{b64}" alt="{hero_name}" '
+                        f'style="width:100%;height:100%;object-fit:cover;display:block" />')
+    else:
+        emoji = {"dog":"🐶","cat":"🐱","rabbit":"🐰","bird":"🦜"}.get(sp, "🐾")
+        avatar_inner = f'<span style="font-size:72px;line-height:1">{emoji}</span>'
+
+    # Status messages — rotated via pure CSS keyframes so they animate during
+    # the synchronous Claude API call (Python is blocked, but the browser keeps
+    # running CSS). Order roughly mirrors the actual generation steps.
+    if lang == "el":
+        msgs = [
+            f"🦸 {hero_name or 'Ο σούπερ-ήρωας'} φοράει την κάπα του…",
+            "🔬 Διαβάζω τις εργαστηριακές εξετάσεις…",
+            "📚 Συγκρίνω με το MSD Veterinary Manual…",
+            "🩺 Συντάσσω την κτηνιατρική αναφορά…",
+            "📍 Εξατομικευμένες συστάσεις φροντίδας…",
+            "✨ Σχεδόν έτοιμη!",
+        ]
+        super_label = "ΣΟΥΠΕΡ"
+        footer = ("Μην κλείσεις τη σελίδα — η αναφορά δημιουργείται.<br/>"
+                  "Συνήθως διαρκεί 20–40 δευτερόλεπτα.")
+    else:
+        msgs = [
+            f"🦸 {hero_name or 'The super-hero'} is putting on the cape…",
+            "🔬 Reading the lab results…",
+            "📚 Cross-checking with the MSD Veterinary Manual…",
+            "🩺 Drafting the veterinary report…",
+            "📍 Personalised care recommendations…",
+            "✨ Almost ready!",
+        ]
+        super_label = "SUPER"
+        footer = ("Don't close the page — the report is being generated.<br/>"
+                  "Usually takes 20–40 seconds.")
+
+    n = len(msgs)
+    cycle = n * 2.4  # seconds per full message cycle
+    # Each message: fade in at its slot, hold, fade out before the next slot.
+    visible_pct = 100.0 / n
+    msg_spans = ""
+    for i, m in enumerate(msgs):
+        delay = i * 2.4
+        msg_spans += (
+            f'<span class="pn-msg" style="animation-delay:{delay:.2f}s">{m}</span>'
+        )
+
+    # Per-message keyframe: each span uses the same animation but with its own
+    # start delay; total animation-duration = n * 2.4s, visible window per span
+    # is one slot of (100/n)% with fade margins.
+    fade_in_end = 4.0
+    visible_end = visible_pct - 4.0
+    fade_out_end = visible_pct
+    keyframes_msg = (
+        "@keyframes pn-msg-cycle {"
+        "  0% { opacity: 0; transform: translateY(6px); }"
+        f" {fade_in_end:.1f}% {{ opacity: 1; transform: translateY(0); }}"
+        f" {visible_end:.1f}% {{ opacity: 1; transform: translateY(0); }}"
+        f" {fade_out_end:.1f}% {{ opacity: 0; transform: translateY(-4px); }}"
+        "  100% { opacity: 0; transform: translateY(-4px); }"
+        "}"
+    )
+
+    return f"""
+<style>
+  @keyframes pn-float {{
+    0%,100% {{ transform: translateY(0); }}
+    50%     {{ transform: translateY(-10px); }}
+  }}
+  @keyframes pn-bounce {{
+    0%,80%,100% {{ transform: scale(0.55); opacity: 0.35; }}
+    40%         {{ transform: scale(1.1);  opacity: 1; }}
+  }}
+  @keyframes pn-aura-spin {{
+    from {{ transform: rotate(0deg); }}
+    to   {{ transform: rotate(360deg); }}
+  }}
+  @keyframes pn-fade-in {{
+    from {{ opacity: 0; }}
+    to   {{ opacity: 1; }}
+  }}
+  {keyframes_msg}
+  .pn-overlay {{
+    position: fixed; inset: 0; z-index: 2147483600;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    animation: pn-fade-in 220ms ease-out;
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    padding: 16px;
+  }}
+  .pn-card {{
+    background: linear-gradient(160deg, #ECFDF5 0%, #FFFFFF 100%);
+    border-radius: 28px;
+    border: 2px solid #A7F3D0;
+    padding: 36px 28px 28px;
+    width: min(94vw, 400px);
+    max-height: 92vh;
+    text-align: center;
+    box-shadow: 0 30px 80px rgba(6,95,70,0.30);
+  }}
+  .pn-avatar-wrap {{
+    position: relative; width: 144px; height: 144px; margin: 0 auto;
+    animation: pn-float 2.6s ease-in-out infinite;
+  }}
+  .pn-aura {{
+    position: absolute; inset: -10px; border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      #DC2626, #F59E0B, #DC2626, #B91C1C, #DC2626);
+    animation: pn-aura-spin 8s linear infinite;
+    opacity: 0.85;
+    filter: blur(0.5px);
+  }}
+  .pn-avatar {{
+    position: relative; width: 144px; height: 144px; border-radius: 50%;
+    background: #FFFFFF; border: 5px solid #10B981;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }}
+  .pn-mask {{
+    position: absolute; top: 34%; left: 50%; transform: translateX(-50%);
+    background: rgba(15,23,42,0.88); color: #FBBF24;
+    font-size: 10px; font-weight: 800; letter-spacing: 3px;
+    padding: 3px 10px; border-radius: 3px;
+    border: 1px solid #F59E0B;
+    pointer-events: none;
+  }}
+  .pn-super {{
+    font-size: 11px; font-weight: 700; letter-spacing: 5px;
+    color: #059669; margin-top: 22px;
+  }}
+  .pn-name {{
+    font-size: 30px; font-weight: 800; color: #064E3B;
+    margin-top: 2px; line-height: 1.1;
+    word-break: break-word;
+  }}
+  .pn-bubble {{
+    position: relative; margin-top: 22px;
+    background: #D1FAE5; border: 2px solid #6EE7B7;
+    border-radius: 18px; padding: 14px 16px;
+    min-height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    color: #065F46; font-size: 15px; font-weight: 600;
+  }}
+  .pn-bubble::before {{
+    content: ""; position: absolute; top: -8px; left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 14px; height: 14px; background: #D1FAE5;
+    border-top: 2px solid #6EE7B7; border-left: 2px solid #6EE7B7;
+  }}
+  .pn-msg-stack {{ position: relative; width: 100%; min-height: 22px; }}
+  .pn-msg {{
+    position: absolute; left: 0; right: 0; opacity: 0;
+    animation-name: pn-msg-cycle;
+    animation-duration: {cycle:.1f}s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+  }}
+  .pn-dots {{ display: flex; gap: 8px; justify-content: center; margin-top: 20px; }}
+  .pn-dot {{
+    width: 10px; height: 10px; border-radius: 50%; background: #10B981;
+    animation: pn-bounce 1s infinite;
+  }}
+  .pn-dot:nth-child(2) {{ animation-delay: 0.15s; }}
+  .pn-dot:nth-child(3) {{ animation-delay: 0.30s; }}
+  .pn-foot {{
+    font-size: 12px; color: #475569; margin-top: 20px; line-height: 1.55;
+  }}
+</style>
+<div class="pn-overlay" role="status" aria-live="polite" aria-label="Generating report">
+  <div class="pn-card">
+    <div class="pn-avatar-wrap">
+      <div class="pn-aura"></div>
+      <div class="pn-avatar">{avatar_inner}</div>
+      <div class="pn-mask">HERO</div>
+    </div>
+    <div class="pn-super">{super_label}</div>
+    <div class="pn-name">{pet_name}</div>
+    <div class="pn-bubble">
+      <div class="pn-msg-stack">{msg_spans}</div>
+    </div>
+    <div class="pn-dots">
+      <div class="pn-dot"></div>
+      <div class="pn-dot"></div>
+      <div class="pn-dot"></div>
+    </div>
+    <div class="pn-foot">{footer}</div>
+  </div>
+</div>
+"""
+
+
 def render_lifestyle_strip(lang="el"):
     """Three lifestyle cards (walks, vet visits, daily care) using the
     illustrated 'life action' artwork — warmer, brand-consistent feel."""
@@ -3647,44 +3868,88 @@ def render_triage():
     with st.expander(_lab_title, expanded=False):
         st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
                    else "PDF or photo of blood/urine test results, etc.")
-        lab_file = st.file_uploader(
-            ("Ανέβασμα εξέτασης" if lang=="el" else "Upload lab result"),
-            type=["pdf","jpg","jpeg","png","webp","heic","heif"], key="pet_lab_upload"
+        lab_files = st.file_uploader(
+            ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
+            type=["pdf","jpg","jpeg","png","webp","heic","heif"],
+            key="pet_lab_upload",
+            accept_multiple_files=True,
+            help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
+                  if lang=="el" else
+                  "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
         )
-        if lab_file:
-            if st.button("🔍 " + ("Ανάλυση Εξέτασης" if lang=="el" else "Analyse Lab Result"),
-                         type="primary", use_container_width=True, key="analyse_lab"):
-                file_bytes = lab_file.read()
-                fname_lower = lab_file.name.lower()
-                mime_type = "application/pdf"
-                if fname_lower.endswith((".heic",".heif")):
-                    if HEIC_OK:
-                        try:
-                            file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
-                        except Exception as e:
-                            st.error(f"HEIC conversion failed: {e}")
-                            file_bytes = None
-                    else:
-                        st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
-                                 else "⚠️ HEIC photos need pillow-heif.")
-                        file_bytes = None
-                elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
-                elif fname_lower.endswith(".png"):  mime_type = "image/png"
-                elif fname_lower.endswith(".webp"): mime_type = "image/webp"
-                elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+        if lab_files:
+            # Show a list of what's queued before the user commits to analysis
+            st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
+                        else f"📎 {len(lab_files)} files queued: ")
+                       + ", ".join(f.name for f in lab_files))
 
-                if file_bytes:
-                    with st.spinner("Claude αναλύει..." if lang=="el" else "Claude analysing..."):
-                        analysis = claude_analyze_pet_lab(
-                            file_bytes, mime_type, pet, st.session_state.triage_chat, lang, lab_file.name)
-                    st.markdown(analysis)
-                    st.session_state.lab_findings.append({
-                        "file_name": lab_file.name, "analysis": analysis,
-                    })
-                    finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}" if lang=="el"
-                                   else f"Lab result ({lab_file.name}):\n\n{analysis}")
-                    st.session_state.triage_chat.append({"role":"user","content":finding_msg})
-                    st.success("✅ " + ("Προστέθηκε στην εκτίμηση." if lang=="el" else "Added to the assessment."))
+            if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
+                                  if lang=="el" else
+                                  (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
+                         type="primary", use_container_width=True, key="analyse_lab"):
+
+                # Names already analysed — skip them so re-clicking doesn't double-process
+                _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
+                _to_run = [f for f in lab_files if f.name not in _already]
+
+                if not _to_run:
+                    st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
+                                     else "All files have already been analysed."))
+                else:
+                    _added = 0
+                    _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
+                    with st.status(_status_msg, expanded=True) as _stat:
+                        for idx, lab_file in enumerate(_to_run, 1):
+                            _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
+                            file_bytes = lab_file.read()
+                            fname_lower = lab_file.name.lower()
+                            mime_type = "application/pdf"
+                            if fname_lower.endswith((".heic",".heif")):
+                                if HEIC_OK:
+                                    try:
+                                        file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
+                                    except Exception as e:
+                                        st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
+                                        continue
+                                else:
+                                    st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
+                                             else "⚠️ HEIC photos need pillow-heif.")
+                                    continue
+                            elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
+                            elif fname_lower.endswith(".png"):  mime_type = "image/png"
+                            elif fname_lower.endswith(".webp"): mime_type = "image/webp"
+                            elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+
+                            if not file_bytes:
+                                continue
+
+                            try:
+                                analysis = claude_analyze_pet_lab(
+                                    file_bytes, mime_type, pet,
+                                    st.session_state.triage_chat, lang, lab_file.name)
+                            except Exception as e:
+                                st.error(f"⚠️ {lab_file.name}: {e}")
+                                continue
+
+                            st.markdown(f"#### 📄 {lab_file.name}")
+                            st.markdown(analysis)
+                            st.session_state.lab_findings.append({
+                                "file_name": lab_file.name, "analysis": analysis,
+                            })
+                            finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
+                                           if lang=="el" else
+                                           f"Lab result ({lab_file.name}):\n\n{analysis}")
+                            st.session_state.triage_chat.append({"role":"user","content":finding_msg})
+                            _added += 1
+
+                        _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
+                                  else f"✅ Completed {_added}/{len(_to_run)} files")
+                        _stat.update(label=_final, state="complete", expanded=False)
+
+                    if _added:
+                        st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
+                                            if lang=="el" else
+                                            f"Added {_added} lab result(s) to the assessment."))
         if st.session_state.lab_findings:
             st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
                        + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
@@ -3902,6 +4167,19 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
+        # ── Superhero loading overlay ────────────────────────────────────────
+        # Full-viewport fixed banner (the pet's mascot says hello while the
+        # report is being prepared). Critical here because the report page
+        # header pushes the inline progress bar below the fold and Streamlit
+        # doesn't autoscroll on screen change — without this banner, users
+        # stare at a "frozen" page for 20-40s wondering if something is
+        # happening. The CSS animations keep running during the blocking
+        # Claude API call. The overlay disappears automatically on st.rerun()
+        # when the report is ready; on error we explicitly clear it.
+        _overlay = st.empty()
+        _overlay.markdown(report_loading_banner_html(pet, lang),
+                          unsafe_allow_html=True)
+
         conversation = "\n".join(
             f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content']}"
             for m in st.session_state.triage_chat)
@@ -3979,6 +4257,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         result = claude([{"role":"user","content":report_prompt}],
                         system=petainurse_system(pet), max_tokens=6000, timeout=180)
         if result.startswith("⚠️"):
+            _overlay.empty()
             _progress.empty()
             st.error(result)
             if st.button("🔄 Retry"): st.rerun()
