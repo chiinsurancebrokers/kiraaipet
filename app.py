@@ -285,7 +285,13 @@ or no major issue was found, give sensible preventive/wellness guidance instead.
     if result.startswith("⚠️"):
         return {}
     try:
-        cleaned = _CJK_RANGES.sub("", result).strip()
+        # Skip CJK stripping if the user chose a CJK output language —
+        # otherwise we'd strip legitimate Chinese/Japanese/Korean content.
+        _out = st.session_state.get("output_lang") or st.session_state.get("lang")
+        if _out in ("zh", "ja", "ko"):
+            cleaned = result.strip()
+        else:
+            cleaned = _CJK_RANGES.sub("", result).strip()
         if cleaned.startswith("```"):
             cleaned = cleaned.split("```")[1]
             if cleaned.startswith("json"):
@@ -667,18 +673,35 @@ _CJK_RANGES = _re_san.compile(
 
 def sanitize_ai_text(text):
     """Remove non-Greek/Latin stray glyphs and clean up dangling markdown so the
-    report never shows Chinese characters or a half-written blockquote header."""
+    report never shows Chinese characters or a half-written blockquote header.
+
+    Language-aware: if the user explicitly picked a CJK output language
+    (Chinese/Japanese/Korean), we skip the CJK stripping step — otherwise the
+    sanitizer would erase the entire legitimate response."""
     if not text or not isinstance(text, str):
         return text or ""
-    # 1) drop CJK / fullwidth runs entirely
-    text = _CJK_RANGES.sub("", text)
+    # Determine whether the user actually wants CJK output. If so, skip the
+    # CJK stripping below — those characters are now the legitimate response,
+    # not garbage. Falls back to st.session_state at call time so callers
+    # don't need to thread the language through.
+    _out_lang = None
+    try:
+        _out_lang = st.session_state.get("output_lang") or st.session_state.get("lang")
+    except Exception:
+        _out_lang = None
+    _cjk_ok = _out_lang in ("zh", "ja", "ko")
+    # 1) drop CJK / fullwidth runs entirely (unless the user picked CJK output)
+    if not _cjk_ok:
+        text = _CJK_RANGES.sub("", text)
     # 1b) fix a frequent mistranslation: informal «Πάντε» -> proper «Πηγαίνετε»
-    text = _re_san.sub(r"\bΠΑΝΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
-    text = _re_san.sub(r"\bΠάντε\b", "Πηγαίνετε", text)
-    text = _re_san.sub(r"\bπάντε\b", "πηγαίνετε", text)
-    text = _re_san.sub(r"\bΠΑΓΑΙΝΕΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
-    text = _re_san.sub(r"\bΠαγαίνετε\b", "Πηγαίνετε", text)
-    text = _re_san.sub(r"\bπαγαίνετε\b", "πηγαίνετε", text)
+    #     (Greek-only — skip for other languages so we don't touch their words)
+    if _out_lang == "el":
+        text = _re_san.sub(r"\bΠΑΝΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
+        text = _re_san.sub(r"\bΠάντε\b", "Πηγαίνετε", text)
+        text = _re_san.sub(r"\bπάντε\b", "πηγαίνετε", text)
+        text = _re_san.sub(r"\bΠΑΓΑΙΝΕΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
+        text = _re_san.sub(r"\bΠαγαίνετε\b", "Πηγαίνετε", text)
+        text = _re_san.sub(r"\bπαγαίνετε\b", "πηγαίνετε", text)
     # 1c) tidy stray double-space left after stripping CJK, e.g. "腹水 (x)" -> " (x)"
     text = _re_san.sub(r"(?<=\S) {2,}\(", " (", text)
     # 2) remove a blockquote line that was cut off mid-sentence (no closing on
@@ -1551,9 +1574,10 @@ def render_doc_header(title_el, title_en, *, icon="📋",
 
 
 def render_stepper(current):
+    lang = st.session_state.lang
     steps_el = ["1 Προφίλ","2 Ζωτικές","3 Συμπτώματα","4 Αναφορά"]
     steps_en = ["1 Profile","2 Vitals","3 Symptoms","4 Report"]
-    steps = steps_el if st.session_state.lang=="el" else steps_en
+    steps = steps_el if lang=="el" else steps_en
     order = ["intake","vitals","triage","report"]
     cur_i = order.index(current) if current in order else 0
     html = '<div class="pan-stepper">'
@@ -1564,7 +1588,14 @@ def render_stepper(current):
         if i<len(steps)-1:
             html += f'<div class="pan-step-line {"done" if i<cur_i else ""}"></div>'
     html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
+    # Language toggle inline with stepper
+    _sc1, _sc2 = st.columns([8, 1])
+    with _sc1:
+        st.markdown(html, unsafe_allow_html=True)
+    with _sc2:
+        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ", key=f"stepper_lang_{current}"):
+            st.session_state.lang = "en" if lang=="el" else "el"
+            st.rerun()
 
 # ── KIRA PET SYSTEM PROMPTS ───────────────────────────────────────────────────
 # ── OUTPUT LANGUAGE (AI response) ────────────────────────────────────────────
@@ -1574,14 +1605,43 @@ def render_stepper(current):
 # st.session_state.lang; the AI output language is in st.session_state.output_lang.
 # OUTPUT_LANGUAGES[code] = (native_display, claude_prompt_name)
 OUTPUT_LANGUAGES = {
+    # Core (UI-supported + earlier additions)
     "el": ("🇬🇷 Ελληνικά",   "Greek (Ελληνικά)"),
     "en": ("🇬🇧 English",    "English"),
     "es": ("🇪🇸 Español",    "Spanish (Español)"),
     "bg": ("🇧🇬 Български",  "Bulgarian (Български)"),
     "it": ("🇮🇹 Italiano",   "Italian (Italiano)"),
     "ro": ("🇷🇴 Română",     "Romanian (Română)"),
-    "pl": ("🇵🇱 Polski",     "Polski"),
+    "pl": ("🇵🇱 Polski",     "Polish (Polski)"),
     "hu": ("🇭🇺 Magyar",     "Hungarian (Magyar)"),
+    # Major European languages
+    "de": ("🇩🇪 Deutsch",     "German (Deutsch)"),
+    "fr": ("🇫🇷 Français",    "French (Français)"),
+    "pt": ("🇵🇹 Português",   "Portuguese (Português)"),
+    "nl": ("🇳🇱 Nederlands",  "Dutch (Nederlands)"),
+    "sv": ("🇸🇪 Svenska",     "Swedish (Svenska)"),
+    "fi": ("🇫🇮 Suomi",       "Finnish (Suomi)"),
+    "da": ("🇩🇰 Dansk",       "Danish (Dansk)"),
+    "no": ("🇳🇴 Norsk",       "Norwegian (Norsk Bokmål)"),
+    "cs": ("🇨🇿 Čeština",     "Czech (Čeština)"),
+    "sk": ("🇸🇰 Slovenčina",  "Slovak (Slovenčina)"),
+    "sl": ("🇸🇮 Slovenščina", "Slovenian (Slovenščina)"),
+    "hr": ("🇭🇷 Hrvatski",    "Croatian (Hrvatski)"),
+    "sr": ("🇷🇸 Српски",      "Serbian (Српски)"),
+    "mk": ("🇲🇰 Македонски",  "Macedonian (Македонски)"),
+    "sq": ("🇦🇱 Shqip",       "Albanian (Shqip)"),
+    "tr": ("🇹🇷 Türkçe",      "Turkish (Türkçe)"),
+    # Cyrillic
+    "ru": ("🇷🇺 Русский",     "Russian (Русский)"),
+    "uk": ("🇺🇦 Українська",  "Ukrainian (Українська)"),
+    # Other scripts
+    "ar": ("🇸🇦 العربية",      "Arabic (العربية)"),
+    "he": ("🇮🇱 עברית",        "Hebrew (עברית)"),
+    "hi": ("🇮🇳 हिन्दी",         "Hindi (हिन्दी)"),
+    # CJK — sanitizer auto-skips the CJK-strip step for these codes
+    "zh": ("🇨🇳 中文",         "Chinese Simplified (简体中文)"),
+    "ja": ("🇯🇵 日本語",       "Japanese (日本語)"),
+    "ko": ("🇰🇷 한국어",       "Korean (한국어)"),
 }
 
 
@@ -1746,6 +1806,400 @@ CLINICAL_TERMINOLOGY = {
         "Használj «dehidráció» / «kiszáradás» kifejezést",
         "Különböztesd meg a «regurgitáció»-t (passzív, nyelőcsői) a «hányás»-tól (aktív, hasi) — klinikailag KÜLÖNBÖZŐK, nem szinonimák",
         "FONTOS: helyes ragozás: «szőrhullásnak», «hányásnak», «hasmenésnek»; ne találj ki magyar főnevet idegen szóból; használj bevett magyar állatorvosi terminológiát",
+    ],
+    "de": [
+        "Nutze «Alopezie» / «Haarausfall» (NICHT «Glatze» als klinischer Begriff)",
+        "Nutze «Erbrechen» / «Emesis» (NICHT «Kotzen» — vulgär)",
+        "Nutze «Diarrhö» / «Durchfall» (NICHT «Dünnschiss» — vulgär)",
+        "Nutze «Obstipation» / «Verstopfung»",
+        "Nutze «Anorexie» (vollständig) / «Inappetenz» (teilweise) — NICHT nur «frisst nicht» im Bericht",
+        "Nutze «Lethargie» / «Apathie» (NICHT «müde»)",
+        "Nutze «Polydipsie» (↑ Durst) und «Polyurie» (↑ Urinabsatz)",
+        "Nutze «Pruritus» / «Juckreiz» (NICHT «Kratzen» — das ist das Verhalten, nicht das Symptom)",
+        "Nutze «Pyrexie» / «Fieber» (NICHT «heiß»)",
+        "Nutze «Dyspnoe» / «Tachypnoe»",
+        "Nutze «Ikterus» / «Gelbsucht»",
+        "Nutze «Zyanose»",
+        "Nutze «Dehydratation» / «Exsikkose»",
+        "Unterscheide «Regurgitation» (passiv, ösophageal) von «Erbrechen» (aktiv, abdominal) — klinisch UNTERSCHIEDLICH, niemals Synonyme",
+        "WICHTIG: korrekte Großschreibung deutscher Substantive; richtige Kasus-Endungen (des Erbrechens, der Diarrhö)",
+    ],
+    "fr": [
+        "Utilise «alopécie» / «chute du poil» (PAS «pelade» comme terme générique — c'est une affection précise)",
+        "Utilise «vomissement» / «émèse» (PAS «dégueuler» — vulgaire)",
+        "Utilise «diarrhée» (PAS «la courante»)",
+        "Utilise «constipation»",
+        "Utilise «anorexie» (totale) / «hyporexie» (partielle) — PAS juste «ne mange pas» dans le rapport",
+        "Utilise «léthargie» / «apathie» / «abattement»",
+        "Utilise «polydipsie» (↑ soif) et «polyurie» (↑ miction)",
+        "Utilise «prurit» (PAS «se gratte» — c'est le comportement, pas le signe clinique)",
+        "Utilise «pyrexie» / «hyperthermie» / «fièvre»",
+        "Utilise «dyspnée» / «tachypnée»",
+        "Utilise «ictère» (PAS «jaune»)",
+        "Utilise «cyanose»",
+        "Utilise «déshydratation»",
+        "Distingue «régurgitation» (passive, œsophagienne) du «vomissement» (actif, abdominal) — cliniquement DIFFÉRENTS, jamais synonymes",
+        "IMPORTANT: accents corrects (é, è, ê, à, ç); ne pas omettre les diacritiques",
+    ],
+    "pt": [
+        "Use «alopecia» / «queda de pelo» (NÃO «pelado» como termo clínico genérico)",
+        "Use «vómito» / «vômito» / «emese» (NÃO «golfada» — é regurgitação)",
+        "Use «diarreia» (NÃO «soltura»)",
+        "Use «obstipação» / «constipação intestinal»",
+        "Use «anorexia» (total) / «hiporexia» (parcial) — NÃO apenas «não come» no relatório",
+        "Use «letargia» / «apatia» / «prostração»",
+        "Use «polidipsia» (↑ sede) e «poliúria» (↑ micção)",
+        "Use «prurido» (NÃO «coceira» no relatório clínico — «coçar» é o comportamento)",
+        "Use «pirexia» / «febre»",
+        "Use «dispneia» / «taquipneia»",
+        "Use «icterícia» (NÃO «amarelo»)",
+        "Use «cianose»",
+        "Use «desidratação»",
+        "Distinga «regurgitação» (passiva, esofágica) de «vómito/vômito» (ativo, abdominal) — clinicamente DIFERENTES, nunca sinónimos",
+        "IMPORTANTE: acentos corretos; usa terminologia veterinária estabelecida em pt-PT ou pt-BR de forma consistente",
+    ],
+    "nl": [
+        "Gebruik «alopecie» / «haaruitval» (NIET «kaalheid» als klinische term)",
+        "Gebruik «braken» / «emesis» (NIET «kotsen» — vulgair)",
+        "Gebruik «diarree» (NIET «de poep»)",
+        "Gebruik «obstipatie» / «verstopping»",
+        "Gebruik «anorexie» (volledig) / «hyporexie» (gedeeltelijk) — NIET enkel «eet niet» in het rapport",
+        "Gebruik «lethargie» / «apathie»",
+        "Gebruik «polydipsie» (↑ dorst) en «polyurie» (↑ urineren)",
+        "Gebruik «pruritus» / «jeuk» (NIET «krabben» — dat is gedrag)",
+        "Gebruik «pyrexie» / «koorts»",
+        "Gebruik «dyspneu» / «tachypneu»",
+        "Gebruik «icterus» / «geelzucht»",
+        "Gebruik «cyanose»",
+        "Gebruik «dehydratie»",
+        "Onderscheid «regurgitatie» (passief, oesofagaal) van «braken» (actief, abdominaal) — klinisch VERSCHILLEND, geen synoniemen",
+    ],
+    "sv": [
+        "Använd «alopeci» / «pälsavfall» (INTE «skallighet» som klinisk term)",
+        "Använd «kräkning» / «emesis» (INTE «spya» — vulgärt)",
+        "Använd «diarré»",
+        "Använd «förstoppning» / «obstipation»",
+        "Använd «anorexi» (fullständig) / «hyporexi» (delvis) — INTE bara «äter inte»",
+        "Använd «letargi» / «apati» / «nedsatt allmäntillstånd»",
+        "Använd «polydipsi» (↑ törst) och «polyuri» (↑ urinering)",
+        "Använd «pruritus» / «klåda» (INTE «kliar sig» — det är beteende)",
+        "Använd «pyrexi» / «feber»",
+        "Använd «dyspné» / «takypné»",
+        "Använd «ikterus» / «gulsot»",
+        "Använd «cyanos»",
+        "Använd «dehydrering»",
+        "Skilj «regurgitation» (passiv, esofageal) från «kräkning» (aktiv, buk) — kliniskt OLIKA, aldrig synonymer",
+    ],
+    "fi": [
+        "Käytä termiä «alopecia» / «karvanlähtö» (EI «kaljuus» kliinisenä terminä)",
+        "Käytä termiä «oksentelu» / «emeesi» (EI «yrjööminen» — karkea)",
+        "Käytä termiä «ripuli»",
+        "Käytä termiä «ummetus» / «obstipaatio»",
+        "Käytä termiä «anoreksia» / «ruokahaluttomuus» — EI vain «ei syö» raportissa",
+        "Käytä termiä «letargia» / «apatia» / «alavireisyys»",
+        "Käytä termejä «polydipsia» (↑ jano) ja «polyuria» (↑ virtsaaminen)",
+        "Käytä termiä «kutina» / «pruritus» (EI «raapii» — se on käyttäytymistä)",
+        "Käytä termiä «kuume» / «pyreksia»",
+        "Käytä termejä «hengenahdistus» / «dyspnea» / «takypnea»",
+        "Käytä termiä «ikterus» / «keltaisuus»",
+        "Käytä termiä «syanoosi»",
+        "Käytä termiä «kuivuminen» / «dehydraatio»",
+        "Erota «regurgitaatio» (passiivinen, ruokatorvi) ja «oksentelu» (aktiivinen, vatsa) — kliinisesti ERILAISET, eivät synonyymejä",
+    ],
+    "da": [
+        "Brug «alopeci» / «hårtab» (IKKE «skaldethed» som klinisk term)",
+        "Brug «opkastning» / «emesis» (IKKE «brække sig» — uformelt)",
+        "Brug «diarré»",
+        "Brug «forstoppelse» / «obstipation»",
+        "Brug «anoreksi» / «nedsat appetit» — IKKE bare «æder ikke»",
+        "Brug «letargi» / «apati»",
+        "Brug «polydipsi» (↑ tørst) og «polyuri» (↑ vandladning)",
+        "Brug «kløe» / «pruritus»",
+        "Brug «feber» / «pyreksi»",
+        "Brug «dyspnø» / «takypnø»",
+        "Brug «ikterus» / «gulsot»",
+        "Brug «cyanose»",
+        "Brug «dehydrering»",
+        "Skeln «regurgitation» (passiv) fra «opkastning» (aktiv) — klinisk FORSKELLIGE, aldrig synonymer",
+    ],
+    "no": [
+        "Bruk «alopesi» / «hårtap» (IKKE «skallethet» som klinisk term)",
+        "Bruk «brekninger» / «emese» (IKKE «spy» — uformelt)",
+        "Bruk «diaré»",
+        "Bruk «forstoppelse» / «obstipasjon»",
+        "Bruk «anoreksi» / «nedsatt appetitt» — IKKE bare «spiser ikke»",
+        "Bruk «letargi» / «apati»",
+        "Bruk «polydipsi» (↑ tørst) og «polyuri» (↑ vannlating)",
+        "Bruk «kløe» / «pruritus»",
+        "Bruk «feber» / «pyreksi»",
+        "Bruk «dyspné» / «takypné»",
+        "Bruk «ikterus» / «gulsott»",
+        "Bruk «cyanose»",
+        "Bruk «dehydrering»",
+        "Skill «regurgitasjon» (passiv) fra «brekninger» (aktive) — klinisk FORSKJELLIGE, aldri synonymer",
+    ],
+    "cs": [
+        "Použij «alopecie» / «vypadávání srsti» (NE «pleš» jako klinický termín)",
+        "Použij «zvracení» (NE «blití» — vulgární)",
+        "Použij «průjem»",
+        "Použij «zácpa» / «obstipace»",
+        "Použij «anorexie» / «nechutenství» — NE jen «nežere»",
+        "Použij «letargie» / «apatie»",
+        "Použij «polydipsie» (↑ žízeň) a «polyurie» (↑ močení)",
+        "Použij «pruritus» / «svědění» (NE «škrábání» — to je chování)",
+        "Použij «horečka» / «pyrexie»",
+        "Použij «dušnost» / «tachypnoe»",
+        "Použij «ikterus» / «žloutenka»",
+        "Použij «cyanóza»",
+        "Použij «dehydratace»",
+        "Rozlišuj «regurgitaci» (pasivní, jícnová) od «zvracení» (aktivní, břišní) — klinicky ROZDÍLNÉ, nikdy synonyma",
+        "DŮLEŽITÉ: správná diakritika (á, č, ď, é, ě, í, ň, ó, ř, š, ť, ú, ů, ý, ž)",
+    ],
+    "sk": [
+        "Použi «alopécia» / «vypadávanie srsti»",
+        "Použi «vracanie» (NIE «blytie» — vulgárne)",
+        "Použi «hnačka»",
+        "Použi «zápcha» / «obstipácia»",
+        "Použi «anorexia» / «nechutenstvo»",
+        "Použi «letargia» / «apatia»",
+        "Použi «polydipsia» (↑ smäd) a «polyúria» (↑ močenie)",
+        "Použi «pruritus» / «svrbenie»",
+        "Použi «horúčka» / «pyrexia»",
+        "Použi «dýchavičnosť» / «tachypnoe»",
+        "Použi «ikterus» / «žltačka»",
+        "Použi «cyanóza»",
+        "Použi «dehydratácia»",
+        "Rozlíš «regurgitáciu» (pasívna) od «vracania» (aktívne) — klinicky ROZDIELNE, nikdy synonymá",
+    ],
+    "sl": [
+        "Uporabljaj «alopecija» / «izpadanje dlake»",
+        "Uporabljaj «bruhanje» / «emesis»",
+        "Uporabljaj «driska»",
+        "Uporabljaj «zaprtje» / «obstipacija»",
+        "Uporabljaj «anoreksija» / «pomanjkanje apetita»",
+        "Uporabljaj «letargija» / «apatija»",
+        "Uporabljaj «polidipsija» (↑ žeja) in «poliurija» (↑ uriniranje)",
+        "Uporabljaj «srbenje» / «pruritus»",
+        "Uporabljaj «vročina» / «pireksija»",
+        "Uporabljaj «dispneja» / «tahipneja»",
+        "Uporabljaj «zlatenica» / «ikterus»",
+        "Uporabljaj «cianoza»",
+        "Uporabljaj «dehidracija»",
+        "Razlikuj «regurgitacijo» (pasivna) od «bruhanja» (aktivno) — klinično RAZLIČNI, nista sinonima",
+    ],
+    "hr": [
+        "Koristi «alopecija» / «ispadanje dlake»",
+        "Koristi «povraćanje» (NE «bljuvanje» — vulgarno)",
+        "Koristi «proljev»",
+        "Koristi «zatvor» / «opstipacija»",
+        "Koristi «anoreksija» / «gubitak apetita»",
+        "Koristi «letargija» / «apatija»",
+        "Koristi «polidipsija» (↑ žeđ) i «poliurija» (↑ mokrenje)",
+        "Koristi «svrbež» / «pruritus»",
+        "Koristi «vrućica» / «pireksija»",
+        "Koristi «dispneja» / «tahipneja»",
+        "Koristi «žutica» / «ikterus»",
+        "Koristi «cijanoza»",
+        "Koristi «dehidracija»",
+        "Razlikuj «regurgitaciju» (pasivna) od «povraćanja» (aktivno) — klinički RAZLIČITO, nikada sinonimi",
+    ],
+    "sr": [
+        "Користи «алопеција» / «опадање длаке»",
+        "Користи «повраћање» (НЕ «бљување» — вулгарно)",
+        "Користи «пролив» / «дијареја»",
+        "Користи «затвор» / «опстипација»",
+        "Користи «анорексија» / «губитак апетита»",
+        "Користи «летаргија» / «апатија»",
+        "Користи «полидипсија» (↑ жеђ) и «полиурија» (↑ мокрење)",
+        "Користи «свраб» / «пруритус»",
+        "Користи «грозница» / «пирексија»",
+        "Користи «диспнеја» / «тахипнеја»",
+        "Користи «жутица» / «иктерус»",
+        "Користи «цијаноза»",
+        "Користи «дехидрација»",
+        "Разликуј «регургитацију» (пасивна) од «повраћања» (активно) — клинички РАЗЛИЧИТО, никада синоними",
+    ],
+    "mk": [
+        "Користи «алопеција» / «опаѓање на влакна»",
+        "Користи «повраќање» (НЕ «блукање» — вулгарно)",
+        "Користи «пролив» / «дијареа»",
+        "Користи «запек» / «опстипација»",
+        "Користи «анорексија» / «недостаток на апетит»",
+        "Користи «летаргија» / «апатија»",
+        "Користи «полидипсија» (↑ жед) и «полиурија» (↑ мокрење)",
+        "Користи «чешање» / «пруритус» (свест дека «чешањето» е однесување)",
+        "Користи «треска» / «пирексија»",
+        "Користи «диспнеа» / «тахипнеа»",
+        "Користи «жолтица» / «иктерус»",
+        "Користи «цијаноза»",
+        "Користи «дехидрација»",
+        "Разликувај «регургитација» (пасивна) од «повраќање» (активно) — клинички РАЗЛИЧНИ, никогаш синоними",
+    ],
+    "sq": [
+        "Përdor «alopeci» / «rënie qimesh»",
+        "Përdor «të vjella» / «emesë» (JO «vjellje» si zhargon)",
+        "Përdor «diarre» (JO «barku i lirë» në raport)",
+        "Përdor «kapsllëk» / «obstipacion»",
+        "Përdor «anoreksi» / «mungesë oreksi» — JO vetëm «nuk ha»",
+        "Përdor «letargji» / «apati»",
+        "Përdor «polidipsi» (↑ etje) dhe «poliuri» (↑ urinim)",
+        "Përdor «kruajtje» / «prurit»",
+        "Përdor «temperaturë e lartë» / «pireksi»",
+        "Përdor «dispne» / «takipne»",
+        "Përdor «verdhëz» / «ikter»",
+        "Përdor «cianozë»",
+        "Përdor «dehidratim»",
+        "Dallo «regurgitacionin» (pasiv, ezofageal) nga «të vjellat» (aktive, abdominale) — klinikisht TË NDRYSHME",
+    ],
+    "tr": [
+        "Şu terimi kullan: «alopesi» / «tüy dökülmesi»",
+        "Şu terimi kullan: «kusma» / «emezis» (kaba dilden kaçın)",
+        "Şu terimi kullan: «ishal» / «diyare»",
+        "Şu terimi kullan: «kabızlık» / «konstipasyon»",
+        "Şu terimi kullan: «anoreksi» / «iştahsızlık» — raporda yalnız «yemiyor» yazma",
+        "Şu terimi kullan: «letarji» / «apati»",
+        "Şu terimleri kullan: «polidipsi» (↑ susama) ve «poliüri» (↑ idrara çıkma)",
+        "Şu terimi kullan: «kaşıntı» / «pruritus» (kaşıma davranıştır, semptom değil)",
+        "Şu terimi kullan: «ateş» / «pireksi»",
+        "Şu terimleri kullan: «dispne» / «takipne»",
+        "Şu terimi kullan: «sarılık» / «ikterus»",
+        "Şu terimi kullan: «siyanoz»",
+        "Şu terimi kullan: «dehidratasyon»",
+        "Şunları ayır: «regurjitasyon» (pasif, özofageal) ve «kusma» (aktif, abdominal) — klinik olarak FARKLI, asla eşanlamlı değil",
+        "ÖNEMLİ: Türkçe karakterleri doğru kullan (ç, ğ, ı, ö, ş, ü)",
+    ],
+    "ru": [
+        "Используй «алопеция» / «выпадение шерсти» (НЕ «облысение» как клинический термин)",
+        "Используй «рвота» (НЕ «блёв» — вульгарно)",
+        "Используй «диарея» / «понос» (в отчёте — «диарея»)",
+        "Используй «запор» / «обстипация»",
+        "Используй «анорексия» / «снижение аппетита» — НЕ просто «не ест»",
+        "Используй «летаргия» / «апатия» / «угнетение»",
+        "Используй «полидипсия» (↑ жажда) и «полиурия» (↑ мочеиспускание)",
+        "Используй «зуд» / «пруритус» (НЕ «чесание» — это поведение)",
+        "Используй «лихорадка» / «гипертермия» / «пирексия»",
+        "Используй «диспноэ» / «тахипноэ» / «одышка»",
+        "Используй «желтуха» / «иктеричность»",
+        "Используй «цианоз»",
+        "Используй «дегидратация» / «обезвоживание»",
+        "Различай «регургитацию» (пассивная, пищеводная) и «рвоту» (активная, брюшная) — клинически РАЗНОЕ, не синонимы",
+        "ВАЖНО: правильные падежные окончания; не выдумывай существительные из глаголов",
+    ],
+    "uk": [
+        "Використовуй «алопеція» / «випадіння шерсті»",
+        "Використовуй «блювання» / «блювота» (НЕ «ригання» — вульгарно)",
+        "Використовуй «діарея» / «пронос»",
+        "Використовуй «запор» / «обстипація»",
+        "Використовуй «анорексія» / «зниження апетиту»",
+        "Використовуй «летаргія» / «апатія»",
+        "Використовуй «полідипсія» (↑ спрага) і «поліурія» (↑ сечовипускання)",
+        "Використовуй «свербіж» / «пруритус»",
+        "Використовуй «гарячка» / «пірексія»",
+        "Використовуй «диспное» / «тахіпное» / «задишка»",
+        "Використовуй «жовтяниця» / «іктеричність»",
+        "Використовуй «ціаноз»",
+        "Використовуй «дегідратація» / «зневоднення»",
+        "Розрізняй «регургітацію» (пасивна) і «блювання» (активне) — клінічно РІЗНЕ, не синоніми",
+    ],
+    "ar": [
+        "استخدم «الثعلبة» / «تساقط الشعر» (وليس «الصلع» كمصطلح سريري عام)",
+        "استخدم «القيء» / «التقيؤ» (تجنب الكلمات العامية)",
+        "استخدم «الإسهال»",
+        "استخدم «الإمساك»",
+        "استخدم «فقدان الشهية» / «قهم» — وليس فقط «لا يأكل» في التقرير",
+        "استخدم «الخمول» / «اللامبالاة»",
+        "استخدم «العَطَش الشديد» (polydipsia) و«كثرة التبول» (polyuria)",
+        "استخدم «الحكة» / «الحَك» السريرية (الخدش هو سلوك، وليس عرضاً)",
+        "استخدم «الحُمّى» / «ارتفاع الحرارة»",
+        "استخدم «ضيق التنفس» / «تسرع التنفس»",
+        "استخدم «اليرقان» (وليس فقط «أصفر»)",
+        "استخدم «الزُّراق» (cyanosis)",
+        "استخدم «الجفاف»",
+        "ميّز بين «القَلَس» (regurgitation — سلبي، مريئي) و«القيء» (نشط، بطني) — مختلفان سريرياً، ليسا مترادفين",
+        "هام: استخدم الأرقام والترقيم العربي بشكل واضح، وحافظ على المصطلحات السريرية بالعربية الفصحى",
+    ],
+    "he": [
+        "השתמש ב«התקרחות» / «נשירת שיער» / «אלופציה»",
+        "השתמש ב«הקאה» / «הקאות» (לא בסלנג)",
+        "השתמש ב«שלשול»",
+        "השתמש ב«עצירות»",
+        "השתמש ב«אנורקסיה» / «חוסר תיאבון» — לא רק «לא אוכל» בדוח",
+        "השתמש ב«עייפות קיצונית» / «אפתיה» / «לתרגיה»",
+        "השתמש ב«פולידיפסיה» (↑ צמא) ו«פוליאוריה» (↑ מתן שתן)",
+        "השתמש ב«גירוד» / «פרוריטוס» (גירוד הוא ההתנהגות, התסמין הוא הגירוי)",
+        "השתמש ב«חום» / «פירקסיה»",
+        "השתמש ב«קוצר נשימה» / «טכיפניאה»",
+        "השתמש ב«צהבת» / «איקטרוס»",
+        "השתמש ב«ציאנוזיס» / «הכחלה»",
+        "השתמש ב«התייבשות»",
+        "הבחן בין «רגורגיטציה» (פסיבית, ושטית) ל«הקאה» (אקטיבית, בטנית) — שונים קלינית, אינם נרדפים",
+    ],
+    "hi": [
+        "«ऐलोपीशिया» / «बाल झड़ना» का प्रयोग करें (नैदानिक रिपोर्ट में «गंजापन» नहीं)",
+        "«वमन» / «उल्टी» का प्रयोग करें",
+        "«अतिसार» / «दस्त» का प्रयोग करें",
+        "«कब्ज» / «मलावरोध» का प्रयोग करें",
+        "«अरुचि» / «एनोरेक्सिया» का प्रयोग करें — रिपोर्ट में केवल «नहीं खाता» न लिखें",
+        "«सुस्ती» / «उदासीनता» / «लेथार्जी» का प्रयोग करें",
+        "«अत्यधिक प्यास» (polydipsia) और «अत्यधिक मूत्र» (polyuria) का प्रयोग करें",
+        "«खुजली» / «प्रुरिटस» का प्रयोग करें (खरोंचना व्यवहार है, लक्षण नहीं)",
+        "«ज्वर» / «बुखार» / «पाइरेक्सिया» का प्रयोग करें",
+        "«श्वासकष्ट» / «डिस्पनिया» / «टैकीपनिया» का प्रयोग करें",
+        "«पीलिया» / «इक्टेरस» का प्रयोग करें",
+        "«नीलिमा» / «साइनोसिस» का प्रयोग करें",
+        "«निर्जलीकरण» का प्रयोग करें",
+        "«रिगर्जिटेशन» (निष्क्रिय, ग्रासनली) और «उल्टी» (सक्रिय, उदर) में अंतर करें — चिकित्सकीय रूप से भिन्न, पर्यायवाची नहीं",
+    ],
+    "zh": [
+        "使用「脱毛症」/「脱毛」(不要将「秃」作为通用临床术语)",
+        "使用「呕吐」(不要用「吐了」等口语)",
+        "使用「腹泻」(不要用「拉稀」)",
+        "使用「便秘」",
+        "使用「厌食」(完全) /「食欲减退」(部分) — 报告中不要只写「不吃」",
+        "使用「精神沉郁」/「昏睡」/「嗜睡」",
+        "使用「多饮」(↑ 饮水) 和「多尿」(↑ 排尿)",
+        "使用「瘙痒」(瘙痒是症状,「抓挠」是行为)",
+        "使用「发热」/「高热」(不要只写「发烫」)",
+        "使用「呼吸困难」/「呼吸急促」",
+        "使用「黄疸」(不要只写「发黄」)",
+        "使用「发绀」/「紫绀」",
+        "使用「脱水」",
+        "区分「反流」(被动,食管) 与「呕吐」(主动,腹部) — 临床上不同,绝非同义词",
+        "重要: 使用规范简体中文兽医术语;不要逐字翻译英文短语",
+    ],
+    "ja": [
+        "「脱毛症」「被毛脱落」を使う(臨床用語として「ハゲ」は使わない)",
+        "「嘔吐」「催吐」を使う(俗語は避ける)",
+        "「下痢」を使う",
+        "「便秘」を使う",
+        "「食欲不振」「無食欲」を使う — 報告書で単に「食べない」とは書かない",
+        "「無気力」「沈うつ」「嗜眠」を使う",
+        "「多飲」(↑ 飲水) と「多尿」(↑ 排尿) を使う",
+        "「掻痒」「そう痒」を使う(掻く行為と症状を区別)",
+        "「発熱」「高体温」を使う",
+        "「呼吸困難」「頻呼吸」を使う",
+        "「黄疸」を使う(単に「黄色い」とは書かない)",
+        "「チアノーゼ」を使う",
+        "「脱水」を使う",
+        "「吐出 (とっしゅつ)」(受動的、食道由来) と「嘔吐」(能動的、腹部由来) を区別 — 臨床的に別物、同義語ではない",
+        "重要: 確立された日本の獣医学用語を使い、英語のフレーズを直訳しない",
+    ],
+    "ko": [
+        "「탈모증」/「털 빠짐」을 사용 (「대머리」는 임상 용어로 사용하지 않음)",
+        "「구토」/「토함」을 사용 (속어는 피함)",
+        "「설사」를 사용",
+        "「변비」를 사용",
+        "「식욕부진」/「무식욕」을 사용 — 보고서에 단순히 「먹지 않음」으로 적지 말 것",
+        "「무기력」/「기면」/「침울」을 사용",
+        "「다음 (多飮)」(↑ 음수) 와 「다뇨 (多尿)」(↑ 배뇨) 사용",
+        "「소양증」/「가려움」을 사용 (긁는 것은 행동, 증상이 아님)",
+        "「발열」/「고체온」을 사용",
+        "「호흡곤란」/「빈호흡」을 사용",
+        "「황달」을 사용",
+        "「청색증」/「시아노시스」를 사용",
+        "「탈수」를 사용",
+        "「역류 (regurgitation)」(수동적, 식도성) 와 「구토 (vomiting)」(능동적, 복부성) 를 구별 — 임상적으로 다르며, 동의어가 아님",
+        "중요: 한국 수의학에서 확립된 용어를 사용하고, 영어 표현을 직역하지 말 것",
     ],
 }
 
@@ -2212,12 +2666,7 @@ def report_loading_banner_html(pet, lang="el"):
     overflow: hidden;
   }}
   .pn-mask {{
-    position: absolute; top: 34%; left: 50%; transform: translateX(-50%);
-    background: rgba(15,23,42,0.88); color: #FBBF24;
-    font-size: 10px; font-weight: 800; letter-spacing: 3px;
-    padding: 3px 10px; border-radius: 3px;
-    border: 1px solid #F59E0B;
-    pointer-events: none;
+    display: none;
   }}
   .pn-super {{
     font-size: 11px; font-weight: 700; letter-spacing: 5px;
@@ -2266,7 +2715,6 @@ def report_loading_banner_html(pet, lang="el"):
     <div class="pn-avatar-wrap">
       <div class="pn-aura"></div>
       <div class="pn-avatar">{avatar_inner}</div>
-      <div class="pn-mask">HERO</div>
     </div>
     <div class="pn-super">{super_label}</div>
     <div class="pn-name">{pet_name}</div>
@@ -3718,6 +4166,17 @@ def render_intake():
 
     # ── STEP 0: who's filling this in + name + species ────────────────────────
     if step == 0:
+        # Language preferences — UI language + AI output language
+        with st.expander("🌍 " + ("Προτιμήσεις γλώσσας" if lang=="el" else "Language preferences"), expanded=False):
+            _lp_c1, _lp_c2 = st.columns(2)
+            with _lp_c1:
+                st.markdown("**" + ("Γλώσσα διεπαφής (UI)" if lang=="el" else "Interface language (UI)") + "**")
+                if st.button("🇬🇧 Switch to English" if lang=="el" else "🇬🇷 Αλλαγή σε Ελληνικά", key="intake_ui_lang"):
+                    st.session_state.lang = "en" if lang=="el" else "el"
+                    st.rerun()
+            with _lp_c2:
+                render_output_language_picker(lang, key_suffix="intake_step0")
+
         filler_opts_el = ["Ιδιοκτήτης", "Pet Sitter", "Κτηνίατρος/Προσωπικό κλινικής"]
         filler_opts_en = ["Owner", "Pet Sitter", "Vet/Clinic staff"]
         filler_opts = filler_opts_el if lang=="el" else filler_opts_en
@@ -4532,6 +4991,17 @@ def render_report():
                 "Tap “New Assessment” to start over, or “Back to chat” to return to triage.",
     )
     render_vitals_summary()
+
+    # Language preferences — available at report stage too
+    with st.expander("🌍 " + ("Προτιμήσεις γλώσσας" if lang=="el" else "Language preferences"), expanded=False):
+        _rl_c1, _rl_c2 = st.columns(2)
+        with _rl_c1:
+            st.markdown("**" + ("Γλώσσα διεπαφής (UI)" if lang=="el" else "Interface language (UI)") + "**")
+            if st.button("🇬🇧 Switch to English" if lang=="el" else "🇬🇷 Αλλαγή σε Ελληνικά", key="report_ui_lang"):
+                st.session_state.lang = "en" if lang=="el" else "el"
+                st.rerun()
+        with _rl_c2:
+            render_output_language_picker(lang, key_suffix="report")
 
     if not st.session_state.report:
         # ── Superhero loading overlay ────────────────────────────────────────
