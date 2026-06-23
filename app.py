@@ -270,7 +270,7 @@ ASSESSMENT:
 {report_text[:2000]}
 
 Respond with ONLY a raw JSON object (no markdown fences, no preamble) with exactly these
-three keys, each a string of 2-4 sentences in {"Greek (Ελληνικά)" if lang=="el" else "English"}:
+three keys, each a string of 2-4 sentences in {output_language_name()}:
 {{
   "activity": "Recommendations about exercise / activity level / movement restrictions appropriate for this pet's condition.",
   "nutrition": "Recommendations about diet, feeding schedule, foods to avoid or include, hydration.",
@@ -478,7 +478,13 @@ def claude_analyze_pet_lab(file_bytes, mime_type, pet, conversation, lang, file_
         system = ("Είσαι έμπειρος κτηνιατρικός νοσηλευτής που ερμηνεύει εργαστηριακές "
                   "εξετάσεις κατοικίδιων στα Ελληνικά. Είσαι ακριβής, σαφής, και κάνεις "
                   "το κλινικό συμπέρασμα ΜΕΣΑ στο πλαίσιο των συμπτωμάτων και του ιστορικού. "
-                  "ΔΕΝ κάνεις τελική διάγνωση — επισημαίνεις ευρήματα και τι μπορεί να σημαίνουν.")
+                  "ΔΕΝ κάνεις τελική διάγνωση — επισημαίνεις ευρήματα και τι μπορεί να σημαίνουν. "
+                  "ΟΡΟΛΟΓΙΑ: Πάντα χρησιμοποίησε σωστούς κλινικούς ελληνικούς όρους — «τριχόπτωση» "
+                  "(όχι «μάδα», «μάδημα»), «έμετοι» (όχι «ξέρασμα»), «διάρροια» (όχι «λούσα»), "
+                  "«κνησμός» (όχι «φαγούρα»), «πολυδιψία/πολυουρία», «λήθαργος», «ανορεξία», "
+                  "«δύσπνοια/ταχύπνοια», «αλωπεκία» για εντοπισμένη απώλεια τριχώματος. ΠΟΤΕ μην "
+                  "εφεύρεις ουσιαστικό από ρήμα (π.χ. «μάδα» από «μαδάει» = ΛΑΘΟΣ). Σωστή κλίση "
+                  "γενικής: «της τριχόπτωσης», «του εμέτου», «της διάρροιας».")
         prompt = f"""ΚΛΙΝΙΚΟ ΠΛΑΙΣΙΟ:
 Κατοικίδιο: {species} ({breed}), {age}
 Παθήσεις/Αλλεργίες: {cond}
@@ -542,6 +548,12 @@ Only findings you actually see in the document — don't invent indicators."""
         content_block = {"type":"document","source":{"type":"base64","media_type":"application/pdf","data":file_b64}}
     else:
         content_block = {"type":"image","source":{"type":"base64","media_type":mime_type,"data":file_b64}}
+
+    # If the owner has chosen an AI-output language different from the UI lang,
+    # append the OUTPUT LANGUAGE OVERRIDE block (with per-language clinical
+    # terminology rules) so the lab analysis appears in their language —
+    # e.g. Bulgarian/Romanian/Polish — with proper veterinary terms.
+    system += output_language_directive()
 
     body = json.dumps({
         "model": "claude-sonnet-4-6",
@@ -808,6 +820,58 @@ def delete_draft(email):
     except Exception:
         pass
 
+
+# ── USER PREFERENCES (per-account, plain JSON — not encrypted) ───────────────
+# Single row per user in `user_prefs` (columns: user_email TEXT PK, prefs JSONB).
+# Single JSON blob so future prefs (theme, default species, etc.) can be added
+# without schema migrations. Silent no-op for guests or when Supabase isn't
+# configured — guest sessions just don't persist across devices.
+#
+# DB setup (run once in Supabase SQL editor):
+#   create table if not exists user_prefs (
+#     user_email text primary key,
+#     prefs jsonb not null default '{}'::jsonb,
+#     updated_at timestamptz not null default now()
+#   );
+def save_user_pref(email, key, value):
+    """Persist a single preference. Reads → merges → writes the full blob so
+    we never accidentally drop other prefs the user already has stored."""
+    sb = _supabase_client()
+    if not sb or not email:
+        return
+    try:
+        res = sb.table("user_prefs").select("prefs").eq("user_email", email).limit(1).execute()
+        rows = res.data or []
+        current = (rows[0].get("prefs") if rows else {}) or {}
+        if not isinstance(current, dict):
+            current = {}
+        current[key] = value
+        sb.table("user_prefs").upsert(
+            {"user_email": email, "prefs": current},
+            on_conflict="user_email",
+        ).execute()
+    except Exception:
+        pass
+
+
+def load_user_pref(email, key, default=None):
+    """Read a single preference. Returns `default` if missing or on any error
+    (network, no Supabase, no row)."""
+    sb = _supabase_client()
+    if not sb or not email:
+        return default
+    try:
+        res = sb.table("user_prefs").select("prefs").eq("user_email", email).limit(1).execute()
+        rows = res.data or []
+        if not rows:
+            return default
+        prefs = rows[0].get("prefs") or {}
+        if not isinstance(prefs, dict):
+            return default
+        return prefs.get(key, default)
+    except Exception:
+        return default
+
 def send_otp(email):
     sb = _supabase_client()
     if not sb: return False, "Auth not configured."
@@ -827,6 +891,10 @@ def verify_otp(email, token):
             res = sb.auth.verify_otp({"email": email, "token": token, "type": otp_type})
             if getattr(res, "user", None):
                 st.session_state["auth_user"] = email
+                # Restore the user's saved output_lang (and any future prefs)
+                # so their choice survives across devices / sessions.
+                st.session_state["_output_lang_loaded"] = False
+                _ensure_output_lang_loaded()
                 return True, ""
         except Exception as e:
             last_err = str(e)
@@ -1042,6 +1110,7 @@ def render_login_gate():
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 defaults = {
     "lang": "el", "screen": "home",
+    "output_lang": None,  # AI response language (chat + lab + report); None = follow UI lang
     "pet": {},           # pet profile
     "vitals": {},        # pet vitals
     "vitals_analysis": "",
@@ -1498,6 +1567,272 @@ def render_stepper(current):
     st.markdown(html, unsafe_allow_html=True)
 
 # ── KIRA PET SYSTEM PROMPTS ───────────────────────────────────────────────────
+# ── OUTPUT LANGUAGE (AI response) ────────────────────────────────────────────
+# Decoupled from the UI language so a Bulgarian/Romanian/Spanish/etc. owner can
+# read the *report and chat* in their native language while the UI stays el/en
+# (the two languages we maintain professionally). The UI flag stays in
+# st.session_state.lang; the AI output language is in st.session_state.output_lang.
+# OUTPUT_LANGUAGES[code] = (native_display, claude_prompt_name)
+OUTPUT_LANGUAGES = {
+    "el": ("🇬🇷 Ελληνικά",   "Greek (Ελληνικά)"),
+    "en": ("🇬🇧 English",    "English"),
+    "es": ("🇪🇸 Español",    "Spanish (Español)"),
+    "bg": ("🇧🇬 Български",  "Bulgarian (Български)"),
+    "it": ("🇮🇹 Italiano",   "Italian (Italiano)"),
+    "ro": ("🇷🇴 Română",     "Romanian (Română)"),
+    "pl": ("🇵🇱 Polski",     "Polski"),
+    "hu": ("🇭🇺 Magyar",     "Hungarian (Magyar)"),
+}
+
+
+def output_language_directive():
+    """Block to append to any Claude/GPT prompt to force the response into the
+    user-selected AI-output language, with per-language clinical terminology
+    rules baked in. Returns empty string when the chosen output language
+    matches the UI language (the base prompt already targets that language).
+    Reused by petainurse_system(), claude_analyze_pet_lab(), the photo-scan
+    vision call, and the GPT-4o second opinion — single source of truth."""
+    code = output_lang_code()
+    if code == st.session_state.get("lang", "el"):
+        return ""
+    name = OUTPUT_LANGUAGES[code][1]
+    base = (
+        f"\n\nOUTPUT LANGUAGE OVERRIDE: Respond ONLY in {name}.\n"
+        f"This overrides any earlier instruction about which language to use.\n"
+        f"Keep the same clinical accuracy, tone, and structure — only the language changes.\n"
+        f"Do NOT mix languages within a sentence; use the target language consistently."
+    )
+    return base + clinical_terminology_block(code)
+
+
+def output_lang_code():
+    """Effective AI-output language code. If the user has not explicitly chosen
+    one, it follows the UI language so existing behaviour is preserved."""
+    _ensure_output_lang_loaded()
+    code = st.session_state.get("output_lang")
+    if code and code in OUTPUT_LANGUAGES:
+        return code
+    return st.session_state.get("lang", "el")
+
+
+def output_language_name():
+    """Human-readable language name to inject into Claude prompts —
+    e.g. 'Romanian (Română)' so the model produces the right output."""
+    return OUTPUT_LANGUAGES[output_lang_code()][1]
+
+
+# Per-language clinical terminology rules — same defensive strategy as the
+# Greek block baked into PETAINURSE_EL, generalised to the other supported
+# languages. Each list focuses on the highest-risk traps for veterinary AI
+# output in that language: back-formation from verbs, slang/vulgar synonyms
+# that slip in, and the most common active-vs-passive clinical confusions
+# (vomiting vs regurgitation, pruritus vs scratching, etc.). Kept short
+# (~12 bullets each) so the prompt stays lean across all 8 supported
+# languages. Greek is intentionally absent — its rules already live inside
+# PETAINURSE_EL and are richer than what fits here.
+CLINICAL_TERMINOLOGY = {
+    "en": [
+        "Use «alopecia» / «hair loss» (NOT «balding» for diffuse loss; «shedding» = behaviour, not a clinical sign)",
+        "Use «vomiting» / «emesis» (NOT «throwing up» or «puking» in the report)",
+        "Use «diarrhoea» / «diarrhea» (NOT «the runs»)",
+        "Use «constipation» (NOT «blocked up»)",
+        "Use «anorexia» (complete) / «inappetence» (partial) — NOT just «not eating» in the clinical report",
+        "Use «lethargy» / «depression of sensorium» (mental dullness — distinct from human depressive disorder)",
+        "Use «polydipsia» (↑ thirst) and «polyuria» (↑ urination) in the report — quantify if possible",
+        "Use «pruritus» (the sensation/sign) — «scratching» is the BEHAVIOUR, not the sign",
+        "Use «pyrexia» / «fever» (NOT «running hot»)",
+        "Use «dyspnoea» / «tachypnoea» (NOT «labored breathing» alone)",
+        "Use «icterus» / «jaundice» (NOT «yellow»)",
+        "Use «cyanosis» (NOT «blue gums» alone)",
+        "Use «dehydration» (NOT «dry»)",
+        "Distinguish «regurgitation» (passive, oesophageal) from «vomiting» (active, abdominal) — they are clinically DIFFERENT, never synonyms",
+    ],
+    "es": [
+        "Usa «alopecia» / «pérdida del pelo» (NO «pelona», «pelado»; «calvicie» es para humanos)",
+        "Usa «vómito» / «emesis» (NO «gomitada» — vulgar)",
+        "Usa «diarrea» (NO «cagalera», «soltura del estómago»)",
+        "Usa «estreñimiento» (NO «estar tapado»)",
+        "Usa «anorexia» (completa) / «inapetencia» (parcial) — NO solo «no come» en el informe",
+        "Usa «letargo» / «depresión del sensorio» (decaimiento mental, NO la depresión humana clínica)",
+        "Usa «polidipsia» (↑ sed) y «poliuria» (↑ orina) en el informe",
+        "Usa «prurito» (NO «rasquera» — «comezón» sí es aceptable)",
+        "Usa «pirexia» / «fiebre» (NO «está caliente»)",
+        "Usa «disnea» / «taquipnea» (NO «le cuesta respirar» en el informe)",
+        "Usa «ictericia» (NO «amarillo»)",
+        "Usa «cianosis»",
+        "Usa «deshidratación»",
+        "Distingue «regurgitación» (pasiva, esofágica) de «vómito» (activo, abdominal) — clínicamente DISTINTOS, nunca sinónimos",
+    ],
+    "bg": [
+        "Използвай «алопеция» / «косопад» (НЕ «оскубване»; «оплешивяване» е термин за хора)",
+        "Използвай «повръщане» (НЕ «блъвоци» — вулгарно)",
+        "Използвай «диария» (НЕ «разкарване»; «разстройство» е разговорно)",
+        "Използвай «запек» (НЕ «блокиран корем»)",
+        "Използвай «анорексия» / «отказ от храна» (НЕ просто «не яде» в клиничния доклад)",
+        "Използвай «летаргия» / «апатия» (НЕ «уморен»)",
+        "Използвай «полидипсия» (↑ жажда) и «полиурия» (↑ уриниране)",
+        "Използвай «сърбеж» (НЕ «чесане» — това е поведението, не симптомът)",
+        "Използвай «треска» / «висока температура» (НЕ «горещ»)",
+        "Използвай «задух» / «тахипнея»",
+        "Използвай «иктер» / «жълтеница» (НЕ просто «пожълтял»)",
+        "Използвай «цианоза»",
+        "Използвай «дехидратация»",
+        "Различавай «регургитация» (пасивна) от «повръщане» (активно) — клинично РАЗЛИЧНИ, никога синоними",
+        "ВАЖНО: правилни падежни и членни форми; не съчинявай съществителни от глаголи",
+    ],
+    "it": [
+        "Usa «alopecia» / «caduta del pelo» (NO «spelacchiamento» come termine clinico)",
+        "Usa «vomito» / «emesi» — NON come sinonimo di «rigurgito» (vedi sotto)",
+        "Usa «diarrea» (NO «scariolata»; «scarica» è informale)",
+        "Usa «stipsi» / «costipazione» (NO «non va di corpo» nel referto)",
+        "Usa «anoressia» (completa) / «inappetenza» (parziale) — NO solo «non mangia» nel referto",
+        "Usa «letargia» / «apatia» / «depressione del sensorio»",
+        "Usa «polidipsia» (↑ sete) e «poliuria» (↑ minzione)",
+        "Usa «prurito» (NON «grattamento» — quello è il comportamento, non il sintomo)",
+        "Usa «piressia» / «febbre» (NO «caldo»)",
+        "Usa «dispnea» / «tachipnea»",
+        "Usa «ittero» (NO «giallo»)",
+        "Usa «cianosi»",
+        "Usa «disidratazione»",
+        "IMPORTANTE: distinguere VOMITO (espulsione attiva, addominale) da RIGURGITO (passivo, esofageo) — sono cose clinicamente DIVERSE, MAI sinonimi",
+    ],
+    "ro": [
+        "Folosește «alopecie» / «căderea părului» (NU «chelire» în raportul clinic)",
+        "Folosește «vomă» / «vărsături» / «emeză» (NU «borât» — vulgar)",
+        "Folosește «diaree» (NU «slăbit la burtă»)",
+        "Folosește «constipație» (NU «nu poate face nevoile» în raport)",
+        "Folosește «anorexie» / «inapetență» (NU doar «nu mănâncă» în raport)",
+        "Folosește «letargie» / «apatie» (NU «obosit»)",
+        "Folosește «polidipsie» (↑ sete) și «poliurie» (↑ urinare)",
+        "Folosește «prurit» (NU «scărpinat» — acela este comportamentul)",
+        "Folosește «pirexie» / «febră» (NU «fierbinte»)",
+        "Folosește «dispnee» / «tahipnee»",
+        "Folosește «icter» (NU doar «galben»)",
+        "Folosește «cianoză»",
+        "Folosește «deshidratare»",
+        "Distinge «regurgitare» (pasivă, esofagiană) de «vărsătură» (activă, abdominală) — clinic DIFERITE, nu sunt sinonime",
+        "IMPORTANT: folosește diacritice CORECTE (ă, â, î, ș, ț), NU echivalent ASCII",
+    ],
+    "pl": [
+        "Używaj «łysienie» / «wyłysienie» / «alopecja» (NIE «łysina» jako termin kliniczny dla rozsianej utraty)",
+        "Używaj «wymioty» (NIE «rzyganie» — wulgarne)",
+        "Używaj «biegunka» (NIE «puszczanie»; «rozwolnienie» jest potoczne)",
+        "Używaj «zaparcie» (NIE «blokada»)",
+        "Używaj «anoreksja» / «jadłowstręt» / «brak apetytu» (NIE samo «nie je» w raporcie)",
+        "Używaj «letarg» / «apatia» / «przygnębienie»",
+        "Używaj «polidypsja» (↑ pragnienie) i «poliuria» (↑ oddawanie moczu)",
+        "Używaj «świąd» (NIE «drapanie się» — to zachowanie, nie objaw)",
+        "Używaj «gorączka» / «pireksja» (NIE «gorący»)",
+        "Używaj «duszność» / «tachypnoë»",
+        "Używaj «żółtaczka» / «icterus» (NIE «żółty kolor»)",
+        "Używaj «sinica»",
+        "Używaj «odwodnienie»",
+        "Rozróżniaj «ulewanie» / «regurgitację» (bierne, przełykowe) od «wymiotów» (czynnych, brzusznych) — klinicznie RÓŻNE, nigdy nie są synonimami",
+        "WAŻNE: poprawne formy dopełniacza: «łysienia», «wymiotów», «biegunki», «świądu», «duszności»",
+    ],
+    "hu": [
+        "Használj «alopecia» / «szőrhullás» kifejezést (NEM «kopaszodás» — emberi szó)",
+        "Használj «hányás» kifejezést (NEM «okádás» — durva; «öklendezés» más klinikai jelenség)",
+        "Használj «hasmenés» kifejezést (NEM «hasmars» — szleng)",
+        "Használj «székrekedés» kifejezést (NEM «be van dugulva»)",
+        "Használj «anorexia» / «étvágytalanság» kifejezést (NEM csak «nem eszik» a klinikai jelentésben)",
+        "Használj «letargia» / «apátia» / «levertség» kifejezést (NEM «fáradt»)",
+        "Használj «polidipszia» (↑ szomjúság) és «poliuria» (↑ vizeletürítés) kifejezéseket",
+        "Használj «viszketés» / «pruritus» kifejezést (NEM «vakarózás» — az a viselkedés)",
+        "Használj «láz» / «pirexia» kifejezést (NEM «forró»)",
+        "Használj «nehézlégzés» / «dyspnoe» / «tachypnoe» kifejezést",
+        "Használj «icterus» / «sárgaság» kifejezést",
+        "Használj «cianózis» kifejezést",
+        "Használj «dehidráció» / «kiszáradás» kifejezést",
+        "Különböztesd meg a «regurgitáció»-t (passzív, nyelőcsői) a «hányás»-tól (aktív, hasi) — klinikailag KÜLÖNBÖZŐK, nem szinonimák",
+        "FONTOS: helyes ragozás: «szőrhullásnak», «hányásnak», «hasmenésnek»; ne találj ki magyar főnevet idegen szóból; használj bevett magyar állatorvosi terminológiát",
+    ],
+}
+
+
+def clinical_terminology_block(code):
+    """Build a per-language CLINICAL TERMINOLOGY rules block to append to any
+    Claude system prompt that may output text in that language. Returns ''
+    for Greek (rules already baked into PETAINURSE_EL) and for any language
+    we don't have a curated list for — never invents one. The same block is
+    reused by petainurse_system(), claude_analyze_pet_lab() (lab analysis),
+    the photo-scan vision call, and the GPT-4o second opinion."""
+    if code == "el" or code not in CLINICAL_TERMINOLOGY:
+        return ""
+    rules = CLINICAL_TERMINOLOGY[code]
+    lang_name = OUTPUT_LANGUAGES[code][1]
+    bullets = "\n".join(f"  • {r}" for r in rules)
+    return (
+        f"\n\nCLINICAL TERMINOLOGY ({lang_name}) — strictly enforced:\n"
+        f"{bullets}\n"
+        f"  • NEVER coin a noun from a verb (e.g. taking «sheds» and writing «shed-ness» — WRONG). "
+        f"Use the established clinical term from the list above.\n"
+        f"  • If the owner uses an informal/slang word, quote it in their words "
+        f"(«owner reports …») and then write the proper clinical term in your analysis."
+    )
+
+
+def _ensure_output_lang_loaded():
+    """Once per session, try to restore the user's saved AI-output language
+    from Supabase. No-op if the user isn't logged in, Supabase isn't
+    configured, or we've already attempted a load this session. Failure
+    modes are silent — a missing preference simply leaves output_lang as
+    None (which makes output_lang_code() follow the UI language)."""
+    if st.session_state.get("_output_lang_loaded"):
+        return
+    st.session_state["_output_lang_loaded"] = True
+    email = st.session_state.get("auth_user", "")
+    if not email:
+        return
+    try:
+        saved = load_user_pref(email, "output_lang")
+    except Exception:
+        return
+    if saved and saved in OUTPUT_LANGUAGES:
+        st.session_state["output_lang"] = saved
+
+
+def render_output_language_picker(lang, *, key_suffix="", label_override=None):
+    """Compact dropdown to pick the AI-output language. Renders inline so we
+    can drop it next to the Generate Report button (the moment that matters
+    most) and optionally elsewhere. Uses native script labels with flags so a
+    Polish/Bulgarian/etc. user can recognise their language even if the UI
+    is in Greek or English."""
+    label = label_override or ("🌍 Γλώσσα αναφοράς & AI απαντήσεων"
+                               if lang == "el"
+                               else "🌍 Report & AI response language")
+    codes = list(OUTPUT_LANGUAGES.keys())
+    current = output_lang_code()
+    try:
+        idx = codes.index(current)
+    except ValueError:
+        idx = 0
+    choice = st.selectbox(
+        label,
+        codes,
+        index=idx,
+        format_func=lambda c: OUTPUT_LANGUAGES[c][0],
+        key=f"output_lang_picker_{key_suffix}",
+        help=("Το UI παραμένει στα ελληνικά/αγγλικά. Αυτή είναι η γλώσσα που "
+              "θα χρησιμοποιήσει η PetAiNurse στις απαντήσεις, στην ανάλυση "
+              "εξετάσεων και στην τελική αναφορά."
+              if lang == "el" else
+              "The UI stays in Greek/English. This is the language PetAiNurse "
+              "will use for its responses, lab analyses, and the final report."),
+    )
+    if choice != current:
+        st.session_state.output_lang = choice
+        # Persist per-user so it survives across sessions / devices. Silent
+        # no-op for guests or when Supabase isn't configured.
+        _email = st.session_state.get("auth_user", "")
+        if _email:
+            try:
+                save_user_pref(_email, "output_lang", choice)
+            except Exception:
+                pass
+        st.rerun()
+
+
 PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νοσηλευτής για κατοικίδια στην Ελλάδα.
 Είσαι κλινικά ακριβής, άμεση και υποστηρικτική για ιδιοκτήτες κατοικίδιων.
 
@@ -1517,6 +1852,24 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
 - ΜΟΡΦΗ ΕΡΩΤΗΣΕΩΝ: ΠΟΤΕ μη γράφεις τίτλους όπως «Ερώτηση Τριάζ #1» ή «Ερώτηση #2». Μίλα απευθείας, σαν να ρωτάει ο/η {hero_name} (ο/η νοσηλευτής/τρια-ήρωας του κατοικιδίου) — π.χ. ξεκίνα φυσικά με «Για να σε βοηθήσω καλύτερα...» ή κατευθείαν με την ερώτηση, χωρίς αριθμημένους τίτλους ή ετικέτες "Τριάζ".
 - ΓΛΩΣΣΑ: Γράφε ΑΠΟΚΛΕΙΣΤΙΚΑ στα Ελληνικά. ΠΟΤΕ μη χρησιμοποιείς κινέζικους/ιαπωνικούς/κορεάτικους ή άλλους μη-ελληνικούς/λατινικούς χαρακτήρες (π.χ. όχι «腹水»). Αν χρειαστείς ιατρικό όρο, γράψ' τον στα Ελληνικά ή Λατινικά.
 - ΥΦΟΣ: Χρησιμοποίησε «Πηγαίνετε» (όχι «Πάντε») και σωστά ελληνικά προστακτικής.
+- ΚΛΙΝΙΚΗ ΟΡΟΛΟΓΙΑ (ΥΠΟΧΡΕΩΤΙΚΟ): Πάντα γράφε τους σωστούς κλινικούς/ιατρικούς όρους — ΟΧΙ λαϊκές παραλλαγές, ΟΧΙ λέξεις που εφευρίσκεις από ρήματα.
+  • «τριχόπτωση» (ΟΧΙ «μάδα», «μάδημα», «πέσιμο τριχών») — και «αλωπεκία» για εντοπισμένη/μερική απώλεια τριχώματος
+  • «έμετος / εμετοί» (ΟΧΙ «ξέρασμα», ΟΧΙ «ξερατό»)
+  • «διάρροια» (ΟΧΙ «λούσα», ΟΧΙ «κόψιμο»)
+  • «δυσκοιλιότητα» (ΟΧΙ «πιάσιμο», «μπούκωμα»)
+  • «ανορεξία» όταν περιγράφεις πλήρη αποχή τροφής — «υπορεξία» για μειωμένη όρεξη
+  • «λήθαργος / κατάπτωση» (ΟΧΙ μόνο «είναι κουρασμένος»)
+  • «πολυδιψία» για αυξημένη δίψα, «πολυουρία» για αυξημένη ούρηση
+  • «κνησμός» (ΟΧΙ «φαγούρα» / «τσιμπάει» — εκτός αν παραθέτεις σε εισαγωγικά τα λόγια του ιδιοκτήτη)
+  • «πυρετός» (ΟΧΙ «θέρμη», «κάψιμο»)
+  • «δύσπνοια / ταχύπνοια» αντί για «δυσκολεύεται να αναπνεύσει» ή «λαχανιάζει» στην κλινική αναφορά
+  • «ίκτερος» (κίτρινο δέρμα/βλεννογόνοι), «κυάνωση» (μπλε χρώμα ούλων)
+  • «αφυδάτωση» (ΟΧΙ «έχει στεγνώσει»)
+- ΓΡΑΜΜΑΤΙΚΗ ΟΡΟΛΟΓΙΑΣ:
+  • Αν ο ιδιοκτήτης χρησιμοποιήσει λαϊκό όρο («μαδάει», «κάνει εμετούς», «τσιμπιέται»), στην απάντησή σου χρησιμοποίησε τον κλινικό όρο («τριχόπτωση», «εμετοί», «κνησμός»). Μπορείς να αναφέρεις τα λόγια του σε εισαγωγικά («μου είπατε ότι "μαδάει"») και αμέσως μετά τον κλινικό όρο.
+  • ΠΟΤΕ μην εφεύρεις ουσιαστικό από ρήμα. Π.χ. «μάδα» από «μαδάει» = ΛΑΘΟΣ· σωστό = «τριχόπτωση». «Τσιμπιά» από «τσιμπιέται» = ΛΑΘΟΣ· σωστό = «κνησμός».
+  • Σωστή κλίση γενικής για ιατρικούς όρους: «της τριχόπτωσης», «του εμέτου», «της διάρροιας», «της αλωπεκίας», «του κνησμού», «της δύσπνοιας».
+  • Σωστή ορθογραφία: «εμβολιασμός» (όχι «εμβολιαζμός»), «αιμοδιάγραμμα» (όχι «αιμοδιάγραμα»), «κρεατινίνη» (όχι «κρεατίνη»).
 - Όταν έχεις αρκετά: "Έχω αρκετά στοιχεία — μπορούμε να δημιουργήσουμε κτηνιατρική αναφορά." """
 
 PETAINURSE_EN = """You are PetAiNurse — an AI veterinary nurse for pets in Greece.
@@ -1558,7 +1911,12 @@ def petainurse_system(pet=None):
     hero_name = MASCOT_NAMES.get(sp, "PetAiNurse")
     hero_roles = HERO_ROLES_EL if st.session_state.lang=="el" else HERO_ROLES_EN
     hero_role = hero_roles.get(sp, hero_roles["dog"])
-    return base.replace("{hero_name}", hero_name).replace("{hero_role}", hero_role)
+    prompt = base.replace("{hero_name}", hero_name).replace("{hero_role}", hero_role)
+    # Per-output-language override + clinical terminology rules. No-op when
+    # the chosen output language matches the UI language (base prompt already
+    # has the right rules); otherwise appends the OUTPUT LANGUAGE OVERRIDE
+    # block plus the language-specific CLINICAL TERMINOLOGY bullets.
+    return prompt + output_language_directive()
 
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
@@ -1703,6 +2061,227 @@ def replace_hero_emoji(text, pet=None):
     if not img:
         return text, False
     return _HERO_EMOJI_RE.sub(img, text), True
+
+
+def report_loading_banner_html(pet, lang="el"):
+    """Build the full-viewport superhero loading overlay shown while the
+    veterinary report is generating.
+
+    Why this exists: the report page has a tall header (stepper, doc header,
+    disclaimer, vitals summary) so the inline st.progress() bar lands below
+    the fold. Streamlit doesn't autoscroll on screen change, so users staring
+    at the page during the 20-40s Claude call have no clue anything is
+    happening. This overlay sits on top of everything via position:fixed
+    regardless of scroll, animates entirely via CSS (so it keeps moving
+    during the blocking API call), and uses the pet's species-specific
+    superhero mascot (Perro / Gata / Gaz / Ave) so each pet feels like its
+    own hero is generating the report.
+
+    Returns the HTML as a string — caller renders it with st.markdown(...,
+    unsafe_allow_html=True) inside an st.empty() so it can be cleared on
+    error before showing st.error()."""
+    sp = pet.get("species_key", "dog")
+    pet_name = (pet.get("name") or pet.get("species_label") or "").strip()
+    hero_name = MASCOT_NAMES.get(sp, "")
+
+    # Prefer transparent PNG (clean on the green card); fall back to JPEG
+    # mascot; final fallback to a species emoji so nothing renders broken.
+    b64 = HERO_PNGS.get(sp)
+    mime = "image/png"
+    if not b64:
+        b64 = MASCOT_IMG.get(sp)
+        mime = "image/jpeg"
+
+    if b64:
+        avatar_inner = (f'<img src="data:{mime};base64,{b64}" alt="{hero_name}" '
+                        f'style="width:100%;height:100%;object-fit:cover;display:block" />')
+    else:
+        emoji = {"dog":"🐶","cat":"🐱","rabbit":"🐰","bird":"🦜"}.get(sp, "🐾")
+        avatar_inner = f'<span style="font-size:72px;line-height:1">{emoji}</span>'
+
+    # Status messages — rotated via pure CSS keyframes so they animate during
+    # the synchronous Claude API call (Python is blocked, but the browser keeps
+    # running CSS). Order roughly mirrors the actual generation steps.
+    if lang == "el":
+        msgs = [
+            f"🦸 {hero_name or 'Ο σούπερ-ήρωας'} φοράει την κάπα του…",
+            "🔬 Διαβάζω τις εργαστηριακές εξετάσεις…",
+            "📚 Συγκρίνω με το MSD Veterinary Manual…",
+            "🩺 Συντάσσω την κτηνιατρική αναφορά…",
+            "📍 Εξατομικευμένες συστάσεις φροντίδας…",
+            "✨ Σχεδόν έτοιμη!",
+        ]
+        super_label = "ΣΟΥΠΕΡ"
+        footer = ("Μην κλείσεις τη σελίδα — η αναφορά δημιουργείται.<br/>"
+                  "Συνήθως διαρκεί 20–40 δευτερόλεπτα.")
+    else:
+        msgs = [
+            f"🦸 {hero_name or 'The super-hero'} is putting on the cape…",
+            "🔬 Reading the lab results…",
+            "📚 Cross-checking with the MSD Veterinary Manual…",
+            "🩺 Drafting the veterinary report…",
+            "📍 Personalised care recommendations…",
+            "✨ Almost ready!",
+        ]
+        super_label = "SUPER"
+        footer = ("Don't close the page — the report is being generated.<br/>"
+                  "Usually takes 20–40 seconds.")
+
+    n = len(msgs)
+    cycle = n * 2.4  # seconds per full message cycle
+    # Each message: fade in at its slot, hold, fade out before the next slot.
+    visible_pct = 100.0 / n
+    msg_spans = ""
+    for i, m in enumerate(msgs):
+        delay = i * 2.4
+        msg_spans += (
+            f'<span class="pn-msg" style="animation-delay:{delay:.2f}s">{m}</span>'
+        )
+
+    # Per-message keyframe: each span uses the same animation but with its own
+    # start delay; total animation-duration = n * 2.4s, visible window per span
+    # is one slot of (100/n)% with fade margins.
+    fade_in_end = 4.0
+    visible_end = visible_pct - 4.0
+    fade_out_end = visible_pct
+    keyframes_msg = (
+        "@keyframes pn-msg-cycle {"
+        "  0% { opacity: 0; transform: translateY(6px); }"
+        f" {fade_in_end:.1f}% {{ opacity: 1; transform: translateY(0); }}"
+        f" {visible_end:.1f}% {{ opacity: 1; transform: translateY(0); }}"
+        f" {fade_out_end:.1f}% {{ opacity: 0; transform: translateY(-4px); }}"
+        "  100% { opacity: 0; transform: translateY(-4px); }"
+        "}"
+    )
+
+    return f"""
+<style>
+  @keyframes pn-float {{
+    0%,100% {{ transform: translateY(0); }}
+    50%     {{ transform: translateY(-10px); }}
+  }}
+  @keyframes pn-bounce {{
+    0%,80%,100% {{ transform: scale(0.55); opacity: 0.35; }}
+    40%         {{ transform: scale(1.1);  opacity: 1; }}
+  }}
+  @keyframes pn-aura-spin {{
+    from {{ transform: rotate(0deg); }}
+    to   {{ transform: rotate(360deg); }}
+  }}
+  @keyframes pn-fade-in {{
+    from {{ opacity: 0; }}
+    to   {{ opacity: 1; }}
+  }}
+  {keyframes_msg}
+  .pn-overlay {{
+    position: fixed; inset: 0; z-index: 2147483600;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    animation: pn-fade-in 220ms ease-out;
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    padding: 16px;
+  }}
+  .pn-card {{
+    background: linear-gradient(160deg, #ECFDF5 0%, #FFFFFF 100%);
+    border-radius: 28px;
+    border: 2px solid #A7F3D0;
+    padding: 36px 28px 28px;
+    width: min(94vw, 400px);
+    max-height: 92vh;
+    text-align: center;
+    box-shadow: 0 30px 80px rgba(6,95,70,0.30);
+  }}
+  .pn-avatar-wrap {{
+    position: relative; width: 144px; height: 144px; margin: 0 auto;
+    animation: pn-float 2.6s ease-in-out infinite;
+  }}
+  .pn-aura {{
+    position: absolute; inset: -10px; border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      #DC2626, #F59E0B, #DC2626, #B91C1C, #DC2626);
+    animation: pn-aura-spin 8s linear infinite;
+    opacity: 0.85;
+    filter: blur(0.5px);
+  }}
+  .pn-avatar {{
+    position: relative; width: 144px; height: 144px; border-radius: 50%;
+    background: #FFFFFF; border: 5px solid #10B981;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }}
+  .pn-mask {{
+    position: absolute; top: 34%; left: 50%; transform: translateX(-50%);
+    background: rgba(15,23,42,0.88); color: #FBBF24;
+    font-size: 10px; font-weight: 800; letter-spacing: 3px;
+    padding: 3px 10px; border-radius: 3px;
+    border: 1px solid #F59E0B;
+    pointer-events: none;
+  }}
+  .pn-super {{
+    font-size: 11px; font-weight: 700; letter-spacing: 5px;
+    color: #059669; margin-top: 22px;
+  }}
+  .pn-name {{
+    font-size: 30px; font-weight: 800; color: #064E3B;
+    margin-top: 2px; line-height: 1.1;
+    word-break: break-word;
+  }}
+  .pn-bubble {{
+    position: relative; margin-top: 22px;
+    background: #D1FAE5; border: 2px solid #6EE7B7;
+    border-radius: 18px; padding: 14px 16px;
+    min-height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    color: #065F46; font-size: 15px; font-weight: 600;
+  }}
+  .pn-bubble::before {{
+    content: ""; position: absolute; top: -8px; left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 14px; height: 14px; background: #D1FAE5;
+    border-top: 2px solid #6EE7B7; border-left: 2px solid #6EE7B7;
+  }}
+  .pn-msg-stack {{ position: relative; width: 100%; min-height: 22px; }}
+  .pn-msg {{
+    position: absolute; left: 0; right: 0; opacity: 0;
+    animation-name: pn-msg-cycle;
+    animation-duration: {cycle:.1f}s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+  }}
+  .pn-dots {{ display: flex; gap: 8px; justify-content: center; margin-top: 20px; }}
+  .pn-dot {{
+    width: 10px; height: 10px; border-radius: 50%; background: #10B981;
+    animation: pn-bounce 1s infinite;
+  }}
+  .pn-dot:nth-child(2) {{ animation-delay: 0.15s; }}
+  .pn-dot:nth-child(3) {{ animation-delay: 0.30s; }}
+  .pn-foot {{
+    font-size: 12px; color: #475569; margin-top: 20px; line-height: 1.55;
+  }}
+</style>
+<div class="pn-overlay" role="status" aria-live="polite" aria-label="Generating report">
+  <div class="pn-card">
+    <div class="pn-avatar-wrap">
+      <div class="pn-aura"></div>
+      <div class="pn-avatar">{avatar_inner}</div>
+      <div class="pn-mask">HERO</div>
+    </div>
+    <div class="pn-super">{super_label}</div>
+    <div class="pn-name">{pet_name}</div>
+    <div class="pn-bubble">
+      <div class="pn-msg-stack">{msg_spans}</div>
+    </div>
+    <div class="pn-dots">
+      <div class="pn-dot"></div>
+      <div class="pn-dot"></div>
+      <div class="pn-dot"></div>
+    </div>
+    <div class="pn-foot">{footer}</div>
+  </div>
+</div>
+"""
 
 
 def render_lifestyle_strip(lang="el"):
@@ -3449,6 +4028,11 @@ def render_vitals():
                     system_prompt = ("Είσαι κτηνιατρικός αναλυτής φωτογραφιών. Δίνεις δομημένη, ακριβή ανάλυση."
                                      if lang=="el" else
                                      "You are a veterinary photo analyst. Give structured, accurate analysis.")
+                    # If the owner has chosen an AI-output language different from
+                    # the UI language, append the override + clinical terminology
+                    # block so the photo analysis lands in their language with the
+                    # right veterinary terms (alopecia vs colloquial «mudar» etc.).
+                    system_prompt += output_language_directive()
                     el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** | **PITHANES AITIES** | **SISTASI**"
                     en_suffix = "\n\nProvide: **FINDINGS** | **ASSESSMENT** (Normal/Monitor/Urgent) | **POSSIBLE CAUSES** | **RECOMMENDATION**"
                     clinical_prompt = (SCAN_PROMPTS.get(selected_scan, SCAN_PROMPTS["skin"]) + context_note + (el_suffix if lang=="el" else en_suffix))
@@ -3647,44 +4231,88 @@ def render_triage():
     with st.expander(_lab_title, expanded=False):
         st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
                    else "PDF or photo of blood/urine test results, etc.")
-        lab_file = st.file_uploader(
-            ("Ανέβασμα εξέτασης" if lang=="el" else "Upload lab result"),
-            type=["pdf","jpg","jpeg","png","webp","heic","heif"], key="pet_lab_upload"
+        lab_files = st.file_uploader(
+            ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
+            type=["pdf","jpg","jpeg","png","webp","heic","heif"],
+            key="pet_lab_upload",
+            accept_multiple_files=True,
+            help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
+                  if lang=="el" else
+                  "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
         )
-        if lab_file:
-            if st.button("🔍 " + ("Ανάλυση Εξέτασης" if lang=="el" else "Analyse Lab Result"),
-                         type="primary", use_container_width=True, key="analyse_lab"):
-                file_bytes = lab_file.read()
-                fname_lower = lab_file.name.lower()
-                mime_type = "application/pdf"
-                if fname_lower.endswith((".heic",".heif")):
-                    if HEIC_OK:
-                        try:
-                            file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
-                        except Exception as e:
-                            st.error(f"HEIC conversion failed: {e}")
-                            file_bytes = None
-                    else:
-                        st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
-                                 else "⚠️ HEIC photos need pillow-heif.")
-                        file_bytes = None
-                elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
-                elif fname_lower.endswith(".png"):  mime_type = "image/png"
-                elif fname_lower.endswith(".webp"): mime_type = "image/webp"
-                elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+        if lab_files:
+            # Show a list of what's queued before the user commits to analysis
+            st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
+                        else f"📎 {len(lab_files)} files queued: ")
+                       + ", ".join(f.name for f in lab_files))
 
-                if file_bytes:
-                    with st.spinner("Claude αναλύει..." if lang=="el" else "Claude analysing..."):
-                        analysis = claude_analyze_pet_lab(
-                            file_bytes, mime_type, pet, st.session_state.triage_chat, lang, lab_file.name)
-                    st.markdown(analysis)
-                    st.session_state.lab_findings.append({
-                        "file_name": lab_file.name, "analysis": analysis,
-                    })
-                    finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}" if lang=="el"
-                                   else f"Lab result ({lab_file.name}):\n\n{analysis}")
-                    st.session_state.triage_chat.append({"role":"user","content":finding_msg})
-                    st.success("✅ " + ("Προστέθηκε στην εκτίμηση." if lang=="el" else "Added to the assessment."))
+            if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
+                                  if lang=="el" else
+                                  (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
+                         type="primary", use_container_width=True, key="analyse_lab"):
+
+                # Names already analysed — skip them so re-clicking doesn't double-process
+                _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
+                _to_run = [f for f in lab_files if f.name not in _already]
+
+                if not _to_run:
+                    st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
+                                     else "All files have already been analysed."))
+                else:
+                    _added = 0
+                    _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
+                    with st.status(_status_msg, expanded=True) as _stat:
+                        for idx, lab_file in enumerate(_to_run, 1):
+                            _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
+                            file_bytes = lab_file.read()
+                            fname_lower = lab_file.name.lower()
+                            mime_type = "application/pdf"
+                            if fname_lower.endswith((".heic",".heif")):
+                                if HEIC_OK:
+                                    try:
+                                        file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
+                                    except Exception as e:
+                                        st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
+                                        continue
+                                else:
+                                    st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
+                                             else "⚠️ HEIC photos need pillow-heif.")
+                                    continue
+                            elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
+                            elif fname_lower.endswith(".png"):  mime_type = "image/png"
+                            elif fname_lower.endswith(".webp"): mime_type = "image/webp"
+                            elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+
+                            if not file_bytes:
+                                continue
+
+                            try:
+                                analysis = claude_analyze_pet_lab(
+                                    file_bytes, mime_type, pet,
+                                    st.session_state.triage_chat, lang, lab_file.name)
+                            except Exception as e:
+                                st.error(f"⚠️ {lab_file.name}: {e}")
+                                continue
+
+                            st.markdown(f"#### 📄 {lab_file.name}")
+                            st.markdown(analysis)
+                            st.session_state.lab_findings.append({
+                                "file_name": lab_file.name, "analysis": analysis,
+                            })
+                            finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
+                                           if lang=="el" else
+                                           f"Lab result ({lab_file.name}):\n\n{analysis}")
+                            st.session_state.triage_chat.append({"role":"user","content":finding_msg})
+                            _added += 1
+
+                        _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
+                                  else f"✅ Completed {_added}/{len(_to_run)} files")
+                        _stat.update(label=_final, state="complete", expanded=False)
+
+                    if _added:
+                        st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
+                                            if lang=="el" else
+                                            f"Added {_added} lab result(s) to the assessment."))
         if st.session_state.lab_findings:
             st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
                        + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
@@ -3842,6 +4470,10 @@ def render_triage():
     with col_b:
         if st.button(t("back")): st.session_state.screen="vitals"; st.rerun()
     with col_r:
+        # AI output language — lets a Bulgarian/Romanian/Spanish/etc. owner
+        # request the report (and chat going forward) in their native language,
+        # even while the UI stays in Greek or English.
+        render_output_language_picker(lang, key_suffix="triage")
         enabled = triage_ready or len(st.session_state.triage_chat) >= 6
         if st.button(t("generate_report"), type="primary", use_container_width=True, disabled=not enabled):
             st.session_state.screen="report"; st.rerun()
@@ -3902,6 +4534,19 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
+        # ── Superhero loading overlay ────────────────────────────────────────
+        # Full-viewport fixed banner (the pet's mascot says hello while the
+        # report is being prepared). Critical here because the report page
+        # header pushes the inline progress bar below the fold and Streamlit
+        # doesn't autoscroll on screen change — without this banner, users
+        # stare at a "frozen" page for 20-40s wondering if something is
+        # happening. The CSS animations keep running during the blocking
+        # Claude API call. The overlay disappears automatically on st.rerun()
+        # when the report is ready; on error we explicitly clear it.
+        _overlay = st.empty()
+        _overlay.markdown(report_loading_banner_html(pet, lang),
+                          unsafe_allow_html=True)
+
         conversation = "\n".join(
             f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content']}"
             for m in st.session_state.triage_chat)
@@ -3972,13 +4617,14 @@ Write a structured veterinary report:
 7. MSD REFERENCES — Cite 1-2 references where relevant
 
 If PHOTO ANALYSIS FINDINGS or LAB / TEST RESULT ANALYSIS are provided above, you MUST integrate them into the ASSESSMENT and RECOMMENDED WORKUP, referencing the specific findings.
-Language: {"Greek (Ελληνικά)" if lang=="el" else "English"}
+Language: {output_language_name()}
 Be direct and clinical. Always recommend professional veterinary evaluation. End with AI disclaimer."""
 
         # Step 2 — AI report generation (the slow step)
         result = claude([{"role":"user","content":report_prompt}],
                         system=petainurse_system(pet), max_tokens=6000, timeout=180)
         if result.startswith("⚠️"):
+            _overlay.empty()
             _progress.empty()
             st.error(result)
             if st.button("🔄 Retry"): st.rerun()
@@ -4122,7 +4768,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                         # AI-generated report (not a primary diagnosis, not
                         # role-play, explicitly animal-only) keeps GPT-4o
                         # compliant and useful.
-                        _review_lang = ("Greek (Ελληνικά)" if lang == "el" else "English")
+                        _review_lang = output_language_name()
                         gpt_system = (
                             "You are a veterinary clinical reasoning assistant helping review an "
                             "AI-generated educational summary about a pet (a companion animal — "
@@ -4139,6 +4785,10 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                             "prescribe.\n\n"
                             f"Write your review in {_review_lang}."
                         )
+                        # Same clinical-terminology guard rails GPT-4o gets that
+                        # Claude does — only kicks in if the user picked an
+                        # output language different from the UI language.
+                        gpt_system += output_language_directive()
 
                         user_prompt = (
                             f"PET: {pet.get('name')}, {pet.get('species_label')} "
@@ -5010,6 +5660,9 @@ if _STX_OK and auth_enabled():
         # session_state lost auth_user due to a fresh browser session).
         st.session_state["auth_user"] = _email
         st.session_state["_cookie_check_tries"] = 0
+        # Lazy-load the user's saved AI-output language once per session.
+        # The flag guards against repeated Supabase round-trips on every rerun.
+        _ensure_output_lang_loaded()
     elif not is_logged_in() and _past_marketing_screens:
         if _tok is None:
             # CookieManager's underlying component is async: on early runs of
