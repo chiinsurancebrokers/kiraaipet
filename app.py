@@ -1551,10 +1551,9 @@ def render_doc_header(title_el, title_en, *, icon="📋",
 
 
 def render_stepper(current):
-    lang = st.session_state.lang
     steps_el = ["1 Προφίλ","2 Ζωτικές","3 Συμπτώματα","4 Αναφορά"]
     steps_en = ["1 Profile","2 Vitals","3 Symptoms","4 Report"]
-    steps = steps_el if lang=="el" else steps_en
+    steps = steps_el if st.session_state.lang=="el" else steps_en
     order = ["intake","vitals","triage","report"]
     cur_i = order.index(current) if current in order else 0
     html = '<div class="pan-stepper">'
@@ -1565,14 +1564,7 @@ def render_stepper(current):
         if i<len(steps)-1:
             html += f'<div class="pan-step-line {"done" if i<cur_i else ""}"></div>'
     html += "</div>"
-    # Language toggle inline with stepper
-    _sc1, _sc2 = st.columns([8, 1])
-    with _sc1:
-        st.markdown(html, unsafe_allow_html=True)
-    with _sc2:
-        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ", key=f"stepper_lang_{current}"):
-            st.session_state.lang = "en" if lang=="el" else "el"
-            st.rerun()
+    st.markdown(html, unsafe_allow_html=True)
 
 # ── KIRA PET SYSTEM PROMPTS ───────────────────────────────────────────────────
 # ── OUTPUT LANGUAGE (AI response) ────────────────────────────────────────────
@@ -2220,7 +2212,12 @@ def report_loading_banner_html(pet, lang="el"):
     overflow: hidden;
   }}
   .pn-mask {{
-    display: none;
+    position: absolute; top: 34%; left: 50%; transform: translateX(-50%);
+    background: rgba(15,23,42,0.88); color: #FBBF24;
+    font-size: 10px; font-weight: 800; letter-spacing: 3px;
+    padding: 3px 10px; border-radius: 3px;
+    border: 1px solid #F59E0B;
+    pointer-events: none;
   }}
   .pn-super {{
     font-size: 11px; font-weight: 700; letter-spacing: 5px;
@@ -2269,6 +2266,7 @@ def report_loading_banner_html(pet, lang="el"):
     <div class="pn-avatar-wrap">
       <div class="pn-aura"></div>
       <div class="pn-avatar">{avatar_inner}</div>
+      <div class="pn-mask">HERO</div>
     </div>
     <div class="pn-super">{super_label}</div>
     <div class="pn-name">{pet_name}</div>
@@ -3720,17 +3718,6 @@ def render_intake():
 
     # ── STEP 0: who's filling this in + name + species ────────────────────────
     if step == 0:
-        # Language preferences — UI language + AI output language
-        with st.expander("🌍 " + ("Προτιμήσεις γλώσσας" if lang=="el" else "Language preferences"), expanded=False):
-            _lp_c1, _lp_c2 = st.columns(2)
-            with _lp_c1:
-                st.markdown("**" + ("Γλώσσα διεπαφής (UI)" if lang=="el" else "Interface language (UI)") + "**")
-                if st.button("🇬🇧 Switch to English" if lang=="el" else "🇬🇷 Αλλαγή σε Ελληνικά", key="intake_ui_lang"):
-                    st.session_state.lang = "en" if lang=="el" else "el"
-                    st.rerun()
-            with _lp_c2:
-                render_output_language_picker(lang, key_suffix="intake_step0")
-
         filler_opts_el = ["Ιδιοκτήτης", "Pet Sitter", "Κτηνίατρος/Προσωπικό κλινικής"]
         filler_opts_en = ["Owner", "Pet Sitter", "Vet/Clinic staff"]
         filler_opts = filler_opts_el if lang=="el" else filler_opts_en
@@ -4545,17 +4532,6 @@ def render_report():
                 "Tap “New Assessment” to start over, or “Back to chat” to return to triage.",
     )
     render_vitals_summary()
-
-    # Language preferences — available at report stage too
-    with st.expander("🌍 " + ("Προτιμήσεις γλώσσας" if lang=="el" else "Language preferences"), expanded=False):
-        _rl_c1, _rl_c2 = st.columns(2)
-        with _rl_c1:
-            st.markdown("**" + ("Γλώσσα διεπαφής (UI)" if lang=="el" else "Interface language (UI)") + "**")
-            if st.button("🇬🇧 Switch to English" if lang=="el" else "🇬🇷 Αλλαγή σε Ελληνικά", key="report_ui_lang"):
-                st.session_state.lang = "en" if lang=="el" else "el"
-                st.rerun()
-        with _rl_c2:
-            render_output_language_picker(lang, key_suffix="report")
 
     if not st.session_state.report:
         # ── Superhero loading overlay ────────────────────────────────────────
