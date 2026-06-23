@@ -5885,5 +5885,6 @@ elif screen=="triage": render_triage()
 elif screen=="report": render_report()
 else: render_intake()
 
-# Persist login cookie on a clean render pass after successful loginif auth_enabled() and is_logged_in() and _STX_OK:
+# Persist login cookie on a clean render pass after successful login
+if auth_enabled() and is_logged_in() and _STX_OK:
     _save_login_cookie(st.session_state["auth_user"])
