@@ -992,23 +992,28 @@ def save_draft(email, payload):
     sb = _supabase_client()
     if not sb or not email or not _ENC_OK:
         return
+    _t0 = time.time()
     try:
         blob = _fernet().encrypt(json.dumps(payload, ensure_ascii=False).encode()).decode()
         sb.table("pet_drafts").upsert({"user_email": email, "data": blob}, on_conflict="user_email").execute()
-    except Exception:
-        pass
+        log_event("supabase_write", ok=True, ms=(time.time()-_t0)*1000, table="pet_drafts")
+    except Exception as e:
+        log_event("supabase_write", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="pet_drafts")
 
 def load_draft(email):
     sb = _supabase_client()
     if not sb or not email or not _ENC_OK:
         return None
+    _t0 = time.time()
     try:
         res = sb.table("pet_drafts").select("data").eq("user_email", email).limit(1).execute()
         rows = res.data or []
+        log_event("supabase_read", ok=True, ms=(time.time()-_t0)*1000, table="pet_drafts")
         if rows and rows[0].get("data"):
             dec = _fernet().decrypt(rows[0]["data"].encode()).decode()
             return json.loads(dec)
-    except Exception:
+    except Exception as e:
+        log_event("supabase_read", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="pet_drafts")
         return None
     return None
 
@@ -1016,10 +1021,12 @@ def delete_draft(email):
     sb = _supabase_client()
     if not sb or not email:
         return
+    _t0 = time.time()
     try:
         sb.table("pet_drafts").delete().eq("user_email", email).execute()
-    except Exception:
-        pass
+        log_event("supabase_delete", ok=True, ms=(time.time()-_t0)*1000, table="pet_drafts")
+    except Exception as e:
+        log_event("supabase_delete", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="pet_drafts")
 
 
 # ── USER PREFERENCES (per-account, plain JSON — not encrypted) ───────────────
@@ -1040,6 +1047,7 @@ def save_user_pref(email, key, value):
     sb = _supabase_client()
     if not sb or not email:
         return
+    _t0 = time.time()
     try:
         res = sb.table("user_prefs").select("prefs").eq("user_email", email).limit(1).execute()
         rows = res.data or []
@@ -1051,8 +1059,9 @@ def save_user_pref(email, key, value):
             {"user_email": email, "prefs": current},
             on_conflict="user_email",
         ).execute()
-    except Exception:
-        pass
+        log_event("supabase_write", ok=True, ms=(time.time()-_t0)*1000, table="user_prefs")
+    except Exception as e:
+        log_event("supabase_write", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="user_prefs")
 
 
 def load_user_pref(email, key, default=None):
@@ -1061,8 +1070,10 @@ def load_user_pref(email, key, default=None):
     sb = _supabase_client()
     if not sb or not email:
         return default
+    _t0 = time.time()
     try:
         res = sb.table("user_prefs").select("prefs").eq("user_email", email).limit(1).execute()
+        log_event("supabase_read", ok=True, ms=(time.time()-_t0)*1000, table="user_prefs")
         rows = res.data or []
         if not rows:
             return default
@@ -1070,7 +1081,8 @@ def load_user_pref(email, key, default=None):
         if not isinstance(prefs, dict):
             return default
         return prefs.get(key, default)
-    except Exception:
+    except Exception as e:
+        log_event("supabase_read", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="user_prefs")
         return default
 
 def send_otp(email):
