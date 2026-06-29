@@ -13,6 +13,8 @@ import urllib.parse
 from datetime import datetime, timedelta
 import io as _io, base64 as _b64
 import hmac, hashlib, time, unicodedata
+import logging as _logging
+import uuid as _uuid
 
 # "Stay signed in" via a browser cookie (persists login across reloads / new tabs).
 # Degrades gracefully if missing.
@@ -64,6 +66,123 @@ def _secret(name, default=""):
         pass
     v = os.environ.get(name, "")
     return v if v != "" else default
+
+# ── STRUCTURED LOGGING (observability) ────────────────────────────────────────
+# Priority 3 from the Asklepios/KiraAIpet readiness audit: without logging,
+# production problems only surface when a user reports them. This writes
+# structured lines to stdout — Railway (and any platform) captures stdout as
+# logs automatically, no extra infra needed. Every external API call
+# (Claude, GPT-4o, Florence-2/Roboflow, Supabase, MSD lookups) should call
+# log_event() with its outcome so failures are visible proactively.
+#
+# NOTE on privacy: log_event() must NEVER be passed pet names, symptoms,
+# photo bytes, or any free-text clinical content — only operational metadata
+# (which API, success/fail, latency, error class, anonymous session id).
+# This keeps logs useful for debugging without turning them into an
+# unintended second copy of health data (see GDPR section below).
+_logger = _logging.getLogger("petainurse")
+if not _logger.handlers:
+    _h = _logging.StreamHandler()
+    _h.setFormatter(_logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    _logger.addHandler(_h)
+    _logger.setLevel(_logging.INFO)
+
+def _session_id():
+    """Anonymous per-browser-session id for correlating log lines —
+    NOT tied to email/identity, lives only in st.session_state (RAM),
+    never persisted. Safe to put in logs."""
+    if "_sid" not in st.session_state:
+        st.session_state["_sid"] = _uuid.uuid4().hex[:8]
+    return st.session_state["_sid"]
+
+def log_event(event, ok=True, ms=None, error=None, **extra):
+    """Structured log line for an external call or key app event.
+    event: short machine name, e.g. 'claude_chat', 'gpt4o_second_opinion',
+           'florence2_vision', 'msdvet_search', 'supabase_write'.
+    ok:    True/False outcome.
+    ms:    elapsed time in milliseconds (optional).
+    error: short error class/message (optional) — never include free-text
+           user content here.
+    extra: any additional non-sensitive metadata (species_key, scan_type...).
+    """
+    try:
+        payload = {"event": event, "ok": bool(ok), "sid": _session_id()}
+        if ms is not None:
+            payload["ms"] = round(ms, 1)
+        if error:
+            payload["error"] = str(error)[:200]
+        payload.update({k: v for k, v in extra.items() if v is not None})
+        line = json.dumps(payload, ensure_ascii=False)
+        if ok:
+            _logger.info(line)
+        else:
+            _logger.warning(line)
+    except Exception:
+        pass  # logging must never crash the app
+
+
+# ── RATE LIMITING / COST PROTECTION ───────────────────────────────────────────
+# Priority 1 from the Asklepios/KiraAIpet readiness audit: neither codebase had
+# ANY protection against a user (malicious or just over-eager) generating
+# unlimited Claude/GPT-4o calls. This is a simple per-browser-session gate:
+#   - a minimum COOLDOWN between expensive AI actions (stops rapid-fire clicking)
+#   - a maximum number of expensive actions per rolling hour (stops runaway loops)
+# It is intentionally per-session (st.session_state, in RAM) rather than
+# per-account/Supabase — this keeps it zero-storage (see GDPR section) and
+# still stops the two realistic failure modes: a script hammering the free
+# endpoint, or a single browser tab looping. It is NOT a substitute for
+# infra-level rate limiting (e.g. a reverse proxy) in a high-traffic deploy,
+# but it closes the gap that exists today (none at all).
+RATE_LIMIT_COOLDOWN_SECONDS = 8          # min seconds between expensive AI actions
+RATE_LIMIT_MAX_PER_HOUR = 20             # max expensive AI actions per rolling hour
+
+def _rate_limit_check(action="ai_call"):
+    """Returns (allowed: bool, wait_seconds: float, reason: str).
+    Call this BEFORE any expensive Claude/GPT-4o invocation that the user
+    triggers directly (triage message, report generation, photo/lab scan).
+    On allow, records the action so subsequent calls see it."""
+    now = time.time()
+    log = st.session_state.setdefault("_rl_log", [])
+    # Drop entries older than 1 hour — keeps the list small and the window rolling.
+    log[:] = [ts for ts in log if now - ts < 3600]
+
+    last_ts = st.session_state.get("_rl_last_ts", 0)
+    elapsed = now - last_ts
+    if elapsed < RATE_LIMIT_COOLDOWN_SECONDS:
+        wait = round(RATE_LIMIT_COOLDOWN_SECONDS - elapsed, 1)
+        log_event("rate_limit_block", ok=False, reason="cooldown", action=action, wait_s=wait)
+        return False, wait, "cooldown"
+
+    if len(log) >= RATE_LIMIT_MAX_PER_HOUR:
+        wait = round(3600 - (now - log[0]), 1)
+        log_event("rate_limit_block", ok=False, reason="hourly_cap", action=action, wait_s=wait)
+        return False, wait, "hourly_cap"
+
+    log.append(now)
+    st.session_state["_rl_last_ts"] = now
+    log_event("rate_limit_pass", ok=True, action=action, calls_this_hour=len(log))
+    return True, 0, ""
+
+
+def _rate_limit_gate(action="ai_call"):
+    """UI helper: checks the rate limit and, if blocked, shows a friendly
+    message + returns False so the caller can `return` early instead of
+    making the expensive API call. Bilingual."""
+    allowed, wait, reason = _rate_limit_check(action)
+    if allowed:
+        return True
+    lang = st.session_state.get("lang", "el")
+    if reason == "cooldown":
+        msg = (f"⏳ Μία στιγμή — περίμενε {wait}s πριν το επόμενο αίτημα."
+               if lang == "el" else
+               f"⏳ Just a moment — please wait {wait}s before the next request.")
+    else:
+        msg = (f"🚦 Έχεις φτάσει το όριο αιτημάτων για αυτή την ώρα. Δοκίμασε ξανά σε {int(wait/60)+1} λεπτά."
+               if lang == "el" else
+               f"🚦 You've reached the hourly request limit. Try again in {int(wait/60)+1} min.")
+    st.warning(msg)
+    return False
+
 
 st.set_page_config(
     page_title="PetAiNurse · AI Vet Nurse",
@@ -161,11 +280,12 @@ def get_maps_key():    return _key("GOOGLE_MAPS_KEY", "")
 
 # ── MSD VET MANUAL SEARCH ─────────────────────────────────────────────────────
 MSD_BASE = {
-    "dog":    "https://www.msdvetmanual.com/dog-owners",
-    "cat":    "https://www.msdvetmanual.com/cat-owners",
-    "rabbit": "https://www.msdvetmanual.com/all-other-pets",
-    "bird":   "https://www.msdvetmanual.com/bird-owners",
-    "other":  "https://www.msdvetmanual.com/all-other-pets",
+    "dog":     "https://www.msdvetmanual.com/dog-owners",
+    "cat":     "https://www.msdvetmanual.com/cat-owners",
+    "rabbit":  "https://www.msdvetmanual.com/all-other-pets",
+    "bird":    "https://www.msdvetmanual.com/bird-owners",
+    "reptile": "https://www.msdvetmanual.com/all-other-pets/reptiles",
+    "other":   "https://www.msdvetmanual.com/all-other-pets",
 }
 
 # MSD Vet Manual article index — direct links per condition
@@ -190,6 +310,21 @@ MSD_ARTICLES = {
         "sneezing": "https://www.msdvetmanual.com/cat-owners/lung-and-airway-disorders-of-cats",
         "itching": "https://www.msdvetmanual.com/cat-owners/skin-disorders-of-cats",
         "default": "https://www.msdvetmanual.com/cat-owners",
+    },
+    "reptile": {
+        "not eating": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "anorexia": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "lethargy": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "swollen": "https://www.msdvetmanual.com/all-other-pets/reptiles/nutritional-diseases-of-reptiles/metabolic-bone-disease-in-reptiles",
+        "bone": "https://www.msdvetmanual.com/all-other-pets/reptiles/nutritional-diseases-of-reptiles/metabolic-bone-disease-in-reptiles",
+        "shedding": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "skin": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "breathing": "https://www.msdvetmanual.com/all-other-pets/reptiles/respiratory-diseases-of-reptiles",
+        "wheez": "https://www.msdvetmanual.com/all-other-pets/reptiles/respiratory-diseases-of-reptiles",
+        "mouth": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "burn": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+        "parasite": "https://www.msdvetmanual.com/all-other-pets/reptiles/parasitic-diseases-of-reptiles",
+        "default": "https://www.msdvetmanual.com/all-other-pets/reptiles",
     },
 }
 
@@ -223,6 +358,20 @@ MSD_RECS_REFS = {
         "lifestyle": [
             {"title": "MSD Vet Manual — Routine Health Care of Cats", "url": "https://www.msdvetmanual.com/cat-owners/routine-care-and-breeding-of-cats/routine-health-care-of-cats"},
             {"title": "WSAVA Global Veterinary Guidelines", "url": "https://wsava.org/global-guidelines/"},
+        ],
+    },
+    "reptile": {
+        "activity":  [
+            {"title": "MSD Vet Manual — Reptile Housing & Husbandry", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles/housing-of-reptiles"},
+            {"title": "MSD Vet Manual — Reptiles Overview", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles"},
+        ],
+        "nutrition": [
+            {"title": "MSD Vet Manual — Nutrition of Reptiles", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles/nutrition-of-reptiles"},
+            {"title": "MSD Vet Manual — Metabolic Bone Disease in Reptiles", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles/nutritional-diseases-of-reptiles/metabolic-bone-disease-in-reptiles"},
+        ],
+        "lifestyle": [
+            {"title": "MSD Vet Manual — Disorders & Diseases of Reptiles", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles"},
+            {"title": "MSD Vet Manual — Reptile Housing & Husbandry", "url": "https://www.msdvetmanual.com/all-other-pets/reptiles/housing-of-reptiles"},
         ],
     },
 }
@@ -360,6 +509,9 @@ TOXIC_CATS = ["paracetamol","acetaminophen","ibuprofen","aspirin","naproxen","di
                "onion","garlic","grape","raisin","chocolate"]
 TOXIC_DOGS = ["xylitol","chocolate","grapes","raisins","macadamia","onion","garlic",
                "ibuprofen","naproxen","caffeine","alcohol","avocado"]
+TOXIC_REPTILES = ["avocado","oleander","azalea","rhododendron","ivy","pothos",
+                    "pesticide","insecticide","permethrin","chlorine","chlorinated",
+                    "lead","zinc","cedar","pine shavings"]
 
 def check_toxicity(species, meds_text, symptoms_text=""):
     """Hard-coded toxicity warnings — critical safety feature."""
@@ -385,6 +537,21 @@ def check_toxicity(species, meds_text, symptoms_text=""):
                     warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: Η σοκολάτα είναι τοξική για σκύλους (θεοβρωμίνη). Άμεσο κτηνίατρο αν κατάπιε.")
                 else:
                     warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: {t.title()} είναι τοξικό για σκύλους. Συμβουλευτείτε άμεσα κτηνίατρο.")
+    elif species == "reptile":
+        for t in TOXIC_REPTILES:
+            if t in combined:
+                if t == "avocado":
+                    warnings.append(f"⛔ ΚΡΙΣΙΜΟ: Το αβοκάντο είναι τοξικό για χελώνες/ερπετά (persin). Άμεσο επείγον κτηνιατρείο!")
+                elif t in ("oleander","azalea","rhododendron"):
+                    warnings.append(f"⛔ ΚΡΙΣΙΜΟ: {t.title()} είναι σοβαρά τοξικό φυτό. Άμεσο επείγον κτηνιατρείο!")
+                elif t in ("pesticide","insecticide","permethrin"):
+                    warnings.append(f"⛔ ΚΡΙΣΙΜΟ: Υπολείμματα φυτοφαρμάκων/εντομοκτόνων (π.χ. σε τροφή-έντομα) είναι πολύ τοξικά για ερπετά. Άμεσο επείγον!")
+                elif "chlorine" in t or "chlorinated" in t:
+                    warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: Το χλωριωμένο νερό βρύσης μπορεί να ερεθίσει βράγχια/δέρμα υδρόβιων ερπετών. Χρησιμοποίησε αποχλωριωμένο/φιλτραρισμένο νερό.")
+                elif t in ("cedar","pine shavings"):
+                    warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: Στρωμνή από κέδρο/πεύκο απελευθερώνει αναθυμιάσεις τοξικές για ερπετά. Αντικατέστησε με ασφαλή στρωμνή (π.χ. χαρτί, coconut coir).")
+                else:
+                    warnings.append(f"⚠️ ΠΡΟΣΟΧΗ: {t.title()} μπορεί να είναι τοξικό/επιβλαβές για ερπετά. Συμβουλευτείτε άμεσα ερπετολόγο κτηνίατρο.")
     return warnings
 
 
@@ -411,6 +578,7 @@ SCAN_PROMPTS = {
 }
 
 def florence2_analyze(image_b64, scan_type, api_key):
+    _t0 = time.time()
     workspace = _secret("ROBOFLOW_WORKSPACE","chriss-workspace-zk0ng")
     workflow  = _secret("ROBOFLOW_WORKFLOW","florence2-base-demo")
     url = f"https://serverless.roboflow.com/{workspace}/workflows/{workflow}"
@@ -424,6 +592,7 @@ def florence2_analyze(image_b64, scan_type, api_key):
         with urllib.request.urlopen(req, timeout=30) as r:
             result = json.loads(r.read())
         outputs = result.get("outputs",[])
+        log_event("florence2_vision", ok=True, ms=(time.time()-_t0)*1000, scan_type=scan_type)
         if outputs:
             first = outputs[0]
             for key in ["output","caption","text","result","description"]:
@@ -431,11 +600,15 @@ def florence2_analyze(image_b64, scan_type, api_key):
                     return {"ok":True,"description":str(first[key])}
         return {"ok":True,"description":str(result)}
     except Exception as e:
+        log_event("florence2_vision", ok=False, ms=(time.time()-_t0)*1000, error=str(e), scan_type=scan_type)
         return {"ok":False,"error":str(e)}
 
 def claude_vision_pet(image_b64, image_type, prompt, system=""):
+    _t0 = time.time()
     key = get_claude_key()
-    if not key: return "⚠️ API key not set."
+    if not key:
+        log_event("claude_vision", ok=False, error="missing_api_key")
+        return "⚠️ API key not set."
     body = json.dumps({
         "model":"claude-sonnet-4-6","max_tokens":3000,"system":system,
         "messages":[{"role":"user","content":[
@@ -447,8 +620,12 @@ def claude_vision_pet(image_b64, image_type, prompt, system=""):
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
     try:
         with urllib.request.urlopen(req,timeout=60) as r:
-            return json.loads(r.read())["content"][0]["text"]
-    except Exception as e: return f"⚠️ {e}"
+            out = json.loads(r.read())["content"][0]["text"]
+            log_event("claude_vision", ok=True, ms=(time.time()-_t0)*1000)
+            return out
+    except Exception as e:
+        log_event("claude_vision", ok=False, ms=(time.time()-_t0)*1000, error=str(e))
+        return f"⚠️ {e}"
 
 # ── LAB ANALYSIS (Claude native PDF/image support) ────────────────────────────
 def claude_analyze_pet_lab(file_bytes, mime_type, pet, conversation, lang, file_name=""):
@@ -564,10 +741,14 @@ Only findings you actually see in the document — don't invent indicators."""
 
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
+    _t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
-            return json.loads(r.read())["content"][0]["text"]
+            out = json.loads(r.read())["content"][0]["text"]
+            log_event("claude_lab_analysis", ok=True, ms=(time.time()-_t0)*1000, mime=mime_type)
+            return out
     except Exception as e:
+        log_event("claude_lab_analysis", ok=False, ms=(time.time()-_t0)*1000, error=str(e), mime=mime_type)
         return f"⚠️ Σφάλμα ανάλυσης: {e}"
 
 # ── VOICE → TEXT (Groq Whisper, Greek/English) ────────────────────────────────
@@ -582,6 +763,7 @@ def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="record
     key = get_groq_key()
     if not key:
         return None, "⚠️ GROQ_API_KEY not set."
+    _t0 = time.time()
     try:
         import requests
         files = {"file": (filename, audio_bytes, mime)}
@@ -596,13 +778,18 @@ def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="record
             files=files, data=data, timeout=60,
         )
         if r.status_code == 200:
+            log_event("groq_whisper", ok=True, ms=(time.time()-_t0)*1000)
             return r.text.strip(), None
         if r.status_code == 401:
+            log_event("groq_whisper", ok=False, ms=(time.time()-_t0)*1000, error="401")
             return None, "⚠️ Groq API key invalid (401). Έλεγξε το GROQ_API_KEY."
         if r.status_code == 403:
+            log_event("groq_whisper", ok=False, ms=(time.time()-_t0)*1000, error="403")
             return None, f"⚠️ Groq 403 Forbidden: {r.text[:300]}"
+        log_event("groq_whisper", ok=False, ms=(time.time()-_t0)*1000, error=f"HTTP {r.status_code}")
         return None, f"⚠️ Groq HTTP {r.status_code}: {r.text[:300]}"
     except Exception as e:
+        log_event("groq_whisper", ok=False, ms=(time.time()-_t0)*1000, error=str(e))
         return None, f"⚠️ {e}"
 
 
@@ -612,9 +799,11 @@ def gpt4o(prompt, system="", max_tokens=3000):
     network, auth, or API error body. We never swallow the underlying error
     silently because that leaves admins guessing why a feature 'didn't work'.
     """
+    _t0 = time.time()
     try:
         oai = get_openai_key()
         if not oai:
+            log_event("gpt4o", ok=False, error="missing_api_key")
             return "GPT-4o unavailable: OPENAI_API_KEY is not configured"
         body = json.dumps({"model":"gpt-4o","max_tokens":max_tokens,
             "messages":[{"role":"system","content":system},{"role":"user","content":prompt}] if system
@@ -623,7 +812,9 @@ def gpt4o(prompt, system="", max_tokens=3000):
             headers={"Content-Type":"application/json","Authorization":f"Bearer {oai}"})
         try:
             with urllib.request.urlopen(req, timeout=25) as r:
-                return json.loads(r.read())["choices"][0]["message"]["content"]
+                out = json.loads(r.read())["choices"][0]["message"]["content"]
+                log_event("gpt4o", ok=True, ms=(time.time()-_t0)*1000)
+                return out
         except urllib.error.HTTPError as he:
             # Read the response body so the real OpenAI error (auth, quota,
             # content policy, model-not-found, etc.) is visible instead of a
@@ -632,25 +823,35 @@ def gpt4o(prompt, system="", max_tokens=3000):
                 err_body = he.read().decode("utf-8", "replace")
             except Exception:
                 err_body = ""
+            log_event("gpt4o", ok=False, ms=(time.time()-_t0)*1000, error=f"HTTP {he.code}")
             return f"GPT-4o unavailable: HTTP {he.code} — {err_body[:500]}"
     except Exception as e:
+        log_event("gpt4o", ok=False, ms=(time.time()-_t0)*1000, error=f"{type(e).__name__}: {e}")
         return f"GPT-4o unavailable: {type(e).__name__}: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
 def claude(messages, system="", max_tokens=3000, timeout=60):
+    _t0 = time.time()
     key = get_claude_key()
-    if not key: return "⚠️ Claude API key not set."
+    if not key:
+        log_event("claude_chat", ok=False, error="missing_api_key")
+        return "⚠️ Claude API key not set."
     body = json.dumps({"model":"claude-sonnet-4-6","max_tokens":max_tokens,
         "system":system,"messages":messages}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read())["content"][0]["text"]
+            out = json.loads(r.read())["content"][0]["text"]
+            log_event("claude_chat", ok=True, ms=(time.time()-_t0)*1000)
+            return out
     except urllib.error.URLError as e:
+        log_event("claude_chat", ok=False, ms=(time.time()-_t0)*1000, error=str(e))
         if "timed out" in str(e).lower(): return "⚠️ Request timed out. Please try again."
         return f"⚠️ Claude error: {e}"
-    except Exception as e: return f"⚠️ Claude error: {e}"
+    except Exception as e:
+        log_event("claude_chat", ok=False, ms=(time.time()-_t0)*1000, error=f"{type(e).__name__}: {e}")
+        return f"⚠️ Claude error: {e}"
 
 
 # ── AI OUTPUT SANITIZER ───────────────────────────────────────────────────────
@@ -1135,13 +1336,13 @@ for k, v in defaults.items():
 
 # ── SPECIES DATA ──────────────────────────────────────────────────────────────
 SPECIES = {
-    "el": ["🐕 Σκύλος", "🐈 Γάτα", "🐇 Κουνέλι", "🐦 Πουλί", "🐾 Άλλο"],
-    "en": ["🐕 Dog",    "🐈 Cat",  "🐇 Rabbit",  "🐦 Bird",  "🐾 Other"],
+    "el": ["🐕 Σκύλος", "🐈 Γάτα", "🐇 Κουνέλι", "🐦 Πουλί", "🦎 Ερπετό", "🐾 Άλλο"],
+    "en": ["🐕 Dog",    "🐈 Cat",  "🐇 Rabbit",  "🐦 Bird",  "🦎 Reptile", "🐾 Other"],
 }
 SPECIES_KEY = {"🐕 Σκύλος":"dog","🐈 Γάτα":"cat","🐇 Κουνέλι":"rabbit",
-               "🐦 Πουλί":"bird","🐾 Άλλο":"other",
+               "🐦 Πουλί":"bird","🦎 Ερπετό":"reptile","🐾 Άλλο":"other",
                "🐕 Dog":"dog","🐈 Cat":"cat","🐇 Rabbit":"rabbit",
-               "🐦 Bird":"bird","🐾 Other":"other"}
+               "🐦 Bird":"bird","🦎 Reptile":"reptile","🐾 Other":"other"}
 
 # Common conditions per species — surfaced in the intake step as a heads-up
 # of what owners most often bring up. Mirrors the Asklepios pattern.
@@ -1218,17 +1419,35 @@ COMMON_CONDITIONS = {
             ("🦟", "Psittacosis", "zoonotic — caution"),
         ],
     },
+    "reptile": {
+        "el": [
+            ("🦴", "Μεταβολική Οστική Νόσος (MBD)", "έλλειψη ασβεστίου/UVB, συχνή σε νεαρά"),
+            ("🫁", "Λοιμώξεις αναπνευστικού", "συριγμός, βλέννα, ανοιχτό στόμα"),
+            ("🌡️", "Λάθος θερμοκρασία/υγρασία ενυδρείου", "αρρώστιες πέψης, λήθαργος"),
+            ("🐍", "Δυσκολία στην αλλαγή δέρματος (dysecdysis)", "συχνά λόγω χαμηλής υγρασίας"),
+            ("🪱", "Εντερικά παράσιτα", "συχνά σε νέα ζώα/wild-caught"),
+            ("🔥", "Εγκαύματα από λάμπα/πέτρα θέρμανσης", "χωρίς θερμοστάτη/προστασία"),
+        ],
+        "en": [
+            ("🦴", "Metabolic Bone Disease (MBD)", "calcium/UVB deficiency, common in juveniles"),
+            ("🫁", "Respiratory infection", "wheezing, mucus, open-mouth breathing"),
+            ("🌡️", "Incorrect enclosure temp/humidity", "digestive problems, lethargy"),
+            ("🐍", "Dysecdysis (abnormal shedding)", "often from low humidity"),
+            ("🪱", "Intestinal parasites", "common in young/wild-caught animals"),
+            ("🔥", "Thermal burns", "from heat lamps/rocks without a thermostat"),
+        ],
+    },
     "other": {
         "el": [
             ("🐾", "Ποικίλες παθήσεις", "εξαρτάται από το είδος"),
             ("📋", "Συστήνεται ειδικός", "για εξωτικά κατοικίδια"),
-            ("🌡️", "Ευαισθησία σε θερμοκρασία", "συχνή σε ερπετά/ασπόνδυλα"),
+            ("🌡️", "Ευαισθησία σε θερμοκρασία", "συχνή σε ασπόνδυλα/εξωτικά"),
             ("🌿", "Διατροφικά λάθη", "πιο συχνά σε εξωτικά"),
         ],
         "en": [
             ("🐾", "Varies by species", "depends on the pet"),
             ("📋", "Specialist recommended", "for exotic pets"),
-            ("🌡️", "Temperature sensitivity", "common in reptiles/invertebrates"),
+            ("🌡️", "Temperature sensitivity", "common in invertebrates/exotics"),
             ("🌿", "Nutritional mistakes", "more frequent in exotics"),
         ],
     },
@@ -1280,13 +1499,28 @@ DOG_BREEDS_EN = ["Mixed breed","Labrador","Golden Retriever","German Shepherd",
 CAT_BREEDS_EN = ["Mixed breed","Persian","Siamese","Russian Blue","Maine Coon",
     "British Shorthair","Scottish Fold","Bengal","Abyssinian","Sphynx","Other"]
 
+# Reptile "breed" dropdown is really species/type — the most common reptiles
+# kept as pets in Greece (turtles/tortoises, snakes, lizards/geckos).
+REPTILE_TYPES_EL = ["Χελώνα (στεριάς)","Χελώνα (νερού)","Φίδι (π.χ. βασιλικό πύθωνας)",
+    "Iguana","Gecko Leopard","Gecko (άλλο)","Χαμαιλέοντας","Πραγματιδωτή σαύρα (Bearded Dragon)",
+    "Σαύρα (άλλο)","Άλλο ερπετό"]
+REPTILE_TYPES_EN = ["Turtle (tortoise)","Turtle (aquatic)","Snake (e.g. ball python)",
+    "Iguana","Leopard Gecko","Gecko (other)","Chameleon","Bearded Dragon",
+    "Lizard (other)","Other reptile"]
+
 # ── VITAL RANGES BY SPECIES ───────────────────────────────────────────────────
 VITAL_RANGES = {
-    "dog":    {"hr":(60,140), "br":(15,30), "temp":(38.3,39.2), "spo2":(95,100)},
-    "cat":    {"hr":(120,220),"br":(20,30), "temp":(38.1,39.2), "spo2":(95,100)},
-    "rabbit": {"hr":(120,150),"br":(30,60), "temp":(38.5,40.0), "spo2":(95,100)},
-    "bird":   {"hr":(200,400),"br":(25,60), "temp":(40.0,42.0), "spo2":(95,100)},
-    "other":  {"hr":(60,300), "br":(15,60), "temp":(37.0,40.0), "spo2":(95,100)},
+    "dog":     {"hr":(60,140), "br":(15,30), "temp":(38.3,39.2), "spo2":(95,100)},
+    "cat":     {"hr":(120,220),"br":(20,30), "temp":(38.1,39.2), "spo2":(95,100)},
+    "rabbit":  {"hr":(120,150),"br":(30,60), "temp":(38.5,40.0), "spo2":(95,100)},
+    "bird":    {"hr":(200,400),"br":(25,60), "temp":(40.0,42.0), "spo2":(95,100)},
+    # Reptiles are ectothermic — "body temperature" tracks the enclosure
+    # gradient rather than being self-regulated, and HR/RR vary far more by
+    # species (tortoise vs snake vs lizard) and body size than in mammals.
+    # These bands are intentionally wide; flag any reading to the AI as
+    # context rather than treating it as a tight clinical threshold.
+    "reptile": {"hr":(20,80),  "br":(1,20),  "temp":(24.0,32.0), "spo2":(90,100)},
+    "other":   {"hr":(60,300), "br":(15,60), "temp":(37.0,40.0), "spo2":(95,100)},
 }
 
 def classify_pet_vitals(v, species="dog"):
@@ -1402,9 +1636,19 @@ def triage_placeholder_for(pet):
     return d.get(lang, d["el"])
 
 def _render_disclaimer_strip(lang=None):
-    """Compact 'not a medical/veterinary tool' disclaimer — shown on every screen."""
+    """Compact 'not a medical/veterinary tool' disclaimer — shown on every screen.
+    Also surfaces a link to the real privacy/data-control page (?page=privacy),
+    so the GDPR claim made elsewhere in the marketing copy is backed by an
+    actual, reachable control — not just a badge."""
     lang = lang or st.session_state.lang
     st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
+    _priv_label = "🔒 Τα δεδομένα μου & GDPR" if lang == "el" else "🔒 My data & GDPR"
+    st.markdown(
+        f'<div style="text-align:center;margin-top:-6px;margin-bottom:10px">'
+        f'<a href="?page=privacy" target="_self" style="font-size:11px;color:#6B7280;text-decoration:underline">{_priv_label}</a>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ── PAGE HELPER BANNER ────────────────────────────────────────────────────────
@@ -2545,7 +2789,8 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
         for line in text.splitlines():
             l=line.strip()
             if not l: out.append("<br>"); continue
-            if l.startswith("## ") or l.startswith("# "): out.append(f"<h2>{_html.escape(l.lstrip('#').strip())}</h2>")
+            if l.startswith("### "): out.append(f"<h3>{_html.escape(l[4:].strip())}</h3>")
+            elif l.startswith("## ") or l.startswith("# "): out.append(f"<h2>{_html.escape(l.lstrip('#').strip())}</h2>")
             elif l.startswith(("- ","* ","• ")): out.append(f"<li>{_re.sub(r'\*\*(.*?)\*\*',r'<strong>\1</strong>',_html.escape(l[2:]))}</li>")
             else: out.append(f"<p>{_re.sub(r'\*\*(.*?)\*\*',r'<strong>\1</strong>',_html.escape(l))}</p>")
         r="\n".join(out)
@@ -2605,6 +2850,7 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
 .pet-card{{background:linear-gradient(135deg,#059669,#0EA5E9);color:white;border-radius:12px;padding:18px 22px;margin-bottom:20px}}
 .pet-name{{font-size:20px;font-weight:700;margin-bottom:4px}}.pet-meta{{font-size:12px;opacity:.8}}.pet-detail{{font-size:11px;opacity:.75;margin-top:10px;line-height:1.8}}
 h2{{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#059669;border-bottom:1px solid #A7F3D0;padding-bottom:5px;margin:20px 0 10px}}
+h3{{font-size:12px;font-weight:700;color:#0EA5E9;margin:14px 0 6px}}
 p{{margin:4px 0;line-height:1.65}}ul{{margin:6px 0 6px 18px}}li{{margin:3px 0;line-height:1.6}}
 table.vtbl{{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px}}
 table.vtbl thead tr{{background:#059669;color:white}}table.vtbl th,table.vtbl td{{padding:7px 12px;text-align:left;border:1px solid #A7F3D0}}
@@ -3778,6 +4024,8 @@ def render_intake():
             breeds = DOG_BREEDS_EL if lang=="el" else DOG_BREEDS_EN
         elif species_key == "cat":
             breeds = CAT_BREEDS_EL if lang=="el" else CAT_BREEDS_EN
+        elif species_key == "reptile":
+            breeds = REPTILE_TYPES_EL if lang=="el" else REPTILE_TYPES_EN
         else:
             breeds = ["—"]
         prev_breed = draft.get("breed", pet.get("breed", breeds[0]))
@@ -3967,6 +4215,14 @@ def render_vitals():
                        ("mouth","🦷 Beak/Mouth"),
                        ("body","🐦 Body"),("paw","🐾 Feet/Claws")],
             },
+            "reptile": {
+                "el": [("eye","👁️ Μάτια"),("skin","🐍 Δέρμα/Λέπια"),
+                       ("mouth","🦷 Στόμα"),
+                       ("body","🦎 Γενική Εμφάνιση"),("paw","🐾 Άκρα/Νύχια")],
+                "en": [("eye","👁️ Eyes"),("skin","🐍 Skin/Scales"),
+                       ("mouth","🦷 Mouth"),
+                       ("body","🦎 Body"),("paw","🐾 Limbs/Claws")],
+            },
         }
         opts = SCAN_OPTS.get(sp, SCAN_OPTS["dog"])[lang]
         scan_labels = [o[1] for o in opts]
@@ -4015,6 +4271,8 @@ def render_vitals():
 
             if st.button("🔍 " + ("Ανάλυση" if lang=="el" else "Analyse"),
                          type="primary", use_container_width=True, key="analyse_photo"):
+                if not _rate_limit_gate("photo_scan"):
+                    st.stop()
                 with st.spinner("Florence-2 + Claude..." if lang=="el" else "Florence-2 + Claude analysing..."):
                     # Step 1: Florence-2 visual description
                     f2_desc = ""
@@ -4025,9 +4283,16 @@ def render_vitals():
 
                     # Step 2: Claude Vision clinical interpretation
                     context_note = (f"\n\nFLORENCE-2 DESCRIPTION: {f2_desc}" if f2_desc else "")
-                    system_prompt = ("Είσαι κτηνιατρικός αναλυτής φωτογραφιών. Δίνεις δομημένη, ακριβή ανάλυση."
+                    _sp_for_vision = pet.get("species_label", "")
+                    system_prompt = ((f"Είσαι κτηνιατρικός αναλυτής φωτογραφιών εξειδικευμένος σε {_sp_for_vision}. "
+                                      "Δίνεις δομημένη, ακριβή ανάλυση προσαρμοσμένη στην ανατομία/φυσιολογία αυτού του είδους "
+                                      "(π.χ. για ερπετά: κατακρατημένο δέρμα από αλλαγή, mouth rot/stomatitis, "
+                                      "ενδείξεις Μεταβολικής Οστικής Νόσου — όχι κριτήρια θηλαστικών όπως ούλα/τρίχωμα όπου δεν εφαρμόζονται).")
                                      if lang=="el" else
-                                     "You are a veterinary photo analyst. Give structured, accurate analysis.")
+                                     (f"You are a veterinary photo analyst specialised in {_sp_for_vision}. "
+                                      "Give structured, accurate analysis appropriate to this species' anatomy/physiology "
+                                      "(e.g. for reptiles: retained shed, mouth rot/stomatitis, signs of Metabolic Bone "
+                                      "Disease — not mammal-specific criteria like gums/fur where they don't apply)."))
                     # If the owner has chosen an AI-output language different from
                     # the UI language, append the override + clinical terminology
                     # block so the photo analysis lands in their language with the
@@ -4182,6 +4447,8 @@ def render_triage():
         response — shared by both the chat input and the quick-select chips,
         so picking a chip actually produces a visible reply instead of
         silently doing nothing."""
+        if not _rate_limit_gate("triage_chat"):
+            return
         st.session_state.triage_chat.append({"role":"user","content":user_text})
         with st.spinner("PetAiNurse..."):
             p = pet
@@ -4250,6 +4517,8 @@ def render_triage():
                                   if lang=="el" else
                                   (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
                          type="primary", use_container_width=True, key="analyse_lab"):
+                if not _rate_limit_gate("lab_scan"):
+                    st.stop()
 
                 # Names already analysed — skip them so re-clicking doesn't double-process
                 _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
@@ -4534,6 +4803,10 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
+        if not _rate_limit_gate("report_generation"):
+            if st.button("← " + ("Πίσω" if lang=="el" else "Back"), key="report_rl_back"):
+                st.session_state.screen = "triage"; st.rerun()
+            return
         # ── Superhero loading overlay ────────────────────────────────────────
         # Full-viewport fixed banner (the pet's mascot says hello while the
         # report is being prepared). Critical here because the report page
@@ -4749,6 +5022,8 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         with st.expander(f"🤖 {t('second_opinion')}"):
             if not st.session_state.report_gpt:
                 if st.button("Get GPT-4o Veterinary Second Opinion", type="secondary"):
+                    if not _rate_limit_gate("gpt4o_second_opinion"):
+                        st.stop()
                     with st.spinner("GPT-4o reviewing..."):
                         _pctx, _lctx = _evidence_context()
                         _evid = ""
@@ -5676,6 +5951,119 @@ if _STX_OK and auth_enabled():
                 st.session_state["_cookie_check_tries"] = tries + 1
                 st.rerun()
 
+# ── PRIVACY / GDPR PAGE (/?page=privacy) ──────────────────────────────────────
+# Priority 4 from the Asklepios/KiraAIpet readiness audit: the app displayed a
+# "🔒 GDPR" badge with no real mechanism behind it. This page makes the actual
+# data-handling policy explicit and gives a working right-to-erasure control.
+#
+# DATA POLICY IMPLEMENTED HERE (matches what the code actually does):
+#  - Uploaded photos & lab files: held ONLY in browser memory / the signed
+#    session cookie for the duration of the visit, sent directly to the
+#    Claude/GPT-4o APIs for analysis, and NEVER written to our database or
+#    disk. They disappear when the tab is closed or "Delete my data" is used.
+#  - Triage chat text & report text: live only in the browser session unless
+#    the (currently unused-by-default) draft-save feature is wired up for an
+#    account; even then it is Fernet-encrypted and deleted by this control.
+#  - Account email + AI-language preference (`user_prefs`): kept only while
+#    logged in, deleted by this control.
+#  - Nothing here is shared with third parties beyond the AI providers
+#    (Anthropic/OpenAI/Groq/Roboflow) strictly needed to produce the analysis
+#    the owner asked for.
+def render_privacy_page():
+    lang = st.session_state.get("lang", "el")
+    c1, c2 = st.columns([6, 1])
+    with c2:
+        if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key="privacy_lang"):
+            st.session_state.lang = "en" if lang == "el" else "el"
+            st.rerun()
+            return
+
+    if lang == "el":
+        st.markdown("## 🔒 Τα δεδομένα μου & GDPR")
+        st.markdown(
+            "**Τι κρατάμε και για πόσο:**\n\n"
+            "- **Φωτογραφίες & αρχεία εξετάσεων**: μένουν **μόνο στη μνήμη του browser / στο session cookie** "
+            "όσο διαρκεί η επίσκεψη — στέλνονται απευθείας στο Claude/GPT-4o για ανάλυση και "
+            "**ποτέ δεν αποθηκεύονται** σε δικό μας server ή βάση δεδομένων. Χάνονται αυτόματα όταν κλείσεις "
+            "την καρτέλα ή πατήσεις «Διαγραφή δεδομένων μου».\n"
+            "- **Συνομιλία triage & αναφορά**: ζουν μόνο στο session του browser σου, εκτός αν έχεις λογαριασμό "
+            "και έχεις ζητήσει αποθήκευση πρόχειρου — οπότε είναι κρυπτογραφημένα (Fernet) και διαγράφονται "
+            "με το κουμπί παρακάτω.\n"
+            "- **Λογαριασμός (email) & προτιμήσεις γλώσσας**: κρατούνται μόνο όσο είσαι συνδεδεμένος/η.\n"
+            "- **Κανένα δεδομένο δεν μοιράζεται** με τρίτους πέρα από τους AI παρόχους (Anthropic, OpenAI, Groq, "
+            "Roboflow) που χρειάζονται για να γίνει η ανάλυση που ζήτησες.\n"
+        )
+        st.markdown("---")
+        st.markdown("### 🗑️ Διαγραφή των δεδομένων μου τώρα")
+        st.caption(
+            "Αυτό θα: (1) διαγράψει κάθε αποθηκευμένο πρόχειρο/προτίμηση σου από τη βάση μας, "
+            "(2) σβήσει το cookie σύνδεσης, και (3) καθαρίσει όλα τα δεδομένα της τρέχουσας συνεδρίας "
+            "(φωτογραφίες, συνομιλία, αναφορά). Η ενέργεια είναι **οριστική**."
+        )
+        confirm_label = "Ναι, διάγραψε όλα τα δεδομένα μου"
+        done_msg = "✅ Τα δεδομένα σου διαγράφηκαν. Μπορείς να κλείσεις αυτή την καρτέλα."
+        back_label = "← Πίσω στην εφαρμογή"
+    else:
+        st.markdown("## 🔒 My data & GDPR")
+        st.markdown(
+            "**What we keep, and for how long:**\n\n"
+            "- **Photos & lab files**: stay **only in your browser's memory / session cookie** for the "
+            "duration of your visit — sent directly to Claude/GPT-4o for analysis and **never written** "
+            "to our server or database. They're gone as soon as you close the tab or click "
+            "\"Delete my data\".\n"
+            "- **Triage chat & report text**: live only in your browser session, unless you have an "
+            "account and explicitly saved a draft — in which case it's Fernet-encrypted and deleted by "
+            "the button below.\n"
+            "- **Account email & language preference**: kept only while you're logged in.\n"
+            "- **Nothing is shared** with third parties beyond the AI providers (Anthropic, OpenAI, Groq, "
+            "Roboflow) strictly needed to produce the analysis you asked for.\n"
+        )
+        st.markdown("---")
+        st.markdown("### 🗑️ Delete my data now")
+        st.caption(
+            "This will: (1) delete any saved draft/preference from our database, "
+            "(2) clear your login cookie, and (3) wipe all current-session data "
+            "(photos, chat, report). This action is **permanent**."
+        )
+        confirm_label = "Yes, delete all my data"
+        done_msg = "✅ Your data has been deleted. You can close this tab."
+        back_label = "← Back to the app"
+
+    if st.session_state.get("_gdpr_done"):
+        st.success(done_msg)
+    else:
+        if st.button("🗑️ " + confirm_label, type="primary"):
+            _email = st.session_state.get("auth_user", "")
+            # 1) Remove anything persisted server-side for this account.
+            if _email:
+                delete_draft(_email)
+                sb = _supabase_client()
+                if sb:
+                    try:
+                        sb.table("user_prefs").delete().eq("user_email", _email).execute()
+                        log_event("gdpr_delete", ok=True)
+                    except Exception as e:
+                        log_event("gdpr_delete", ok=False, error=str(e))
+            # 2) Clear the signed-in cookie.
+            _clear_login_cookie()
+            # 3) Wipe the entire in-memory session (photos, chat, report, prefs).
+            for k in list(st.session_state.keys()):
+                if k not in ("lang",):  # keep the language toggle for the confirmation screen
+                    st.session_state.pop(k, None)
+            st.session_state["_gdpr_done"] = True
+            st.session_state["screen"] = "home"
+            st.rerun()
+
+    st.markdown("---")
+    if st.button(back_label):
+        st.session_state.pop("_gdpr_done", None)
+        try:
+            del st.query_params["page"]
+        except Exception:
+            pass
+        st.rerun()
+
+
 # ── ADMIN PAGE (/?page=admin) ────────────────────────────────────────────────
 # Credentials come from environment variables / Railway "Variables" tab
 # (ADMIN_USER / ADMIN_PASS). Falls back to the previous defaults if not set,
@@ -5841,6 +6229,10 @@ def render_admin_page():
 _page_param = st.query_params.get("page")
 if _page_param == "admin":
     render_admin_page()
+    st.stop()
+
+if _page_param == "privacy":
+    render_privacy_page()
     st.stop()
 
 if _page_param in CATEGORY_SLUGS:
