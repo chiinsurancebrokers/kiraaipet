@@ -1852,8 +1852,9 @@ def render_home():
     lang = st.session_state.lang
     pet = st.session_state.pet
     pet_name = pet.get("name","")
-    sp_key = pet.get("species_key","dog")
+    sp_key = pet.get("species_key","")
     has_pet = bool(pet_name or sp_key)
+    avatar_sp_key = sp_key or "dog"
     el = (lang == "el")
 
     st.markdown("""
@@ -1881,7 +1882,7 @@ def render_home():
 """, unsafe_allow_html=True)
 
     # ── Topbar: greeting + avatar ────────────────────────────────────────────
-    avatar_icon = _SPECIES_EMOJI.get(sp_key, "🐾") if has_pet else "🐾"
+    avatar_icon = _SPECIES_EMOJI.get(avatar_sp_key, "🐾") if has_pet else "🐾"
     greeting = (f"Γεια! Πώς είναι ο/η {pet_name};" if pet_name else "Καλώς ήρθες!") if el else \
                (f"Hi! How's {pet_name} doing?" if pet_name else "Welcome!")
     sub = ("Δες τα τελευταία ζωτικά ή ξεκίνα μια συνομιλία για συμπτώματα" if pet_name else
@@ -2009,10 +2010,10 @@ div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button p {
   text-align: center !important; width: 100%;
 }
 div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button[kind="primary"] {
-  color: #2D6FE0 !important; border-bottom: 2px solid #2D6FE0 !important;
+  color: #059669 !important; border-bottom: 2px solid #059669 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button[kind="primary"] p {
-  color: #2D6FE0 !important; font-weight: 800 !important;
+  color: #059669 !important; font-weight: 800 !important;
 }
 </style>
 """, unsafe_allow_html=True)
