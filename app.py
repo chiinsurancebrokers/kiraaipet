@@ -575,6 +575,15 @@ SCAN_PROMPTS = {
     "mouth": "Describe gum colour (pink=normal, pale/white/blue=EMERGENCY), teeth, any lesions.",
     "body":  "Describe body condition: posture, swelling, wounds, asymmetry, pain signs.",
     "paw":   "Describe paw: pad integrity, cuts, swelling, redness, interdigital cysts.",
+    "stool": "Describe the stool: colour, consistency (formed/soft/liquid — use a Bristol-stool-style scale "
+             "in plain language), presence of blood (bright red = lower GI, dark/tarry = upper GI bleeding), "
+             "mucus, visible parasites/worms, foreign material, or undigested food. Note anything suggesting "
+             "an emergency (large amounts of blood, black tarry stool, signs of obstruction).",
+    "vomit": "Describe the vomit: colour, consistency, presence of blood (bright red, or dark/coffee-ground "
+             "appearance which can indicate digested blood), bile (yellow/green), foreign material, "
+             "undigested vs partially digested food, parasites. Note anything suggesting an emergency "
+             "(repeated vomiting, blood, suspected foreign body/obstruction, or vomit combined with a "
+             "distended/painful abdomen).",
 }
 
 def florence2_analyze(image_b64, scan_type, api_key):
@@ -1724,13 +1733,14 @@ def _set_emergency_from_text(text):
 
 
 def _emergency_banner():
-    """Show emergency footer banner only when triage detected an emergency."""
+    """Show emergency footer banner only when triage detected an emergency
+    (from a chat reply or a photo-scan finding — both set the same flag)."""
     if st.session_state.get("triage_emergency"):
         st.markdown(f'<div class="emergency-vet">{t("emergency_vet")}</div>'
                     f'<div style="font-size:11.5px;color:#7F1D1D;margin:-6px 0 12px;text-align:center">'
-                    + ("Αυτό εμφανίζεται γιατί η συζήτηση εντόπισε πιθανό επείγον. "
+                    + ("Αυτό εμφανίζεται γιατί η εκτίμηση εντόπισε πιθανό επείγον. "
                        "Επικοινώνησε ΑΜΕΣΑ με κτηνίατρο." if st.session_state.lang=="el"
-                       else "This appears because the chat flagged a possible emergency. "
+                       else "This appears because the assessment flagged a possible emergency. "
                             "Contact a vet IMMEDIATELY.") + '</div>',
                     unsafe_allow_html=True)
 
@@ -4367,42 +4377,52 @@ def render_vitals():
             "dog": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
                        ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες")],
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες"),
+                       ("stool","💩 Κόπρανα"),("vomit","🤮 Εμετός")],
                 "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
                        ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐶 Paws")],
+                       ("body","🐾 Body"),("paw","🐶 Paws"),
+                       ("stool","💩 Stool"),("vomit","🤮 Vomit")],
             },
             "cat": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
                        ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες")],
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες"),
+                       ("stool","💩 Κόπρανα"),("vomit","🤮 Εμετός")],
                 "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
                        ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐱 Paws")],
+                       ("body","🐾 Body"),("paw","🐱 Paws"),
+                       ("stool","💩 Stool"),("vomit","🤮 Vomit")],
             },
             "rabbit": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Τρίχωμα/Δέρμα"),
                        ("ear","👂 Αυτιά"),("mouth","🦷 Δόντια/Στόμα"),
-                       ("body","🐰 Γενική Εμφάνιση"),("paw","🐾 Πατούσες")],
+                       ("body","🐰 Γενική Εμφάνιση"),("paw","🐾 Πατούσες"),
+                       ("stool","💩 Κόπρανα"),("vomit","🤮 Εμετός")],
                 "en": [("eye","👁️ Eyes"),("skin","🔬 Fur/Skin"),
                        ("ear","👂 Ears"),("mouth","🦷 Teeth/Mouth"),
-                       ("body","🐰 Body"),("paw","🐾 Paws")],
+                       ("body","🐰 Body"),("paw","🐾 Paws"),
+                       ("stool","💩 Stool"),("vomit","🤮 Vomit")],
             },
             "bird": {
                 "el": [("eye","👁️ Μάτια"),("skin","🪶 Φτέρωμα/Δέρμα"),
                        ("mouth","🦷 Ράμφος/Στόμα"),
-                       ("body","🐦 Γενική Εμφάνιση"),("paw","🐾 Πόδια/Νύχια")],
+                       ("body","🐦 Γενική Εμφάνιση"),("paw","🐾 Πόδια/Νύχια"),
+                       ("stool","💩 Περιττώματα"),("vomit","🤮 Αναγωγή/Εμετός")],
                 "en": [("eye","👁️ Eyes"),("skin","🪶 Feathers/Skin"),
                        ("mouth","🦷 Beak/Mouth"),
-                       ("body","🐦 Body"),("paw","🐾 Feet/Claws")],
+                       ("body","🐦 Body"),("paw","🐾 Feet/Claws"),
+                       ("stool","💩 Droppings"),("vomit","🤮 Regurgitation/Vomit")],
             },
             "reptile": {
                 "el": [("eye","👁️ Μάτια"),("skin","🐍 Δέρμα/Λέπια"),
                        ("mouth","🦷 Στόμα"),
-                       ("body","🦎 Γενική Εμφάνιση"),("paw","🐾 Άκρα/Νύχια")],
+                       ("body","🦎 Γενική Εμφάνιση"),("paw","🐾 Άκρα/Νύχια"),
+                       ("stool","💩 Κόπρανα"),("vomit","🤮 Εμετός")],
                 "en": [("eye","👁️ Eyes"),("skin","🐍 Skin/Scales"),
                        ("mouth","🦷 Mouth"),
-                       ("body","🦎 Body"),("paw","🐾 Limbs/Claws")],
+                       ("body","🦎 Body"),("paw","🐾 Limbs/Claws"),
+                       ("stool","💩 Stool"),("vomit","🤮 Vomit")],
             },
         }
         opts = SCAN_OPTS.get(sp, SCAN_OPTS["dog"])[lang]
@@ -4479,10 +4499,21 @@ def render_vitals():
                     # block so the photo analysis lands in their language with the
                     # right veterinary terms (alopecia vs colloquial «mudar» etc.).
                     system_prompt += output_language_directive()
-                    el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** | **PITHANES AITIES** | **SISTASI**"
+                    el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** (Φυσιολογικό/Παρακολούθηση/Επείγον) | **PITHANES AITIES** | **SISTASI**"
                     en_suffix = "\n\nProvide: **FINDINGS** | **ASSESSMENT** (Normal/Monitor/Urgent) | **POSSIBLE CAUSES** | **RECOMMENDATION**"
                     clinical_prompt = (SCAN_PROMPTS.get(selected_scan, SCAN_PROMPTS["skin"]) + context_note + (el_suffix if lang=="el" else en_suffix))
                     analysis = claude_vision_pet(img_b64, img_type, clinical_prompt, system_prompt)
+                    # Code-level safety backstop — a photo (e.g. stool/vomit with
+                    # blood) can surface an emergency just as easily as a chat
+                    # reply can, but this path previously never set the flag.
+                    # Checks both the free-text keyword list AND the structured
+                    # "Urgent" assessment marker the prompt above asks for —
+                    # the latter is more reliable since it doesn't depend on
+                    # the model happening to use matching escalation phrasing.
+                    _set_emergency_from_text(analysis)
+                    _analysis_norm = _strip_accents(analysis or "")
+                    if ("urgent" in _analysis_norm) or ("επειγον" in _analysis_norm):
+                        st.session_state["triage_emergency"] = True
 
                 # Show Florence-2 raw description
                 if f2_desc:
