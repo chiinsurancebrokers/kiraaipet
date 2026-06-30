@@ -830,28 +830,42 @@ def gpt4o(prompt, system="", max_tokens=3000):
         return f"GPT-4o unavailable: {type(e).__name__}: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-def claude(messages, system="", max_tokens=3000, timeout=60):
+def claude(messages, system="", max_tokens=3000, timeout=60, return_meta=False):
+    """Call Claude via raw HTTP.
+    If return_meta=True, returns (text, truncated_bool) instead of just text —
+    truncated=True means the API stopped because max_tokens was hit
+    (stop_reason == "max_tokens"), i.e. the reply was cut off mid-thought
+    rather than finishing naturally. Callers that need a complete document
+    (e.g. the clinical report) should check this rather than silently
+    showing a clipped response."""
     _t0 = time.time()
     key = get_claude_key()
     if not key:
         log_event("claude_chat", ok=False, error="missing_api_key")
-        return "⚠️ Claude API key not set."
+        msg = "⚠️ Claude API key not set."
+        return (msg, False) if return_meta else msg
     body = json.dumps({"model":"claude-sonnet-4-6","max_tokens":max_tokens,
         "system":system,"messages":messages}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            out = json.loads(r.read())["content"][0]["text"]
-            log_event("claude_chat", ok=True, ms=(time.time()-_t0)*1000)
-            return out
+            data = json.loads(r.read())
+            out = data["content"][0]["text"]
+            truncated = (data.get("stop_reason") == "max_tokens")
+            log_event("claude_chat", ok=True, ms=(time.time()-_t0)*1000, truncated=truncated)
+            return (out, truncated) if return_meta else out
     except urllib.error.URLError as e:
         log_event("claude_chat", ok=False, ms=(time.time()-_t0)*1000, error=str(e))
-        if "timed out" in str(e).lower(): return "⚠️ Request timed out. Please try again."
-        return f"⚠️ Claude error: {e}"
+        if "timed out" in str(e).lower():
+            msg = "⚠️ Request timed out. Please try again."
+            return (msg, False) if return_meta else msg
+        msg = f"⚠️ Claude error: {e}"
+        return (msg, False) if return_meta else msg
     except Exception as e:
         log_event("claude_chat", ok=False, ms=(time.time()-_t0)*1000, error=f"{type(e).__name__}: {e}")
-        return f"⚠️ Claude error: {e}"
+        msg = f"⚠️ Claude error: {e}"
+        return (msg, False) if return_meta else msg
 
 
 # ── AI OUTPUT SANITIZER ───────────────────────────────────────────────────────
@@ -1821,6 +1835,237 @@ def render_stepper(current):
             html += f'<div class="pan-step-line {"done" if i<cur_i else ""}"></div>'
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+
+# ── HOME DASHBOARD (ported from Asklepios) ────────────────────────────────────
+# Gap identified vs Asklepios: Asklepios has a persistent Home dashboard
+# (greeting, two big action cards, vitals summary, emergency disclaimer) as
+# the actual landing point on every return visit. KiraAIpet had no
+# equivalent — returning users were dropped straight into the intake form,
+# at whatever step they last left it. This adds the same landing concept,
+# adapted to KiraAIpet's own green/teal palette and pet-specific framing
+# (greeting mentions the pet by name, vitals card is species-aware via the
+# already-existing render_vitals_summary()).
+_SPECIES_EMOJI = {"dog":"🐕","cat":"🐈","rabbit":"🐰","bird":"🦜"}
+
+def render_home():
+    lang = st.session_state.lang
+    pet = st.session_state.pet
+    pet_name = pet.get("name","")
+    sp_key = pet.get("species_key","dog")
+    has_pet = bool(pet_name or sp_key)
+    el = (lang == "el")
+
+    st.markdown("""
+<style>
+.pan-home-topbar { display:flex; align-items:center; justify-content:space-between; margin:4px 0 20px; }
+.pan-home-greeting { font-size:18px; font-weight:700; color:#1A1A2E; }
+.pan-home-sub { font-size:12.5px; color:#6B7280; margin-top:2px; }
+.pan-home-avatar {
+  width:46px; height:46px; border-radius:50%; background:#E1F5EE;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.pan-home-action-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
+.pan-home-action-icon {
+  width:52px; height:52px; border-radius:50%; background:#E1F5EE; margin:0 auto 12px;
+  display:flex; align-items:center; justify-content:center; font-size:23px;
+}
+.pan-home-action-icon.warm { background:#FAECE7; }
+.pan-home-emergency {
+  background:#FAECE7; border-radius:12px;
+  padding:13px 16px; font-size:12.5px; color:#712B13; line-height:1.55; margin-top:18px;
+}
+.pan-home-emergency strong { color:#4A1B0C; }
+</style>
+""", unsafe_allow_html=True)
+
+    # ── Topbar: greeting + avatar ────────────────────────────────────────────
+    avatar_icon = _SPECIES_EMOJI.get(sp_key, "🐾") if has_pet else "🐾"
+    greeting = (f"Γεια! Πώς είναι ο/η {pet_name};" if pet_name else "Καλώς ήρθες!") if el else \
+               (f"Hi! How's {pet_name} doing?" if pet_name else "Welcome!")
+    sub = ("Δες τα τελευταία ζωτικά ή ξεκίνα μια συνομιλία για συμπτώματα" if pet_name else
+           "Ξεκίνα δημιουργώντας ένα προφίλ κατοικιδίου") if el else \
+          ("Check the latest vitals or start a symptom chat" if pet_name else
+           "Start by creating a pet profile")
+    st.markdown(f"""
+<div class="pan-home-topbar">
+  <div>
+    <div class="pan-home-greeting">{greeting}</div>
+    <div class="pan-home-sub">{sub}</div>
+  </div>
+  <div class="pan-home-avatar">{avatar_icon}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Action cards ──────────────────────────────────────────────────────────
+    def _go(target):
+        st.session_state.screen = target if has_pet else "intake"
+        st.rerun()
+
+    st.markdown("""
+<style>
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pan-home-action-marker) button {
+  background: transparent !important; border: none !important; box-shadow: none !important;
+  color: #1A1A2E !important; font-weight: 700 !important; font-size: 14.5px !important;
+  padding: 4px 0 0 !important; line-height: 1.3 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+    ac1, ac2 = st.columns(2, gap="small")
+    with ac1:
+        with st.container(border=True):
+            st.markdown(
+                '<div class="pan-home-action-marker"></div>'
+                '<div style="text-align:center"><div class="pan-home-action-icon">💬</div></div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("Συμπτώματα" if el else "Symptoms", key="home_go_triage", use_container_width=True):
+                _go("triage")
+    with ac2:
+        with st.container(border=True):
+            st.markdown(
+                '<div class="pan-home-action-marker"></div>'
+                '<div style="text-align:center"><div class="pan-home-action-icon warm">❤️</div></div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("Ζωτικά" if el else "Vitals", key="home_go_vitals", use_container_width=True):
+                _go("vitals")
+
+    # ── Last vitals (if any) — reuses the same species-aware summary the
+    # triage/report screens already show, so this isn't new logic, just a
+    # new place it's also surfaced.
+    if has_pet and st.session_state.vitals:
+        st.markdown("##### " + (f"Τελευταία ζωτικά — {pet_name}" if pet_name else "Τελευταία ζωτικά"
+                                 if el else
+                                 f"Latest vitals — {pet_name}" if pet_name else "Latest vitals"))
+        render_vitals_summary()
+
+    # ── Emergency disclaimer — condensed, always visible ─────────────────────
+    _em_text = ("Καλέστε τον κτηνίατρό σας αμέσως. Αυτή η εφαρμογή δεν αντικαθιστά "
+                "επαγγελματική κτηνιατρική φροντίδα." if el else
+                "Call your vet immediately. This app does not replace professional "
+                "veterinary care.")
+    st.markdown(
+        f'<div class="pan-home-emergency"><strong>{"Επείγον;" if el else "Emergency?"}</strong> {_em_text}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── TOP NAV BAR (ported from Asklepios) ───────────────────────────────────────
+# Gap identified vs Asklepios: KiraAIpet's flow was strictly linear
+# (intake → vitals → triage → report) with no way back to a finished report,
+# the symptom log, or a proper landing page once the user navigated away.
+# This adds a fixed-top tab bar — Αρχική / Ζωτικά / Συμπτώματα / Ιστορικό —
+# shown on every post-intake screen, plus new "home" and "history" screens.
+def render_top_nav():
+    lang = st.session_state.lang
+    has_pet = bool(st.session_state.pet.get("name") or st.session_state.pet.get("species_key"))
+    cur = st.session_state.screen
+
+    tab_for_screen = {
+        "home": "home", "intake": "triage", "vitals": "vitals",
+        "triage": "triage", "report": "history",
+        "history": "history",
+    }
+    active_tab = tab_for_screen.get(cur, "home")
+
+    items = [
+        ("home",    "🏠", "Αρχική" if lang=="el" else "Home"),
+        ("vitals",  "❤️", "Ζωτικά" if lang=="el" else "Vitals"),
+        ("triage",  "💬", "Συμπτώματα" if lang=="el" else "Symptoms"),
+        ("history", "📋", "Ιστορικό" if lang=="el" else "History"),
+    ]
+
+    st.markdown("""
+<style>
+.pan-topnav-spacer { height: 56px; }
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) {
+  position: fixed; left: 0; right: 0; top: 0; bottom: auto; z-index: 999;
+  background: white; border-bottom: 1px solid #EEF2FA;
+  padding: 0 8px;
+  box-shadow: 0 2px 12px rgba(15,42,82,0.07);
+  height: 52px;
+  display: flex !important; align-items: center !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  gap: 2px !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) > div[data-testid="stColumn"] {
+  min-width: 0 !important; width: 25% !important; flex: 0 0 25% !important;
+  display: flex !important; align-items: center !important;
+}
+.pan-nav-marker { display: none; }
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button {
+  background: transparent !important; border: none !important; box-shadow: none !important;
+  color: #B8C2D6 !important; font-weight: 700 !important; font-size: 11px !important;
+  line-height: 1.3 !important; padding: 2px 2px !important; min-height: 0 !important;
+  white-space: nowrap !important; width: 100% !important; height: 48px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  text-align: center !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button p {
+  text-align: center !important; width: 100%;
+}
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button[kind="primary"] {
+  color: #2D6FE0 !important; border-bottom: 2px solid #2D6FE0 !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.pan-nav-marker) button[kind="primary"] p {
+  color: #2D6FE0 !important; font-weight: 800 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+    cols = st.columns(len(items))
+    for i, (col, (key, icon, label)) in enumerate(zip(cols, items)):
+        with col:
+            if i == 0:
+                st.markdown('<div class="pan-nav-marker"></div>', unsafe_allow_html=True)
+            is_active = (key == active_tab)
+            if st.button(f"{icon}  {label}", key=f"topnav_{key}",
+                         use_container_width=True,
+                         type=("primary" if is_active else "secondary")):
+                if key not in ("home", "history") and not has_pet:
+                    st.session_state.screen = "intake"
+                else:
+                    st.session_state.screen = key
+                st.rerun()
+
+
+def render_history():
+    """Ιστορικό screen: the latest generated report (if any) + the browser-
+    only symptom log. Ported from Asklepios's render_history(); this is the
+    return point the new top nav adds — without it, leaving the report
+    screen meant no way back to it except redoing triage from scratch."""
+    lang = st.session_state.lang
+    render_doc_header(
+        "Ιστορικό", "History",
+        icon="📋",
+        sub_el="Προηγούμενη αναφορά & ημερολόγιο συμπτωμάτων",
+        sub_en="Latest report & symptom log",
+    )
+    if st.session_state.report:
+        with st.container(border=True):
+            st.markdown("##### 📄 " + ("Τελευταία Αναφορά" if lang=="el" else "Latest Report"))
+            _preview = st.session_state.report.strip()
+            if len(_preview) > 280:
+                _preview = _preview[:280].rsplit(" ", 1)[0] + "…"
+            st.markdown(_preview)
+            if st.button("→ " + ("Άνοιγμα πλήρους αναφοράς" if lang=="el" else "Open full report"),
+                         key="hist_open_report", use_container_width=True):
+                st.session_state.screen = "report"; st.rerun()
+    else:
+        st.info(("Δεν έχεις ακόμη ολοκληρωμένη αναφορά. Ξεκίνα μια εκτίμηση από το tab «Συμπτώματα»."
+                 if lang=="el" else
+                 "No completed report yet. Start an assessment from the «Symptoms» tab."))
+    st.divider()
+    if st.session_state.get("pet") and (st.session_state.pet.get("name") or st.session_state.pet.get("species_key")):
+        _render_pet_symptom_tracker(lang)
+    else:
+        st.caption(("Το ημερολόγιο συμπτωμάτων εμφανίζεται μόλις δημιουργήσεις προφίλ κατοικιδίου."
+                    if lang=="el" else
+                    "The symptom log appears once you've created a pet profile."))
 
 # ── KIRA PET SYSTEM PROMPTS ───────────────────────────────────────────────────
 # ── OUTPUT LANGUAGE (AI response) ────────────────────────────────────────────
@@ -3844,83 +4089,6 @@ def render_explainer_video(lang):
     )
 
 
-def render_home():
-    lang = st.session_state.lang
-
-    c1,c2 = st.columns([6,1])
-    with c2:
-        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ"):
-            st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
-
-    # Brand character intro — the 4 superheroes (Perro, Gata, Gaz, Ave) inside
-    # the green hero band, with a one-time intro line + dismiss button.
-    # (Previously duplicated in a separate band above this one — merged here.)
-    _intro_html = ""
-    if not st.session_state.get("_mascot_peek_dismissed"):
-        intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
-                 "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
-                 if lang == "el" else
-                 "We are the PetAiNurse hero squad: "
-                 "<strong>Perro, Gata, Gaz and Ave</strong> — here to look after your pets.")
-        _intro_html = f'<div class="pet-hero-intro">{intro}</div>'
-
-    st.markdown(f'''<div class="pet-hero">
-        {render_hero_group(size=110, show_names=True)}
-        {_intro_html}
-        <h1>{t("title")}</h1>
-        <p>{t("subtitle")}</p>
-        <div class="pet-tagline">{t("tagline")}</div>
-    </div>''', unsafe_allow_html=True)
-
-    if not st.session_state.get("_mascot_peek_dismissed"):
-        cc1, cc2 = st.columns([5, 1])
-        with cc2:
-            if st.button(("Κατάλαβα ✕" if lang == "el" else "Got it ✕"),
-                         key="mascot_peek_close", use_container_width=True):
-                st.session_state["_mascot_peek_dismissed"] = True
-                st.rerun()
-
-    _render_disclaimer_strip()
-
-    _render_page_helper(
-        "home",
-        "Καλωσήρθες στο PetAiNurse",
-        "Εδώ ξεκινάει η εκτίμηση του κατοικιδίου σου. Πάτησε **«Ξεκίνα εκτίμηση & αναφορά»** για να αρχίσει η διαδικασία (προφίλ → ζωτικά → συμπτώματα → αναφορά για τον κτηνίατρο). Υποστηρίζονται **🐕 σκύλοι, 🐈 γάτες, 🐇 κουνέλια, 🐦 πουλιά και άλλα κατοικίδια**.",
-        title_en="Welcome to PetAiNurse",
-        body_en="This is where the assessment of your pet begins. Tap **“Start assessment & report”** to begin (profile → vitals → symptoms → vet-ready report). Supports **🐕 dogs, 🐈 cats, 🐇 rabbits, 🐦 birds and other pets**.",
-    )
-
-    render_lifestyle_strip(lang)
-
-    col1,col2,col3 = st.columns([1,2,1])
-    with col2:
-        if st.button(t("start"), type="primary", use_container_width=True):
-            st.session_state.screen="intake"; st.rerun()
-
-    st.markdown("---")
-    f1,f2,f3,f4 = st.columns(4)
-    with f1:
-        st.markdown('<div class="card"><div style="font-size:32px">📋</div><h3 style="margin-top:12px">MSD Veterinary Manual</h3><p style="font-size:13px;color:#6B7280">Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής.</p></div>', unsafe_allow_html=True)
-    with f2:
-        st.markdown('''<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">Τοξικότητα & Ασφάλεια</h3>
-            <p style="font-size:13px;color:#6B7280">Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες.</p>
-            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Κρεμμύδι</span>
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Παρακεταμόλη</span>
-            </div></div>''', unsafe_allow_html=True)
-    with f3:
-        st.markdown('<div class="card"><div style="font-size:32px">👥</div><h3 style="margin-top:12px">Για Pet Sitters</h3><p style="font-size:13px;color:#6B7280">Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο.</p></div>', unsafe_allow_html=True)
-    with f4:
-        st.markdown('<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς.</p></div>', unsafe_allow_html=True)
-
-    # "How it works" walkthrough
-    render_explainer_video(lang)
-
-    _emergency_banner()
-
-
-
 def _render_intake_progress(step, total, lang):
     """Small inline progress bar for the grouped intake sub-steps."""
     pct = int(((step+1)/total)*100)
@@ -4438,6 +4606,107 @@ def render_vitals_summary():
             st.markdown(st.session_state.vitals_analysis)
 
 
+def _render_pet_lab_upload_widget(pet, lang, key_prefix=""):
+    """Lab/photo file uploader + analysis flow for a pet. Shared between
+    render_triage() (the main upload point) and render_report() (a last-
+    chance upload right before the final report is generated, for anything
+    the owner forgot earlier). Whatever gets added here lands in the same
+    `lab_findings` list and gets injected into `triage_chat` — both of which
+    the report_prompt already reads from — so a file added here is taken
+    into account exactly like one added during triage.
+    key_prefix keeps Streamlit widget keys unique when this is rendered in
+    more than one place in the same run (triage screen + report screen)."""
+    st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
+               else "PDF or photo of blood/urine test results, etc.")
+    lab_files = st.file_uploader(
+        ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
+        type=["pdf","jpg","jpeg","png","webp","heic","heif"],
+        key=key_prefix+"pet_lab_upload",
+        accept_multiple_files=True,
+        help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
+              if lang=="el" else
+              "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
+    )
+    if lab_files:
+        # Show a list of what's queued before the user commits to analysis
+        st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
+                    else f"📎 {len(lab_files)} files queued: ")
+                   + ", ".join(f.name for f in lab_files))
+
+        if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
+                              if lang=="el" else
+                              (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
+                     type="primary", use_container_width=True, key=key_prefix+"analyse_lab"):
+            if not _rate_limit_gate("lab_scan"):
+                st.stop()
+
+            # Names already analysed — skip them so re-clicking doesn't double-process
+            _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
+            _to_run = [f for f in lab_files if f.name not in _already]
+
+            if not _to_run:
+                st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
+                                 else "All files have already been analysed."))
+            else:
+                _added = 0
+                _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
+                with st.status(_status_msg, expanded=True) as _stat:
+                    for idx, lab_file in enumerate(_to_run, 1):
+                        _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
+                        file_bytes = lab_file.read()
+                        fname_lower = lab_file.name.lower()
+                        mime_type = "application/pdf"
+                        if fname_lower.endswith((".heic",".heif")):
+                            if HEIC_OK:
+                                try:
+                                    file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
+                                except Exception as e:
+                                    st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
+                                    continue
+                            else:
+                                st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
+                                         else "⚠️ HEIC photos need pillow-heif.")
+                                continue
+                        elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
+                        elif fname_lower.endswith(".png"):  mime_type = "image/png"
+                        elif fname_lower.endswith(".webp"): mime_type = "image/webp"
+                        elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+
+                        if not file_bytes:
+                            continue
+
+                        try:
+                            analysis = claude_analyze_pet_lab(
+                                file_bytes, mime_type, pet,
+                                st.session_state.triage_chat, lang, lab_file.name)
+                        except Exception as e:
+                            st.error(f"⚠️ {lab_file.name}: {e}")
+                            continue
+
+                        st.markdown(f"#### 📄 {lab_file.name}")
+                        st.markdown(analysis)
+                        st.session_state.lab_findings.append({
+                            "file_name": lab_file.name, "analysis": analysis,
+                        })
+                        finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
+                                       if lang=="el" else
+                                       f"Lab result ({lab_file.name}):\n\n{analysis}")
+                        st.session_state.triage_chat.append({"role":"user","content":finding_msg})
+                        _added += 1
+
+                    _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
+                              else f"✅ Completed {_added}/{len(_to_run)} files")
+                    _stat.update(label=_final, state="complete", expanded=False)
+
+                if _added:
+                    st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
+                                        if lang=="el" else
+                                        f"Added {_added} lab result(s) to the assessment."))
+    if st.session_state.lab_findings:
+        st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
+                   + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
+
+
 def render_triage():
     render_stepper("triage")
     pet  = st.session_state.pet
@@ -4508,95 +4777,7 @@ def render_triage():
     # ── Lab analysis (PDF/image of vet lab results) ───────────────────────────
     _lab_title = "🧪 Εργαστηριακές Εξετάσεις Κατοικίδιου" if lang=="el" else "🧪 Pet Lab Results"
     with st.expander(_lab_title, expanded=False):
-        st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
-                   else "PDF or photo of blood/urine test results, etc.")
-        lab_files = st.file_uploader(
-            ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
-            type=["pdf","jpg","jpeg","png","webp","heic","heif"],
-            key="pet_lab_upload",
-            accept_multiple_files=True,
-            help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
-                  if lang=="el" else
-                  "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
-        )
-        if lab_files:
-            # Show a list of what's queued before the user commits to analysis
-            st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
-                        else f"📎 {len(lab_files)} files queued: ")
-                       + ", ".join(f.name for f in lab_files))
-
-            if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
-                                  if lang=="el" else
-                                  (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
-                         type="primary", use_container_width=True, key="analyse_lab"):
-                if not _rate_limit_gate("lab_scan"):
-                    st.stop()
-
-                # Names already analysed — skip them so re-clicking doesn't double-process
-                _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
-                _to_run = [f for f in lab_files if f.name not in _already]
-
-                if not _to_run:
-                    st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
-                                     else "All files have already been analysed."))
-                else:
-                    _added = 0
-                    _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
-                    with st.status(_status_msg, expanded=True) as _stat:
-                        for idx, lab_file in enumerate(_to_run, 1):
-                            _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
-                            file_bytes = lab_file.read()
-                            fname_lower = lab_file.name.lower()
-                            mime_type = "application/pdf"
-                            if fname_lower.endswith((".heic",".heif")):
-                                if HEIC_OK:
-                                    try:
-                                        file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
-                                    except Exception as e:
-                                        st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
-                                        continue
-                                else:
-                                    st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
-                                             else "⚠️ HEIC photos need pillow-heif.")
-                                    continue
-                            elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
-                            elif fname_lower.endswith(".png"):  mime_type = "image/png"
-                            elif fname_lower.endswith(".webp"): mime_type = "image/webp"
-                            elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
-
-                            if not file_bytes:
-                                continue
-
-                            try:
-                                analysis = claude_analyze_pet_lab(
-                                    file_bytes, mime_type, pet,
-                                    st.session_state.triage_chat, lang, lab_file.name)
-                            except Exception as e:
-                                st.error(f"⚠️ {lab_file.name}: {e}")
-                                continue
-
-                            st.markdown(f"#### 📄 {lab_file.name}")
-                            st.markdown(analysis)
-                            st.session_state.lab_findings.append({
-                                "file_name": lab_file.name, "analysis": analysis,
-                            })
-                            finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
-                                           if lang=="el" else
-                                           f"Lab result ({lab_file.name}):\n\n{analysis}")
-                            st.session_state.triage_chat.append({"role":"user","content":finding_msg})
-                            _added += 1
-
-                        _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
-                                  else f"✅ Completed {_added}/{len(_to_run)} files")
-                        _stat.update(label=_final, state="complete", expanded=False)
-
-                    if _added:
-                        st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
-                                            if lang=="el" else
-                                            f"Added {_added} lab result(s) to the assessment."))
-        if st.session_state.lab_findings:
-            st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
-                       + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
+        _render_pet_lab_upload_widget(pet, lang)
 
     # Species-specific symptom chips
     CHIPS = {
@@ -4819,6 +5000,33 @@ def render_report():
             if st.button("← " + ("Πίσω" if lang=="el" else "Back"), key="report_rl_back"):
                 st.session_state.screen = "triage"; st.rerun()
             return
+        # ── Last-chance upload before the final report is generated ──────────
+        # Anything added here goes through the SAME claude_analyze_pet_lab() →
+        # lab_findings → triage_chat pipeline as the triage-screen uploader,
+        # so the report_prompt built below already reflects it. Shown once,
+        # gated behind its own explicit confirm button so the report doesn't
+        # start generating the instant this screen loads.
+        if not st.session_state.get("_report_gen_confirmed"):
+            st.markdown(
+                ("#### 📎 Ξέχασες κάποια εξέταση ή φωτογραφία;" if lang=="el"
+                 else "#### 📎 Forgot to upload a test or photo?")
+            )
+            st.caption(
+                "Τελευταία ευκαιρία να την προσθέσεις πριν δημιουργηθεί η τελική αναφορά — "
+                "θα ληφθεί υπόψη μαζί με όλα τα υπόλοιπα."
+                if lang=="el" else
+                "Last chance to add it before the final report is generated — "
+                "it will be taken into account along with everything else."
+            )
+            _render_pet_lab_upload_widget(pet, lang, key_prefix="finalstep_")
+            st.markdown("---")
+            if st.button(
+                "✅ " + ("Δημιουργία Τελικής Αναφοράς" if lang=="el" else "Generate Final Report"),
+                type="primary", use_container_width=True, key="confirm_report_gen",
+            ):
+                st.session_state["_report_gen_confirmed"] = True
+                st.rerun()
+            return
         # ── Superhero loading overlay ────────────────────────────────────────
         # Full-viewport fixed banner (the pet's mascot says hello while the
         # report is being prepared). Critical here because the report page
@@ -4906,14 +5114,65 @@ Language: {output_language_name()}
 Be direct and clinical. Always recommend professional veterinary evaluation. End with AI disclaimer."""
 
         # Step 2 — AI report generation (the slow step)
-        result = claude([{"role":"user","content":report_prompt}],
-                        system=petainurse_system(pet), max_tokens=6000, timeout=180)
+        # Scale the output budget with how much context there is — pets with
+        # several integrated photo/lab analyses push the INPUT prompt itself
+        # to tens of thousands of tokens, which can leave less output budget
+        # functionally available even under a high fixed ceiling.
+        _prompt_len = len(report_prompt)
+        _report_max_tokens = 6000 if _prompt_len < 20000 else 9000
+        result, _truncated = claude([{"role":"user","content":report_prompt}],
+                        system=petainurse_system(pet), max_tokens=_report_max_tokens,
+                        timeout=180, return_meta=True)
         if result.startswith("⚠️"):
             _overlay.empty()
             _progress.empty()
             st.error(result)
             if st.button("🔄 Retry"): st.rerun()
             return
+        # The report has 7 mandatory numbered sections — on long/complex
+        # cases (many integrated lab/photo findings, a long triage
+        # conversation) even a high max_tokens can still run out mid-section.
+        # Rather than silently showing a clipped report, ask Claude to
+        # continue exactly where it stopped and stitch the continuation on.
+        # Bounded to 3 extra rounds so a pathological case can't loop forever.
+        _continue_rounds = 0
+        while _truncated and _continue_rounds < 3:
+            _continue_rounds += 1
+            log_event("claude_report_truncated", ok=False, round=_continue_rounds, prompt_len=_prompt_len)
+            # Cut the tail at the last full sentence/line break rather than a
+            # hard character count, so the continuation prompt doesn't show
+            # the model a mid-word fragment to awkwardly try to complete.
+            _tail = result[-800:]
+            _last_break = max(_tail.rfind("\n"), _tail.rfind(". "), _tail.rfind("· "))
+            if _last_break > 0:
+                _tail = _tail[:_last_break+1]
+            _cont_prompt = (
+                f"Η προηγούμενη απάντησή σου έκοψε ξαφνικά εδώ (το τελευταίο πλήρες κομμάτι ήταν):\n\n---\n{_tail}\n---\n\n"
+                "Συνέχισε ΑΚΡΙΒΩΣ από εκεί που σταμάτησε, χωρίς να επαναλάβεις κείμενο που ήδη "
+                "γράφτηκε. Συμπλήρωσε ό,τι λείπει από τις ενότητες 1-7."
+                if lang=="el" else
+                "Your previous answer was cut off abruptly here (the last complete part was):\n\n---\n"
+                f"{_tail}\n---\n\nContinue EXACTLY from where it stopped, without repeating text "
+                "already written. Finish any remaining content from sections 1-7."
+            )
+            _more, _truncated = claude(
+                [{"role":"user","content":report_prompt},
+                 {"role":"assistant","content":result},
+                 {"role":"user","content":_cont_prompt}],
+                system=petainurse_system(pet), max_tokens=3000, timeout=120, return_meta=True,
+            )
+            if _more and not _more.startswith("⚠️"):
+                result = result + ("\n" if not result.endswith("\n") else "") + _more
+            else:
+                break  # continuation call itself failed — stop trying, use what we have
+        # Final safety net: if every continuation attempt is exhausted (or
+        # failed) and the text STILL looks cut off (doesn't end with normal
+        # closing punctuation), warn visibly rather than silently saving an
+        # incomplete report.
+        _looks_incomplete = (
+            result.strip() and result.strip()[-1] not in ".!?»)\""
+        )
+        st.session_state["_report_possibly_incomplete"] = bool(_truncated or _looks_incomplete)
         st.session_state.report = sanitize_ai_text(result)
         st.session_state.report_gpt = ""
         st.session_state["_gpt_integrated"] = False
@@ -4939,6 +5198,20 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown(st.session_state.report)
     st.markdown('</div>', unsafe_allow_html=True)
+    if st.session_state.get("_report_possibly_incomplete"):
+        st.warning(
+            "⚠️ Η αναφορά μπορεί να έχει κοπεί πρόωρα (π.χ. λόγω μεγάλου όγκου εξετάσεων) και "
+            "ορισμένες ενότητες ίσως λείπουν. Πάτησε «Δημιουργία ξανά» για μια πλήρη έκδοση."
+            if lang=="el" else
+            "⚠️ This report may have been cut short (e.g. due to a large number of uploaded "
+            "lab results) and some sections may be missing. Click \"Regenerate\" for a complete version."
+        )
+        if st.button("🔄 " + ("Δημιουργία ξανά" if lang=="el" else "Regenerate"), key="regen_incomplete_pet"):
+            st.session_state.report = ""
+            st.session_state.report_recs = None
+            st.session_state.report_refs = []
+            st.session_state.pop("_report_possibly_incomplete", None)
+            st.rerun()
 
     # Photo findings card — if the user uploaded any photos during intake/triage,
     # the AI vision analyses become visible evidence in the final report.
@@ -5210,6 +5483,8 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             _hero_seen = st.session_state.get("_hero_seen", False)
             for k,v in defaults.items(): st.session_state[k]=v
             st.session_state["_hero_seen"] = _hero_seen
+            for fbk in ("_report_possibly_incomplete", "_report_gen_confirmed"):
+                st.session_state.pop(fbk, None)
             st.rerun()
     with c2:
         st.download_button("📄 TXT", data=st.session_state.report,
@@ -6276,18 +6551,19 @@ if auth_enabled() and not is_logged_in():
     st.stop()
 
 screen = st.session_state.screen
-if screen == "home":
-    # The standalone 'home' screen was merged into the hero screen (which is
-    # always shown first via _hero_seen gating above). Reaching screen=="home"
-    # here means the user is past the hero/login and ready to start —
-    # go straight into the intake flow.
-    st.session_state.screen = "intake"
-    st.rerun()
+if screen=="home": render_home()
 elif screen=="intake": render_intake()
 elif screen=="vitals": render_vitals()
 elif screen=="triage": render_triage()
 elif screen=="report": render_report()
-else: render_intake()
+elif screen=="history": render_history()
+else: render_home()
+
+# Top nav bar — shown on every post-login screen (matching Asklepios), now
+# that Home gives a brand-new visitor with no pet profile yet somewhere
+# sensible to land instead of only the intake form.
+st.markdown('<div class="pan-topnav-spacer"></div>', unsafe_allow_html=True)
+render_top_nav()
 
 # Persist login cookie on a clean render pass after successful login
 if auth_enabled() and is_logged_in() and _STX_OK:
