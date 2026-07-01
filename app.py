@@ -140,13 +140,20 @@ def _rate_limit_check(action="ai_call"):
     """Returns (allowed: bool, wait_seconds: float, reason: str).
     Call this BEFORE any expensive Claude/GPT-4o invocation that the user
     triggers directly (triage message, report generation, photo/lab scan).
-    On allow, records the action so subsequent calls see it."""
+    On allow, records the action so subsequent calls see it.
+
+    FIX: Per-action cooldown dict (_rl_last_ts_by_action) so that a
+    triage_chat call does NOT block an immediate report_generation call.
+    Each action type has its own 8-second window.
+    """
     now = time.time()
     log = st.session_state.setdefault("_rl_log", [])
     # Drop entries older than 1 hour — keeps the list small and the window rolling.
     log[:] = [ts for ts in log if now - ts < 3600]
 
-    last_ts = st.session_state.get("_rl_last_ts", 0)
+    # Per-action cooldown (triage_chat cooldown ≠ report_generation cooldown)
+    last_ts_map = st.session_state.setdefault("_rl_last_ts_by_action", {})
+    last_ts = last_ts_map.get(action, 0)
     elapsed = now - last_ts
     if elapsed < RATE_LIMIT_COOLDOWN_SECONDS:
         wait = round(RATE_LIMIT_COOLDOWN_SECONDS - elapsed, 1)
@@ -159,7 +166,7 @@ def _rate_limit_check(action="ai_call"):
         return False, wait, "hourly_cap"
 
     log.append(now)
-    st.session_state["_rl_last_ts"] = now
+    last_ts_map[action] = now  # per-action timestamp
     log_event("rate_limit_pass", ok=True, action=action, calls_this_hour=len(log))
     return True, 0, ""
 
@@ -5028,7 +5035,19 @@ def render_report():
     render_vitals_summary()
 
     if not st.session_state.report:
-        if not _rate_limit_gate("report_generation"):
+        allowed, wait, reason = _rate_limit_check("report_generation")
+        if not allowed and reason == "cooldown":
+            # Auto-retry after the cooldown — the user just clicked the button,
+            # show a spinner and rerun instead of a dead-end warning.
+            import time as _time_rl
+            _rl_msg = st.empty()
+            _rl_msg.info("⏳ " + (f"Ετοιμάζεται η αναφορά σε {wait:.0f}s…"
+                                   if lang == "el" else f"Preparing report in {wait:.0f}s…"))
+            _time_rl.sleep(min(wait + 0.3, 9))
+            _rl_msg.empty()
+            st.rerun()
+        elif not allowed:
+            _rate_limit_gate("report_generation")  # show hourly-cap message
             if st.button("← " + ("Πίσω" if lang=="el" else "Back"), key="report_rl_back"):
                 st.session_state.screen = "triage"; st.rerun()
             return
