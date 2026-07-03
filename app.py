@@ -193,71 +193,214 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-* { font-family: 'Inter', sans-serif; }
-[data-testid="stAppViewContainer"] { background: linear-gradient(135deg, #F0FDF4 0%, #F0F9FF 100%); }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
+* { font-family: 'Inter', var(--font-sans), sans-serif; }
+
 [data-testid="stSidebar"] { display: none; }
 
-.pet-hero {
-    background: linear-gradient(135deg, #059669 0%, #0EA5E9 100%);
-    border-radius: 20px; padding: 48px 40px; color: white;
-    text-align: center; margin-bottom: 32px;
+/* ── Page background: clean, no gradient ── */
+[data-testid="stAppViewContainer"] {
+    background: var(--surface-0, #F7F6F3);
 }
-.pet-hero h1 { font-size: 52px; font-weight: 700; margin: 0; letter-spacing: -1px; }
-.pet-hero p  { font-size: 18px; opacity: 0.85; margin: 12px 0 0; }
-.pet-hero-intro { font-size: 13.5px; opacity: 0.92; line-height: 1.5; max-width: 560px;
-    margin: 4px auto 18px; }
-.pet-hero-intro strong { font-weight: 700; }
-.pet-tagline { font-size: 13px; opacity: 0.65; margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
 
-.card { background: white; border-radius: 16px; padding: 24px 28px; margin-bottom: 20px;
-    box-shadow: 0 2px 12px rgba(5,150,105,0.07); border: 1px solid rgba(5,150,105,0.1); }
-.card h3 { font-size: 16px; font-weight: 600; margin: 0 0 16px; color: #1A1A2E; }
+/* ── Hero band: flat teal, not gradient ── */
+.pet-hero {
+    background: #1D9E75;
+    border-radius: 16px;
+    padding: 36px 32px;
+    color: white;
+    text-align: center;
+    margin-bottom: 24px;
+}
+.pet-hero h1 {
+    font-size: 38px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+.pet-hero p { font-size: 15px; opacity: 0.88; margin: 10px 0 0; line-height: 1.5; }
+.pet-hero-intro {
+    font-size: 13px; opacity: 0.85; line-height: 1.5;
+    max-width: 520px; margin: 6px auto 16px;
+}
+.pet-hero-intro strong { font-weight: 500; }
+.pet-tagline {
+    font-size: 11px; opacity: 0.6; margin-top: 6px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+}
 
-.vital-badge { background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 12px;
-    padding: 14px 18px; min-width: 120px; text-align: center; flex: 1; }
-.vital-badge.green  { background: #EDFBF0; border-color: #A3E6B5; }
-.vital-badge.yellow { background: #FFFBEB; border-color: #FCD34D; }
-.vital-badge.red    { background: #FEF2F2; border-color: #FCA5A5; }
-.vital-badge .vb-value { font-size: 22px; font-weight: 700; color: #1A1A2E; }
-.vital-badge .vb-label { font-size: 11px; color: #6B7280; margin-top: 2px; }
-.vital-badge .vb-unit  { font-size: 10px; color: #9CA3AF; }
+/* ── Cards: flat white, hairline border, teal left accent ── */
+.card {
+    background: var(--surface-2, white);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    border: 0.5px solid var(--border, #E5E7EB);
+}
+.card h3 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 10px;
+    color: var(--text-primary, #1A1A2E);
+}
 
-.disclaimer { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 10px;
-    padding: 12px 16px; font-size: 13px; color: #92400E; margin: 12px 0; }
-.disclaimer-red { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 10px;
-    padding: 12px 16px; font-size: 13px; color: #991B1B; margin: 12px 0; }
-.toxicity-warn { background: linear-gradient(90deg, #DC2626, #B91C1C); color: white;
-    border-radius: 12px; padding: 16px 20px; margin: 12px 0; font-weight: 600; font-size: 14px;
-    animation: pulse-bg 2s ease-in-out infinite; }
-@keyframes pulse-bg { 0%,100%{opacity:1} 50%{opacity:.85} }
-.emergency-vet { background: linear-gradient(90deg, #059669, #0EA5E9); color: white;
-    border-radius: 10px; padding: 16px 20px; font-weight: 600; font-size: 14px; margin: 12px 0; }
-.insurance-cta { background: linear-gradient(135deg, #059669, #0EA5E9); border-radius: 14px;
-    padding: 20px 24px; color: white; margin: 16px 0; text-align: center; }
+/* Step card: teal left border as signature element */
+.pan-step-card {
+    background: var(--surface-2, white);
+    border: 0.5px solid var(--border, #E5E7EB);
+    border-left: 2px solid #1D9E75;
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+.pan-step-card .step-num {
+    font-size: 10px;
+    font-weight: 500;
+    color: #1D9E75;
+    letter-spacing: 0.07em;
+    margin-bottom: 3px;
+}
+.pan-step-card .step-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary, #1A1A2E);
+    margin-bottom: 2px;
+}
+.pan-step-card .step-sub {
+    font-size: 12px;
+    color: var(--text-secondary, #6B7280);
+    line-height: 1.4;
+}
 
-.pan-stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin: 0 0 28px; padding: 16px 0 0; }
-.pan-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; max-width: 120px; }
-.pan-step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #A7F3D0;
-    background: white; color: #A7F3D0; position: relative; z-index: 1; }
-.pan-step.done   .pan-step-circle { background: #059669; border-color: #059669; color: white; }
-.pan-step.active .pan-step-circle { background: #0EA5E9; border-color: #0EA5E9; color: white; box-shadow: 0 0 0 4px rgba(14,165,233,.15); }
-.pan-step-label { font-size: 10px; color: #94A3B8; text-align: center; }
-.pan-step.done   .pan-step-label { color: #059669; }
-.pan-step.active .pan-step-label { color: #0EA5E9; font-weight: 600; }
-.pan-step-line { flex: 1; height: 2px; background: #A7F3D0; margin-bottom: 18px; }
-.pan-step-line.done { background: #059669; }
+/* ── Vital badges: flat, semantic color only ── */
+.vital-badge {
+    background: var(--surface-1, #F9FAFB);
+    border: 0.5px solid var(--border, #E5E7EB);
+    border-radius: 10px;
+    padding: 12px 16px;
+    min-width: 110px;
+    text-align: center;
+    flex: 1;
+}
+.vital-badge.green  { background: #E1F5EE; border-color: #5DCAA5; }
+.vital-badge.yellow { background: #FAEEDA; border-color: #EF9F27; }
+.vital-badge.red    { background: #FAECE7; border-color: #D85A30; }
+.vital-badge .vb-value { font-size: 20px; font-weight: 500; color: var(--text-primary, #1A1A2E); }
+.vital-badge .vb-label { font-size: 11px; color: var(--text-secondary, #6B7280); margin-top: 2px; }
+.vital-badge .vb-unit  { font-size: 10px; color: var(--text-muted, #9CA3AF); }
 
-.wellness-wrap { display: flex; align-items: center; gap: 20px;
-    background: linear-gradient(135deg,#059669,#0EA5E9);
-    border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; color: white; }
-.wellness-score { font-size: 48px; font-weight: 800; letter-spacing: -2px; }
-.wellness-label { font-size: 12px; opacity: .7; text-transform: uppercase; letter-spacing: 1.5px; }
+/* ── Disclaimers: warning = amber, emergency = coral ── */
+.disclaimer {
+    background: #FAEEDA;
+    border: 0.5px solid #EF9F27;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #633806;
+    margin: 10px 0;
+}
+.disclaimer-red {
+    background: #FAECE7;
+    border: 0.5px solid #D85A30;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #712B13;
+    margin: 10px 0;
+}
 
+/* ── Toxicity: flat coral, no gradient, pulse kept ── */
+.toxicity-warn {
+    background: #D85A30;
+    color: white;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 10px 0;
+    font-weight: 500;
+    font-size: 13px;
+    animation: pulse-opacity 2s ease-in-out infinite;
+}
+@keyframes pulse-opacity { 0%,100%{opacity:1} 50%{opacity:.88} }
+
+/* ── Emergency vet: flat teal, no gradient ── */
+.emergency-vet {
+    background: #1D9E75;
+    color: white;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-weight: 500;
+    font-size: 13px;
+    margin: 10px 0;
+}
+
+/* ── Insurance CTA: teal border, NOT gradient bg ── */
+.insurance-cta {
+    background: #E1F5EE;
+    border: 0.5px solid #5DCAA5;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 14px 0;
+}
+
+/* ── Stepper: flat, no glow ── */
+.pan-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 0 0 24px;
+    padding: 14px 0 0;
+}
+.pan-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    max-width: 110px;
+}
+.pan-step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    border: 0.5px solid #9FE1CB;
+    background: var(--surface-2, white);
+    color: #9FE1CB;
+    position: relative;
+    z-index: 1;
+}
+.pan-step.done   .pan-step-circle { background: #1D9E75; border-color: #1D9E75; color: white; }
+.pan-step.active .pan-step-circle { background: #0F6E56; border-color: #0F6E56; color: white; }
+.pan-step-label { font-size: 10px; color: var(--text-muted, #9CA3AF); text-align: center; }
+.pan-step.done   .pan-step-label { color: #1D9E75; }
+.pan-step.active .pan-step-label { color: #0F6E56; font-weight: 500; }
+.pan-step-line { flex: 1; height: 1px; background: #9FE1CB; margin-bottom: 16px; }
+.pan-step-line.done { background: #1D9E75; }
+
+/* ── Wellness score: flat teal ── */
+.wellness-wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: #1D9E75;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    color: white;
+}
+.wellness-score { font-size: 42px; font-weight: 500; letter-spacing: -1px; }
+.wellness-label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── Mobile ── */
 @media (max-width: 768px) {
-    .pet-hero h1 { font-size: 32px !important; }
-    .pet-hero { padding: 28px 20px !important; }
+    .pet-hero h1 { font-size: 26px !important; }
+    .pet-hero { padding: 24px 18px !important; }
     .stButton button { white-space: normal !important; min-height: 44px !important; }
     .main .block-container { padding-bottom: 120px !important; }
 }
@@ -3163,7 +3306,7 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:'Inter',sans-serif;font-size:13px;color:#1A1A2E;max-width:820px;margin:0 auto;padding:32px 40px}}
 .hdr{{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #059669;padding-bottom:14px;margin-bottom:20px}}
 .hdr-logo{{font-size:22px;font-weight:800;color:#059669}}.hdr-date{{font-size:11px;color:#6B7280;text-align:right}}
-.pet-card{{background:linear-gradient(135deg,#059669,#0EA5E9);color:white;border-radius:12px;padding:18px 22px;margin-bottom:20px}}
+.pet-card{{background:#1D9E75;color:white;border-radius:12px;padding:18px 22px;margin-bottom:20px}}
 .pet-name{{font-size:20px;font-weight:700;margin-bottom:4px}}.pet-meta{{font-size:12px;opacity:.8}}.pet-detail{{font-size:11px;opacity:.75;margin-top:10px;line-height:1.8}}
 h2{{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#059669;border-bottom:1px solid #A7F3D0;padding-bottom:5px;margin:20px 0 10px}}
 h3{{font-size:12px;font-weight:700;color:#0EA5E9;margin:14px 0 6px}}
@@ -3173,7 +3316,7 @@ table.vtbl thead tr{{background:#059669;color:white}}table.vtbl th,table.vtbl td
 table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 .emergency{{background:#DC2626;color:white;border-radius:8px;padding:12px 16px;font-weight:700;margin:16px 0}}
 .disclaimer{{background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;font-size:11px;color:#92400E;margin:12px 0}}
-.cta{{background:linear-gradient(135deg,#059669,#0EA5E9);color:white;border-radius:8px;padding:14px 18px;text-align:center;margin:16px 0}}
+.cta{{background:#1D9E75;color:white;border-radius:8px;padding:14px 18px;text-align:center;margin:16px 0}}
 .cta a{{color:white;font-weight:700;text-decoration:none}}
 .lf-list{{margin:8px 0 16px}}.lf-row{{padding:10px 0;border-bottom:1px solid #F3F4F6}}.lf-row:last-child{{border-bottom:none}}
 .lf-row-head{{display:flex;align-items:center;gap:8px;margin-bottom:5px}}
@@ -4244,7 +4387,7 @@ def _render_intake_progress(step, total, lang):
     <span>{label}</span><span>{pct}%</span>
   </div>
   <div style="background:#F3F4F6;border-radius:99px;height:6px;overflow:hidden">
-    <div style="background:#059669;width:{pct}%;height:6px;border-radius:99px;transition:width .2s"></div>
+    <div style="background:#1D9E75;width:{pct}%;height:4px;border-radius:99px;transition:width .2s"></div>
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -6144,41 +6287,41 @@ def render_hero_screen():
 
     if lang == "el":
         d = dict(
-            kicker="ΟΙ ΣΩΣΤΕΣ ΠΛΗΡΟΦΟΡΙΕΣ. ΚΑΛΥΤΕΡΗ ΦΡΟΝΤΙΔΑ.",
-            h1="Περίγραψε τι", h1_accent="παρατηρείς",
+            kicker="AI κτηνιατρική αξιολόγηση",
+            h1="Πες τι παρατηρείς.", h1_accent="",
             h1_end="στο κατοικίδιό σου.",
-            sub="Το PetAiNurse οργανώνει τα συμπτώματα και τις παρατηρήσεις σου ώστε να έχεις καλύτερη εικόνα πριν επικοινωνήσεις με κτηνίατρο.",
-            cta_primary="✦ Ξεκίνα αξιολόγηση & αναφορά",
+            sub="Δομημένη σύνοψη με κτηνιατρικές αναφορές — σε λίγα λεπτά, πριν ή αντί για το ιατρείο.",
+            cta_primary="Ξεκίνα αξιολόγηση",
             cta_secondary="📄 Δημιούργησε αναφορά για τον κτηνίατρο",
             disclaimer="Το PetAiNurse δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο. Σε επείγουσες καταστάσεις επικοινώνησε άμεσα με επαγγελματία υγείας ζώων.",
-            card1="Καταγραφή συμπτωμάτων και συμπεριφοράς",
-            card2="Εντοπισμός πιθανών παραγόντων",
-            card3="Αναφορά για τον κτηνίατρο με οργανωμένες πληροφορίες",
+            card1="Αξιολόγηση συμπτωμάτων",
+            card2="Κτηνιατρική αναφορά για τον γιατρό",
+            card3="Κάλυψη ασφαλιστηρίου με AI",
             steps_title="Πώς λειτουργεί",
             steps=[
-                ("1","💬","Καταγράφεις","συμπτώματα και παρατηρήσεις"),
-                ("2","🧠","Το PetAiNurse οργανώνει","τις πληροφορίες"),
-                ("3","🔍","Εντοπίζει","πιθανούς παράγοντες που αξίζει να συζητηθούν"),
-                ("4","📄","Δημιουργεί","αναφορά για τον κτηνίατρο"),
-                ("5","👤","Η τελική αξιολόγηση","γίνεται πάντα από κτηνίατρο"),
+                ("1","","Προφίλ κατοικιδίου","Είδος, ηλικία, παθήσεις, φάρμακα"),
+                ("2","","Ζωτικά","Καρδιακός ρυθμός, αναπνοή, θερμοκρασία"),
+                ("3","","Αξιολόγηση συμπτωμάτων","Συνομιλία AI — μία ερώτηση τη φορά"),
+                ("4","","Κτηνιατρική αναφορά","PDF με διαφορικές διαγνώσεις και MSD αναφορές"),
+                ("5","","Κτηνίατρος","Η τελική αξιολόγηση γίνεται πάντα από επαγγελματία"),
             ],
             audience_title="Για όλους όσοι φροντίζουν ζώα",
             aud1_t="Για Pet Parents", aud1_d="Κατανόησε καλύτερα τα συμπτώματα του κατοικίδιου σου και επικοινώνησε πιο αποτελεσματικά με τον κτηνίατρο.",
             aud2_t="Για Pet Sitters", aud2_d="Κατέγραψε με ακρίβεια παρατηρήσεις κατά τη φροντίδα ενός ζώου και ενημέρωσε υπεύθυνα τον κηδεμόνα ή τον κτηνίατρο.",
             aud3_t="Για Κτηνιάτρους", aud3_d="Ένα επιπρόσθετο εργαλείο συλλογής οργανωμένου ιστορικού και προετοιμασίας της επίσκεψης.",
             more_label="Μάθε περισσότερα →",
-            cta_band_t="Ξεκίνα τώρα και φρόντισε με γνώση.",
-            cta_band_s="Μια καλύτερη συζήτηση με τον κτηνίατρο ξεκινάει εδώ.",
-            cta_band_btn="✦ Ξεκίνα αξιολόγηση συμπτωμάτων",
+            cta_band_t="Καλύτερη συνομιλία με τον κτηνίατρο.",
+            cta_band_s="Δομημένη σύνοψη με κτηνιατρικές αναφορές, σε λίγα λεπτά.",
+            cta_band_btn="Ξεκίνα αξιολόγηση",
             nav_start="Ξεκίνα τώρα",
         )
     else:
         d = dict(
-            kicker="THE RIGHT INFO. BETTER CARE.",
-            h1="Describe what", h1_accent="you're noticing",
+            kicker="AI veterinary assessment",
+            h1="Tell us what you're noticing.", h1_accent="",
             h1_end="in your pet.",
-            sub="PetAiNurse organizes your pet's symptoms and observations so you have a clearer picture before contacting a vet.",
-            cta_primary="✦ Start assessment & report",
+            sub="A structured summary with veterinary references — in minutes, before or instead of the clinic.",
+            cta_primary="Start assessment",
             cta_secondary="📄 Create a report for your vet",
             disclaimer="PetAiNurse does not provide veterinary diagnosis and does not replace your vet. In emergencies, contact an animal health professional immediately.",
             card1="Logging symptoms and behaviour",
@@ -6186,11 +6329,11 @@ def render_hero_screen():
             card3="A report for your vet with organized information",
             steps_title="How it works",
             steps=[
-                ("1","💬","You log","symptoms and observations"),
-                ("2","🧠","PetAiNurse organizes","the information"),
-                ("3","🔍","It identifies","possible factors worth discussing"),
-                ("4","📄","It creates","a report for your vet"),
-                ("5","👤","The final assessment","is always made by a vet"),
+                ("1","","Pet profile","Species, age, conditions, medications"),
+                ("2","","Vitals","Heart rate, breathing, temperature"),
+                ("3","","Symptom assessment","AI chat — one question at a time"),
+                ("4","","Veterinary report","PDF with differential diagnoses and MSD references"),
+                ("5","","Vet","Final assessment is always made by a professional"),
             ],
             audience_title="For everyone who cares for animals",
             aud1_t="For Pet Parents", aud1_d="Better understand your pet's symptoms and communicate more effectively with your vet.",
@@ -6199,7 +6342,7 @@ def render_hero_screen():
             more_label="Learn more →",
             cta_band_t="Start now and care with confidence.",
             cta_band_s="A better conversation with your vet starts here.",
-            cta_band_btn="✦ Start symptom assessment",
+            cta_band_btn="Start assessment",
             nav_start="Get started",
         )
 
@@ -6212,22 +6355,23 @@ def render_hero_screen():
 }
 .pan-hr-logo { font-size: 19px; font-weight: 800; color: #1A1A2E; display: flex; align-items: center; gap: 8px; }
 .pan-hr-hero {
-  background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 60%, white 100%);
-  border-radius: 28px; padding: 40px 36px; margin-bottom: 28px;
+  background: var(--surface-1, #F7F6F3);
+  border-radius: 16px; padding: 32px 28px; margin-bottom: 24px;
   font-family: 'Inter', system-ui, sans-serif; position: relative; overflow: hidden;
+  border: 0.5px solid var(--border, #E5E7EB);
 }
 .pan-hr-kicker {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: #059669;
-  margin-bottom: 14px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: #1D9E75;
+  margin-bottom: 12px; text-transform: uppercase;
 }
 .pan-hr-h1 {
-  font-size: 38px; font-weight: 800; line-height: 1.18; color: #1A1A2E;
-  letter-spacing: -1px; margin-bottom: 16px; max-width: 480px;
+  font-size: 30px; font-weight: 500; line-height: 1.2; color: var(--text-primary, #1A1A2E);
+  letter-spacing: -0.5px; margin-bottom: 12px; max-width: 480px;
 }
-.pan-hr-h1 .accent { color: #059669; }
+.pan-hr-h1 .accent { color: #1D9E75; }
 .pan-hr-sub {
-  font-size: 15px; color: #4B5563; max-width: 440px; line-height: 1.6;
-  margin-bottom: 22px;
+  font-size: 14px; color: var(--text-secondary, #4B5563); max-width: 440px; line-height: 1.6;
+  margin-bottom: 20px;
 }
 .pan-hr-mascots {
   display: flex; justify-content: center; align-items: flex-end; gap: 8px;
@@ -6239,10 +6383,9 @@ def render_hero_screen():
 }
 .pan-hr-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 .pan-hr-card {
-  background: white; border: 1px solid #ECEEF3; border-radius: 14px;
-  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 600; color: #1A1A2E;
-  box-shadow: 0 3px 10px rgba(26,26,46,0.04);
+  background: var(--surface-2, white); border: 0.5px solid var(--border, #E5E7EB);
+  border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 500; color: var(--text-primary, #1A1A2E);
 }
 .pan-hr-card .ic {
   width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
@@ -6273,11 +6416,11 @@ def render_hero_screen():
   flex: 1 1 160px; min-width: 140px; text-align: center;
 }
 .pan-hr-step-num {
-  width: 30px; height: 30px; border-radius: 50%; background: #059669; color: white;
-  display: flex; align-items: center; justify-content: center; font-weight: 700;
-  font-size: 13px; margin: 0 auto 10px;
+  width: 24px; height: 24px; border-radius: 50%; background: #1D9E75; color: white;
+  display: flex; align-items: center; justify-content: center; font-weight: 500;
+  font-size: 11px; margin: 0 auto 8px;
 }
-.pan-hr-step-icon { font-size: 26px; margin-bottom: 8px; }
+.pan-hr-step-icon { font-size: 18px; margin-bottom: 6px; color: #1D9E75; }
 .pan-hr-step-title { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
 .pan-hr-step-sub { font-size: 12px; color: #6B7280; line-height: 1.4; }
 .pan-hr-aud-title {
@@ -6286,8 +6429,9 @@ def render_hero_screen():
 }
 .pan-hr-aud-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
 .pan-hr-aud-card {
-  flex: 1 1 240px; background: white; border: 1px solid #ECEEF3; border-radius: 16px;
-  padding: 18px 18px 16px; font-family: 'Inter', system-ui, sans-serif;
+  flex: 1 1 220px; background: var(--surface-2, white);
+  border: 0.5px solid var(--border, #E5E7EB); border-radius: 12px;
+  padding: 16px; font-family: 'Inter', system-ui, sans-serif;
 }
 .pan-hr-aud-icon {
   width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center;
@@ -6296,11 +6440,11 @@ def render_hero_screen():
 .pan-hr-aud-card.a1 .pan-hr-aud-icon { background: #ECFDF5; }
 .pan-hr-aud-card.a2 .pan-hr-aud-icon { background: #EEF2FF; }
 .pan-hr-aud-card.a3 .pan-hr-aud-icon { background: #FEF2F2; }
-.pan-hr-aud-card h4 { font-size: 16px; font-weight: 800; color: #1A1A2E; margin-bottom: 6px; }
+.pan-hr-aud-card h4 { font-size: 14px; font-weight: 500; color: var(--text-primary, #1A1A2E); margin-bottom: 5px; }
 .pan-hr-aud-card p { font-size: 12.5px; color: #6B7280; line-height: 1.55; margin-bottom: 10px; }
 .pan-hr-aud-card .more { font-size: 12.5px; font-weight: 700; color: #059669; }
 a.pan-hr-aud-card { text-decoration: none; color: inherit; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
-a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,0.09); border-color: #D1FAE5; }
+a.pan-hr-aud-card:hover { border-color: #5DCAA5; }
 @media (max-width: 640px) {
   .pan-hr-hero { padding: 26px 18px; border-radius: 20px; }
   .pan-hr-h1 { font-size: 28px; }
