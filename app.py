@@ -4895,12 +4895,14 @@ def render_triage():
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
     last_assistant = next((m["content"].lower() for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), "")
     triage_ready = any(ph in last_assistant for ph in ready_phrases)
+    # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
+    _enough_msgs = len(st.session_state.triage_chat) >= 6
+    _insurance_show = triage_ready or _enough_msgs
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
-    # Εμφανίζεται μόνο όταν το triage έχει ολοκληρωθεί.
-    # Ελέγχει αν ο χρήστης έχει ενεργή συνδρομή 'insurance'.
-    # Αν ΟΧΙ → upsell card. Αν ΝΑΙ → πλήρες coverage card.
-    if triage_ready:
+    # Εμφανίζεται όταν: triage ολοκληρώθηκε ή αρκετές ερωτήσεις έγιναν (>=6 msgs).
+    # Αν ΟΧΙ συνδρομή → upsell card. Αν ΝΑΙ → πλήρες coverage card.
+    if _insurance_show:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
         _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
