@@ -5037,7 +5037,14 @@ def render_triage():
     # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
     _enough_msgs = len(st.session_state.triage_chat) >= 6
     _insurance_show = triage_ready or _enough_msgs
-    _has_provider = bool(st.session_state.get("pet_insurance_provider", ""))
+    # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
+    _provider_ss  = st.session_state.get("pet_insurance_provider", "")
+    _provider_pet = pet.get("insurance_provider", "") if isinstance(pet, dict) else ""
+    _provider     = _provider_ss or _provider_pet
+    if _provider and not _provider_ss:
+        st.session_state["pet_insurance_provider"] = _provider
+    _no_ins_opts  = ("— Χωρίς ασφάλεια —", "— No insurance —", "")
+    _has_provider = bool(_provider) and _provider not in _no_ins_opts
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
     # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
