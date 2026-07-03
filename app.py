@@ -4429,7 +4429,7 @@ def render_intake():
         "**🐾 " + ("Ασφάλεια Κατοικιδίου" if lang=="el" else "Pet Insurance") + "**"
     )
     st.caption(
-        "Αν το κατοικίδιό σου είναι ασφαλισμένο, επέλεξε το πρόγραμμα για να δεις την κάλυψη μετά το triage."
+        "Αν το κατοικίδιό σου είναι ασφαλισμένο, επέλεξε το πρόγραμμα για να δεις την κάλυψη μετά την αξιολόγηση συμπτωμάτων."
         if lang=="el" else
         "If your pet is insured, select the programme to see coverage details after triage."
     )
@@ -4467,7 +4467,7 @@ def render_intake():
     if _selected_ins != _ins_opts[0]:
         st.session_state["pet_insurance_provider"] = _selected_ins
         st.caption(
-            "✅ Θα ελέγξουμε την κάλυψη του προγράμματός σου μετά το triage."
+            "✅ Θα ελέγξουμε την κάλυψη του προγράμματός σου μετά την αξιολόγηση."
             if lang=="el" else
             "✅ We'll check your programme coverage after triage."
         )
@@ -5928,6 +5928,180 @@ def render_welcome_screen():
             st.rerun()
 
 
+
+
+def render_insurance_promo(lang: str = "el"):
+    """Promotional block για το Insurance Coverage feature.
+    Εμφανίζεται στο hero page και στο login page."""
+    if lang == "el":
+        badge    = "✨ Νέο feature"
+        title    = "Έλεγχος ασφαλιστικής κάλυψης κατοικιδίου"
+        sub      = ("Μετά από κάθε αξιολόγηση συμπτωμάτων, ο HAL ελέγχει αυτόματα "
+                    "αν η κατάσταση του κατοικιδίου σου καλύπτεται από το ασφαλιστήριό σου.")
+        feats = [
+            ("🩺", "Αρχικός έλεγχος κάλυψης",
+             "Ελέγχει αν η ιατρική κατάσταση που εντοπίστηκε στην αξιολόγηση συμπτωμάτων καλύπτεται από τους όρους του ασφαλιστηρίου σου."),
+            ("💰", "Ακριβές κόστος συμμετοχής",
+             "Πόσο θα πληρώσεις ανά επίσκεψη, εξέταση ή επέμβαση — με βάση τον τιμοκατάλογο του προγράμματός σου."),
+            ("🏥", "Πληροφορίες δικτύου κλινικών",
+             "Αν το συμβόλαιό σου έχει αποκλειστικά συμβεβλημένο δίκτυο κτηνιάτρων και κλινικών, ο HAL σε κατευθύνει στη σωστή."),
+            ("💬", "Ερωτήσεις στον HAL",
+             "Ρώτα οτιδήποτε για το συμβόλαιό σου — απεριόριστες ερωτήσεις, καλύπτει και προϋπάρχουσες παθήσεις."),
+        ]
+        mo_lbl  = "ΜΗΝΙΑΙΑ"
+        yr_lbl  = "ΕΤΗΣΙΑ"
+        mo_note = "7 μέρες δωρεάν"
+        yr_note = "7 μέρες δωρεάν"
+        save    = "−10€"
+        btn_mo  = "Μηνιαία συνδρομή →"
+        btn_yr  = "Ετήσια συνδρομή →"
+        disc    = ("⚠️ Σημαντική σημείωση: Ο έλεγχος κάλυψης γίνεται από AI και ενδέχεται "
+                   "να περιέχει λάθη ή παραλείψεις. Δεν αποτελεί επίσημη γνωμάτευση της "
+                   "ασφαλιστικής εταιρείας. Για οποιαδήποτε αξίωση, επικοινώνησε πάντα "
+                   "με την ασφαλιστική σου.")
+    else:
+        badge    = "✨ New feature"
+        title    = "Pet insurance coverage check"
+        sub      = ("After every symptom assessment, HAL automatically checks whether "
+                    "your pet's condition is covered by your insurance policy.")
+        feats = [
+            ("🩺", "Initial coverage check",
+             "Checks whether the medical condition identified in the symptom assessment is covered under your policy terms."),
+            ("💰", "Exact co-payment per case",
+             "How much you'll pay per visit, test or procedure — based on your programme's price list."),
+            ("🏥", "Network clinic information",
+             "If your policy has an exclusive network of vets and clinics, HAL directs you to the right one."),
+            ("💬", "Ask HAL anything",
+             "Ask any question about your policy — unlimited queries, covers pre-existing conditions too."),
+        ]
+        mo_lbl  = "MONTHLY"
+        yr_lbl  = "YEARLY"
+        mo_note = "7 days free"
+        yr_note = "7 days free"
+        save    = "−€10"
+        btn_mo  = "Monthly plan →"
+        btn_yr  = "Yearly plan →"
+        disc    = ("⚠️ Important: This coverage check is performed by AI and may contain "
+                   "errors or omissions. It is not an official assessment by your insurer. "
+                   "For any claim, always contact your insurance company directly.")
+
+    _stripe_monthly = os.environ.get("STRIPE_CHECKOUT_MONTHLY", "#")
+    _stripe_yearly  = os.environ.get("STRIPE_CHECKOUT_YEARLY",  "#")
+
+    st.markdown(
+        f'''<div style="background:var(--surface-1);border:0.5px solid #86EFAC;
+            border-radius:12px;padding:20px 22px;margin:16px 0;font-family:var(--font-sans)">
+          <div style="display:inline-flex;align-items:center;gap:5px;background:#F0FDF4;
+              color:#059669;font-size:11px;font-weight:500;padding:3px 10px;
+              border-radius:99px;margin-bottom:12px">{badge}</div>
+          <div style="font-size:17px;font-weight:500;color:var(--text-primary);
+              margin-bottom:5px">{title}</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;
+              margin-bottom:16px">{sub}</div>
+        </div>''',
+        unsafe_allow_html=True
+    )
+
+    # Features as columns
+    _cols = st.columns(2)
+    for i, (icon, ftitle, fdesc) in enumerate(feats):
+        with _cols[i % 2]:
+            st.markdown(
+                f'<div style="display:flex;gap:10px;margin-bottom:12px">'
+                f'<div style="width:28px;height:28px;border-radius:6px;background:#F0FDF4;'
+                f'display:flex;align-items:center;justify-content:center;flex-shrink:0;'
+                f'font-size:15px">{icon}</div>'
+                f'<div><div style="font-size:13px;font-weight:500;color:var(--text-primary);'
+                f'margin-bottom:2px">{ftitle}</div>'
+                f'<div style="font-size:12px;color:var(--text-secondary);line-height:1.4">'
+                f'{fdesc}</div></div></div>',
+                unsafe_allow_html=True
+            )
+
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+    # Pricing
+    _p1, _p2 = st.columns(2)
+    with _p1:
+        st.markdown(
+            f'<div style="background:var(--surface-2);border:0.5px solid var(--border);'
+            f'border-radius:8px;padding:12px 14px">'
+            f'<div style="font-size:10px;font-weight:500;color:var(--text-muted);'
+            f'letter-spacing:.05em;margin-bottom:3px">{mo_lbl}</div>'
+            f'<div style="font-size:19px;font-weight:500;color:var(--text-primary);'
+            f'margin-bottom:1px">4.99€</div>'
+            f'<div style="font-size:11px;color:var(--text-secondary)">{mo_note}</div></div>',
+            unsafe_allow_html=True
+        )
+    with _p2:
+        st.markdown(
+            f'<div style="background:#F0FDF4;border:0.5px solid #86EFAC;'
+            f'border-radius:8px;padding:12px 14px">'
+            f'<div style="font-size:10px;font-weight:500;color:#059669;'
+            f'letter-spacing:.05em;margin-bottom:3px">{yr_lbl} '
+            f'<span style=\"background:#059669;color:white;font-size:9px;font-weight:500;'
+            f'padding:1px 6px;border-radius:99px;margin-left:4px\">{save}</span></div>'
+            f'<div style="font-size:19px;font-weight:500;color:var(--text-primary);'
+            f'margin-bottom:1px">49.99€</div>'
+            f'<div style="font-size:11px;color:var(--text-secondary)">{yr_note}</div></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # CTA buttons
+    _b1, _b2 = st.columns(2)
+    with _b1:
+        if st.button(btn_mo, key="ins_promo_monthly", use_container_width=True):
+            if _stripe_monthly != "#":
+                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_monthly}">',
+                            unsafe_allow_html=True)
+    with _b2:
+        if st.button(btn_yr, key="ins_promo_yearly", use_container_width=True, type="primary"):
+            if _stripe_yearly != "#":
+                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_yearly}">',
+                            unsafe_allow_html=True)
+
+    # Disclaimer
+    st.markdown(
+        f'<div style="display:flex;gap:8px;align-items:flex-start;'
+        f'background:var(--surface-2);border:0.5px solid var(--border);'
+        f'border-radius:8px;padding:10px 12px;margin-top:10px">'
+        f'<div style="font-size:11px;color:var(--text-secondary);line-height:1.5">'
+        f'{disc}</div></div>',
+        unsafe_allow_html=True
+    )
+
+    # HAL etymology easter egg
+    _hal_title = "Τι είναι ο HAL;" if lang == "el" else "What is HAL?"
+    with st.expander(_hal_title, expanded=False):
+        if lang == "el":
+            st.markdown(
+                '''**HAL** σημαίνει **H**euristically programmed **AL**gorithmic computer —
+ένας υπολογιστής προγραμματισμένος ευρετικά με αλγοριθμική λογική.
+
+Το όνομα προέρχεται από τον θρυλικό υπερυπολογιστή **HAL 9000** της ταινίας
+*2001: A Space Odyssey* (1968) των Arthur C. Clarke και Stanley Kubrick —
+γνωστό για την ψύχραιμη φωνή του, το κόκκινο "μάτι"-φακό και την
+ικανότητά του να κατανοεί και να απαντά σε φυσική γλώσσα.
+
+Ο δικός μας **HAL** διαβάζει το ασφαλιστήριό σου και απαντά στις ερωτήσεις
+σου για κάλυψη — χωρίς να ανοίξεις αρχεία PDF, χωρίς να τηλεφωνήσεις
+στην ασφαλιστική. Ελπίζουμε να είναι λίγο πιο συνεργάσιμος από τον πρωτότυπο. 🔴
+''')
+        else:
+            st.markdown(
+                '''**HAL** stands for **H**euristically programmed **AL**gorithmic computer.
+
+The name comes from the iconic supercomputer **HAL 9000** in Stanley Kubrick
+and Arthur C. Clarke's *2001: A Space Odyssey* (1968) — famous for its calm
+voice, red-lens "eye", and ability to understand and respond in natural language.
+
+Our **HAL** reads your insurance policy and answers your coverage questions —
+no PDF hunting, no hold music. We hope ours is a little more cooperative
+than the original. 🔴
+''')
+
 def render_hero_screen():
     """Full marketing 'hero' landing screen, shown once before the login
     form (or before 'home' when auth is disabled). Mirrors the standalone
@@ -6211,8 +6385,8 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
 
     # ── Insurance Feature + Pricing Section ───────────────────────────────────
     _ins_title  = "🐾 Νέο: Κάλυψη Ασφαλιστηρίου με AI" if lang=="el" else "🐾 New: AI Insurance Coverage"
-    _ins_sub    = ("Σύνδεσε το ασφαλιστήριο κατοικιδίου σου και δες αμέσως τι καλύπτεται, πόσο θα πληρώσεις και σε ποια κλινική να πας — μετά από κάθε triage." if lang=="el"
-                   else "Connect your pet insurance and instantly see what's covered, how much you'll pay, and which clinic to visit — after every triage.")
+    _ins_sub    = ("Σύνδεσε το ασφαλιστήριο κατοικιδίου σου και δες αμέσως τι καλύπτεται, πόσο θα πληρώσεις και σε ποια κλινική να πας — μετά από κάθε αξιολόγηση συμπτωμάτων." if lang=="el"
+                   else "Connect your pet insurance and instantly see what's covered, how much you'll pay, and which clinic to visit — after every symptom assessment.")
     _hal_feat   = ("💬 Ρώτησε τον HAL για οποιαδήποτε ερώτηση συμβολαίου" if lang=="el"
                    else "💬 Ask HAL any question about your policy")
     _net_feat   = ("🏥 Κατεύθυνση στη σωστή κλινική του δικτύου" if lang=="el"
@@ -6224,7 +6398,7 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     _mo_label   = "μήνα" if lang=="el" else "month"
     _yr_label   = "έτος" if lang=="el" else "year"
     _save_label = "Εξοικονόμησε 10€" if lang=="el" else "Save €10"
-    _free_label = "Δωρεάν triage" if lang=="el" else "Free triage"
+    _free_label = "Δωρεάν αξιολόγηση" if lang=="el" else "Free assessment"
     _ins_label  = "Insurance Coverage + HAL" if lang=="el" else "Insurance Coverage + HAL"
     _mo_btn     = "Ξεκίνα Μηνιαία →" if lang=="el" else "Start Monthly →"
     _yr_btn     = "Ξεκίνα Ετήσια →" if lang=="el" else "Start Yearly →"
@@ -6253,60 +6427,66 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
     </div>
   </div>
 
-  <!-- Pricing Cards -->
-  <div style="display:flex;gap:14px;flex-wrap:wrap">
-
-    <!-- Free Plan -->
-    <div style="flex:1 1 200px;background:white;border:1.5px solid #E5E7EB;
-                border-radius:16px;padding:20px 18px">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6B7280;
-                  margin-bottom:8px">FREE</div>
-      <div style="font-size:28px;font-weight:800;color:#1A1A2E">0€</div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_free_label}</div>
-      <div style="font-size:12px;color:#4B5563;line-height:1.8">
-        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
-        ✅ Photo Analysis<br>❌ Insurance Coverage<br>❌ HAL Chat
-      </div>
-    </div>
-
-    <!-- Monthly -->
-    <div style="flex:1 1 200px;background:white;border:1.5px solid #A7F3D0;
-                border-radius:16px;padding:20px 18px">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#059669;
-                  margin-bottom:8px">INSURANCE</div>
-      <div style="display:flex;align-items:baseline;gap:4px">
-        <div style="font-size:28px;font-weight:800;color:#1A1A2E">4.99€</div>
-        <div style="font-size:12px;color:#6B7280">/{_mo_label}</div>
-      </div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_ins_label}</div>
-      <div style="font-size:12px;color:#4B5563;line-height:1.8">
-        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
-        ✅ Photo Analysis<br>✅ Insurance Coverage<br>✅ HAL Chat
-      </div>
-    </div>
-
-    <!-- Yearly -->
-    <div style="flex:1 1 200px;background:linear-gradient(135deg,#ECFDF5,#F0FDF4);
-                border:2px solid #059669;border-radius:16px;padding:20px 18px;position:relative">
-      <span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
-                   background:#059669;color:white;font-size:10px;font-weight:700;
-                   padding:3px 12px;border-radius:99px;white-space:nowrap">{_save_label}</span>
-      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#059669;
-                  margin-bottom:8px">INSURANCE ANNUAL</div>
-      <div style="display:flex;align-items:baseline;gap:4px">
-        <div style="font-size:28px;font-weight:800;color:#1A1A2E">49.99€</div>
-        <div style="font-size:12px;color:#6B7280">/{_yr_label}</div>
-      </div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_ins_label}</div>
-      <div style="font-size:12px;color:#4B5563;line-height:1.8">
-        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
-        ✅ Photo Analysis<br>✅ Insurance Coverage<br>✅ HAL Chat
-      </div>
-    </div>
-
-  </div>
 </div>
 """, unsafe_allow_html=True)
+
+    # ── Insurance Promo Block ─────────────────────────────────────────────────────
+    render_insurance_promo(lang)
+
+    # Pricing cards — rendered as separate st.columns to avoid HTML escaping issues
+    st.markdown(f"<div style='font-family:Inter,system-ui,sans-serif'>", unsafe_allow_html=True)
+    _pc_free, _pc_mo, _pc_yr = st.columns(3)
+
+    _features_free = ["✅ Αξιολόγηση συμπτωμάτων", "✅ Κτηνιατρική Αναφορά", "✅ MSD References",
+                      "✅ Photo Analysis", "❌ Insurance Coverage", "❌ HAL Chat"]
+    _features_paid = ["✅ Αξιολόγηση συμπτωμάτων", "✅ Κτηνιατρική Αναφορά", "✅ MSD References",
+                      "✅ Photo Analysis", "✅ Insurance Coverage", "✅ HAL Chat"]
+
+    with _pc_free:
+        st.markdown(
+            "<div style='background:white;border:1.5px solid #E5E7EB;border-radius:16px;"
+            "padding:20px 18px;height:100%'>"
+            "<div style='font-size:11px;font-weight:700;color:#6B7280;margin-bottom:8px'>FREE</div>"
+            "<div style='font-size:28px;font-weight:800;color:#1A1A2E'>0€</div>"
+            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_free_label}</div>"
+            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
+            + "<br>".join(_features_free) + "</div></div>",
+            unsafe_allow_html=True
+        )
+
+    with _pc_mo:
+        st.markdown(
+            "<div style='background:white;border:1.5px solid #A7F3D0;border-radius:16px;"
+            "padding:20px 18px;height:100%'>"
+            "<div style='font-size:11px;font-weight:700;color:#059669;margin-bottom:8px'>INSURANCE</div>"
+            "<div style='display:flex;align-items:baseline;gap:4px'>"
+            "<span style='font-size:28px;font-weight:800;color:#1A1A2E'>4.99€</span>"
+            f"<span style='font-size:12px;color:#6B7280'>/{_mo_label}</span></div>"
+            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_ins_label}</div>"
+            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
+            + "<br>".join(_features_paid) + "</div></div>",
+            unsafe_allow_html=True
+        )
+
+    with _pc_yr:
+        st.markdown(
+            "<div style='background:linear-gradient(135deg,#ECFDF5,#F0FDF4);"
+            "border:2px solid #059669;border-radius:16px;padding:20px 18px;"
+            "height:100%;position:relative'>"
+            f"<div style='background:#059669;color:white;font-size:10px;font-weight:700;"
+            f"padding:3px 12px;border-radius:99px;display:inline-block;margin-bottom:8px'>"
+            f"{_save_label}</div>"
+            "<div style='font-size:11px;font-weight:700;color:#059669;margin-bottom:6px'>INSURANCE ANNUAL</div>"
+            "<div style='display:flex;align-items:baseline;gap:4px'>"
+            "<span style='font-size:28px;font-weight:800;color:#1A1A2E'>49.99€</span>"
+            f"<span style='font-size:12px;color:#6B7280'>/{_yr_label}</span></div>"
+            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_ins_label}</div>"
+            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
+            + "<br>".join(_features_paid) + "</div></div>",
+            unsafe_allow_html=True
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:20px'></div>", unsafe_allow_html=True)
 
     # Pricing CTA buttons
     _pc1, _pc2, _pc3 = st.columns(3)
@@ -6399,6 +6579,7 @@ def render_login_hero(lang):
   {render_hero_group(size=72, show_names=True, gap=10, caption=True)}
 </div>
 """, unsafe_allow_html=True)
+    render_insurance_promo(lang)
 
 
 def render_login_screen():
