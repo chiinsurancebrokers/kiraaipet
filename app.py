@@ -572,6 +572,8 @@ SCAN_PROMPTS = {
     "eye":   "Describe any abnormalities in the eye: redness, discharge, cloudiness, third eyelid, pupil irregularities.",
     "skin":  "Describe any skin abnormalities: lesions, hair loss, redness, scaling, lumps, wounds, discoloration, parasites.",
     "ear":   "Describe the ear: discharge colour/consistency, redness, swelling, debris.",
+    "vomit": "Analyze this vomit/regurgitation sample. Describe: colour (yellow/green=bile, red=blood, brown=faecal), consistency (liquid/foam/solid), presence of foreign material, food content, worms or parasites. Note any red flags.",
+    "stool": "Analyze this stool sample. Describe: colour (black=melena, red=fresh blood, grey/yellow=malabsorption), consistency (watery/soft/formed/hard), presence of mucus, blood, worms, foreign material, or parasites. Note any red flags.",
     "mouth": "Describe gum colour (pink=normal, pale/white/blue=EMERGENCY), teeth, any lesions.",
     "body":  "Describe body condition: posture, swelling, wounds, asymmetry, pain signs.",
     "paw":   "Describe paw: pad integrity, cuts, swelling, redness, interdigital cysts.",
@@ -2733,7 +2735,6 @@ def report_loading_banner_html(pet, lang="el"):
     <div class="pn-avatar-wrap">
       <div class="pn-aura"></div>
       <div class="pn-avatar">{avatar_inner}</div>
-      <div class="pn-mask">HERO</div>
     </div>
     <div class="pn-super">{super_label}</div>
     <div class="pn-name">{pet_name}</div>
@@ -4409,18 +4410,22 @@ def render_vitals():
             "dog": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
                        ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες")],
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες"),
+                       ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
                 "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
                        ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐶 Paws")],
+                       ("body","🐾 Body"),("paw","🐶 Paws"),
+                       ("vomit","🤢 Vomit"),("stool","💩 Stool")],
             },
             "cat": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
                        ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες")],
+                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες"),
+                       ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
                 "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
                        ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐱 Paws")],
+                       ("body","🐾 Body"),("paw","🐱 Paws"),
+                       ("vomit","🤢 Vomit"),("stool","💩 Stool")],
             },
             "rabbit": {
                 "el": [("eye","👁️ Μάτια"),("skin","🔬 Τρίχωμα/Δέρμα"),
@@ -4897,11 +4902,23 @@ def render_triage():
     # Αν ΟΧΙ → upsell card. Αν ΝΑΙ → πλήρες coverage card.
     if triage_ready:
         _email = st.session_state.get("auth_user", "")
+        # Extract triage level from last assistant message
+        _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
+                          if m["role"] == "assistant"), "")
+        _last_lower = _last_msg.lower()
+        if any(k in _last_lower for k in ["επείγον", "emergency", "αμέσως", "immediately", "🔴"]):
+            _triage_level = "EMERGENCY"
+        elif any(k in _last_lower for k in ["επιτακτικό", "urgent", "σύντομα", "soon", "🟠", "🟡"]):
+            _triage_level = "URGENT"
+        else:
+            _triage_level = "SELF_CARE"
+        # Extract condition from first user message
+        _first_user = next((m["content"] for m in st.session_state.triage_chat
+                            if m["role"] == "user"), "")
+        _condition = _first_user[:120] if _first_user else ""
+        _pet_name  = pet.get("name", "") if isinstance(pet, dict) else ""
+        _species   = pet.get("species", "σκύλος") if isinstance(pet, dict) else "σκύλος"
         if has_insurance_subscription(_email):
-            _triage_level = st.session_state.get("insurance_triage_level", "URGENT")
-            _condition    = st.session_state.get("insurance_condition", "")
-            _pet_name     = pet.get("name", "") if isinstance(pet, dict) else ""
-            _species      = pet.get("species", "σκύλος") if isinstance(pet, dict) else "σκύλος"
             render_insurance_coverage_card(
                 triage_result=_triage_level,
                 condition=_condition,
