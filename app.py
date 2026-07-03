@@ -928,15 +928,39 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
         return {"error": f"Coverage check failed: {e}", "raw": raw[:300]}
 
 
+def _hal_insurance_chat(question: str, triage_result: str, condition: str,
+                        pet_name: str, species: str, lang: str) -> str:
+    """HAL: απαντά σε ερώτηση για κάλυψη ασφαλιστηρίου."""
+    system = """Είσαι ο HAL, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
+Απαντάς σε ερωτήσεις πελατών για την κάλυψη του συμβολαίου τους.
+Μιλάς ΠΑΝΤΑ ως: "Με το πρόγραμμά σου...", "Δικαιούσαι...", "Το πρόγραμμά σου περιλαμβάνει..."
+ΠΟΤΕ δεν αναφέρεις πώς λειτουργεί εσωτερικά (ειδική τιμολόγηση κλπ).
+Απαντάς σύντομα, φιλικά, στη γλώσσα του χρήστη."""
+
+    prompt = (
+        "Προγραμμα:\n" + _PET_INSURANCE_POLICY + "\n\n"
+        + f"Κατοικιδιο: {pet_name} ({species}) | Triage: {triage_result} | {condition}\n\n"
+        + f"Ερωτηση χρηστη: {question}\n\n"
+        + "Αποντησε συντομα και φιλικα."
+    )
+    return claude(
+        messages=[{"role": "user", "content": prompt}],
+        system=system,
+        max_tokens=400,
+        timeout=30,
+    )
+
+
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
-    """Streamlit card: κάλυψη ασφαλιστηρίου μετά από triage αποτέλεσμα."""
+    """Streamlit card: κάλυψη ασφαλιστηρίου + HAL chat μετά από triage αποτέλεσμα."""
     label = "🐾 Κάλυψη Προγράμματος My Happy Pet" if lang == "el" else "🐾 My Happy Pet Coverage"
     with st.spinner("Έλεγχος κάλυψης..." if lang == "el" else "Checking coverage..."):
         result = check_pet_coverage(triage_result, condition, pet_name, species, details)
     if "error" in result:
         st.warning(f"⚠️ {result.get('error', 'Coverage check unavailable')}")
         return
+
     color_map  = {"EMERGENCY": "#FEF2F2", "URGENT": "#FFFBEB", "SELF_CARE": "#F0FDF4"}
     border_map = {"EMERGENCY": "#FCA5A5", "URGENT": "#FCD34D", "SELF_CARE": "#86EFAC"}
     bg  = color_map.get(triage_result, "#F9FAFB")
@@ -945,6 +969,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     clinic = result.get("recommended_clinic", "")
     action = result.get("action", "")
     tip    = result.get("tip", "")
+
     html = (
         f'<div style="background:{bg};border:1px solid {brd};border-radius:12px;padding:16px 18px;margin:12px 0">'
         f'<div style="font-weight:700;font-size:15px;margin-bottom:10px">{label}</div>'
@@ -962,6 +987,68 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         '📞 Κάλεσε Eurolife 210 9303811</a>',
         unsafe_allow_html=True
     )
+
+    # ── HAL Insurance Chat ────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown(
+        "**💬 " + ("Ρώτησε τον HAL για το συμβόλαιό σου" if lang == "el"
+                   else "Ask HAL about your policy") + "**"
+    )
+
+    # Quick reply buttons
+    _quick = {
+        "el": [
+            "Καλύπτεται η στείρωση;",
+            "Χρειάζομαι παραπεμπτικό;",
+            "Τι εξετάσεις καλύπτονται;",
+            "Καλύπτεται η φυσικοθεραπεία;",
+        ],
+        "en": [
+            "Is sterilisation covered?",
+            "Do I need a referral?",
+            "What tests are covered?",
+            "Is physiotherapy covered?",
+        ],
+    }
+    _q_opts = _quick.get(lang, _quick["el"])
+
+    # Session state για HAL chat history
+    _chat_key = "hal_insurance_chat"
+    if _chat_key not in st.session_state:
+        st.session_state[_chat_key] = []
+
+    # Εμφάνιση chat history
+    for _msg in st.session_state[_chat_key]:
+        _role_icon = "🧑" if _msg["role"] == "user" else "🤖"
+        st.markdown(f"{_role_icon} {_msg['content']}")
+
+    # Quick reply buttons (εμφανίζονται μόνο αν δεν υπάρχει ήδη συνομιλία)
+    if not st.session_state[_chat_key]:
+        _cols = st.columns(2)
+        for _i, _q in enumerate(_q_opts):
+            if _cols[_i % 2].button(_q, key=f"hal_quick_{_i}"):
+                st.session_state[_chat_key].append({"role": "user", "content": _q})
+                with st.spinner("HAL σκέφτεται..." if lang == "el" else "HAL thinking..."):
+                    _ans = _hal_insurance_chat(_q, triage_result, condition, pet_name, species, lang)
+                st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
+                st.rerun()
+
+    # Free text input
+    _placeholder = "Γράψε ερώτηση για το συμβόλαιό σου..." if lang == "el" else "Ask about your policy..."
+    _user_q = st.chat_input(_placeholder, key="hal_insurance_input")
+    if _user_q:
+        st.session_state[_chat_key].append({"role": "user", "content": _user_q})
+        with st.spinner("HAL σκέφτεται..." if lang == "el" else "HAL thinking..."):
+            _ans = _hal_insurance_chat(_user_q, triage_result, condition, pet_name, species, lang)
+        st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
+        st.rerun()
+
+    # Reset button
+    if st.session_state[_chat_key]:
+        if st.button("🔄 " + ("Νέα ερώτηση" if lang == "el" else "New question"),
+                     key="hal_chat_reset"):
+            st.session_state[_chat_key] = []
+            st.rerun()
 
 
 # ── AI OUTPUT SANITIZER ───────────────────────────────────────────────────────
@@ -4336,6 +4423,57 @@ def render_intake():
     st.caption("💡 Προαιρετικό — μπορείς να το προσθέσεις αργότερα." if lang=="el"
                else "💡 Optional — you can add this later.")
 
+    # ── Ασφαλιστική κάλυψη κατοικιδίου ────────────────────────────────────────
+    st.divider()
+    st.markdown(
+        "**🐾 " + ("Ασφάλεια Κατοικιδίου" if lang=="el" else "Pet Insurance") + "**"
+    )
+    st.caption(
+        "Αν το κατοικίδιό σου είναι ασφαλισμένο, επέλεξε το πρόγραμμα για να δεις την κάλυψη μετά το triage."
+        if lang=="el" else
+        "If your pet is insured, select the programme to see coverage details after triage."
+    )
+    _insurance_providers = {
+        "el": [
+            "— Χωρίς ασφάλεια —",
+            "Eurolife FFH — My Happy Pet Plus",
+            "Eurolife FFH — My Happy Pet Standard",
+            "Interamerican — Pet Care",
+            "Generali — My Pet",
+            "AXA — Pet Protection",
+            "Άλλη ασφαλιστική",
+        ],
+        "en": [
+            "— No insurance —",
+            "Eurolife FFH — My Happy Pet Plus",
+            "Eurolife FFH — My Happy Pet Standard",
+            "Interamerican — Pet Care",
+            "Generali — My Pet",
+            "AXA — Pet Protection",
+            "Other insurer",
+        ],
+    }
+    _ins_opts = _insurance_providers.get(lang, _insurance_providers["el"])
+    _prev_ins = draft.get("insurance_provider", pet.get("insurance_provider", _ins_opts[0]))
+    if _prev_ins not in _ins_opts: _prev_ins = _ins_opts[0]
+    _selected_ins = st.selectbox(
+        "Ασφαλιστική εταιρεία" if lang=="el" else "Insurance provider",
+        _ins_opts,
+        index=_ins_opts.index(_prev_ins),
+        key="intake_insurance_provider"
+    )
+    draft["insurance_provider"] = _selected_ins
+    # Store in session_state immediately for triage flow to read
+    if _selected_ins != _ins_opts[0]:
+        st.session_state["pet_insurance_provider"] = _selected_ins
+        st.caption(
+            "✅ Θα ελέγξουμε την κάλυψη του προγράμματός σου μετά το triage."
+            if lang=="el" else
+            "✅ We'll check your programme coverage after triage."
+        )
+    else:
+        st.session_state["pet_insurance_provider"] = ""
+
     col_b, col_n = st.columns([1,3])
     with col_b:
         if st.button(t("back")): st.session_state.intake_step = 2; st.rerun()
@@ -4358,6 +4496,7 @@ def render_intake():
                 "conditions": draft.get("conditions",""),
                 "meds_raw": meds_raw, "vet_name": vet_name,
                 "filled_by": draft.get("filled_by",""),
+                "insurance_provider": draft.get("insurance_provider",""),
             }
             st.session_state.intake_step = 0
             st.session_state.intake_draft = {}
@@ -4898,11 +5037,12 @@ def render_triage():
     # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
     _enough_msgs = len(st.session_state.triage_chat) >= 6
     _insurance_show = triage_ready or _enough_msgs
+    _has_provider = bool(st.session_state.get("pet_insurance_provider", ""))
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
-    # Εμφανίζεται όταν: triage ολοκληρώθηκε ή αρκετές ερωτήσεις έγιναν (>=6 msgs).
+    # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
     # Αν ΟΧΙ συνδρομή → upsell card. Αν ΝΑΙ → πλήρες coverage card.
-    if _insurance_show:
+    if _insurance_show and _has_provider:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
         _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
@@ -6068,6 +6208,118 @@ a.pan-hr-aud-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px r
             f'</div>', unsafe_allow_html=True)
 
     render_lifestyle_strip(lang)
+
+    # ── Insurance Feature + Pricing Section ───────────────────────────────────
+    _ins_title  = "🐾 Νέο: Κάλυψη Ασφαλιστηρίου με AI" if lang=="el" else "🐾 New: AI Insurance Coverage"
+    _ins_sub    = ("Σύνδεσε το ασφαλιστήριο κατοικιδίου σου και δες αμέσως τι καλύπτεται, πόσο θα πληρώσεις και σε ποια κλινική να πας — μετά από κάθε triage." if lang=="el"
+                   else "Connect your pet insurance and instantly see what's covered, how much you'll pay, and which clinic to visit — after every triage.")
+    _hal_feat   = ("💬 Ρώτησε τον HAL για οποιαδήποτε ερώτηση συμβολαίου" if lang=="el"
+                   else "💬 Ask HAL any question about your policy")
+    _net_feat   = ("🏥 Κατεύθυνση στη σωστή κλινική του δικτύου" if lang=="el"
+                   else "🏥 Directed to the right network clinic")
+    _cost_feat  = ("💰 Ακριβές κόστος συμμετοχής ανά περίπτωση" if lang=="el"
+                   else "💰 Exact co-payment per case")
+    _unlim_feat = ("♾️ Απεριόριστες ερωτήσεις — καλύπτει και προϋπάρχουσες παθήσεις" if lang=="el"
+                   else "♾️ Unlimited queries — covers pre-existing conditions too")
+    _mo_label   = "μήνα" if lang=="el" else "month"
+    _yr_label   = "έτος" if lang=="el" else "year"
+    _save_label = "Εξοικονόμησε 10€" if lang=="el" else "Save €10"
+    _free_label = "Δωρεάν triage" if lang=="el" else "Free triage"
+    _ins_label  = "Insurance Coverage + HAL" if lang=="el" else "Insurance Coverage + HAL"
+    _mo_btn     = "Ξεκίνα Μηνιαία →" if lang=="el" else "Start Monthly →"
+    _yr_btn     = "Ξεκίνα Ετήσια →" if lang=="el" else "Start Yearly →"
+    _inc_label  = "Περιλαμβάνει:" if lang=="el" else "Includes:"
+
+    # Stripe Checkout URLs — αντικατάστησε με τα πραγματικά URLs μόλις φτιάξεις Checkout
+    _stripe_monthly = os.environ.get("STRIPE_CHECKOUT_MONTHLY", "#")
+    _stripe_yearly  = os.environ.get("STRIPE_CHECKOUT_YEARLY",  "#")
+
+    st.markdown(f"""
+<div style="font-family:'Inter',system-ui,sans-serif;margin:32px 0 28px">
+
+  <!-- Insurance Feature Banner -->
+  <div style="background:linear-gradient(135deg,#ECFDF5,#EEF2FF);border:1.5px solid #A7F3D0;
+              border-radius:20px;padding:24px 24px 20px;margin-bottom:24px;position:relative">
+    <span style="position:absolute;top:16px;right:16px;background:#059669;color:white;
+                 font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;
+                 letter-spacing:.06em">ΝΕΟ</span>
+    <div style="font-size:18px;font-weight:800;color:#1A1A2E;margin-bottom:8px">{_ins_title}</div>
+    <div style="font-size:13px;color:#4B5563;line-height:1.6;margin-bottom:14px">{_ins_sub}</div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <div style="font-size:13px;color:#1A1A2E">✅ {_hal_feat}</div>
+      <div style="font-size:13px;color:#1A1A2E">✅ {_net_feat}</div>
+      <div style="font-size:13px;color:#1A1A2E">✅ {_cost_feat}</div>
+      <div style="font-size:13px;color:#1A1A2E">✅ {_unlim_feat}</div>
+    </div>
+  </div>
+
+  <!-- Pricing Cards -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+
+    <!-- Free Plan -->
+    <div style="flex:1 1 200px;background:white;border:1.5px solid #E5E7EB;
+                border-radius:16px;padding:20px 18px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6B7280;
+                  margin-bottom:8px">FREE</div>
+      <div style="font-size:28px;font-weight:800;color:#1A1A2E">0€</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_free_label}</div>
+      <div style="font-size:12px;color:#4B5563;line-height:1.8">
+        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
+        ✅ Photo Analysis<br>❌ Insurance Coverage<br>❌ HAL Chat
+      </div>
+    </div>
+
+    <!-- Monthly -->
+    <div style="flex:1 1 200px;background:white;border:1.5px solid #A7F3D0;
+                border-radius:16px;padding:20px 18px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#059669;
+                  margin-bottom:8px">INSURANCE</div>
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <div style="font-size:28px;font-weight:800;color:#1A1A2E">4.99€</div>
+        <div style="font-size:12px;color:#6B7280">/{_mo_label}</div>
+      </div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_ins_label}</div>
+      <div style="font-size:12px;color:#4B5563;line-height:1.8">
+        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
+        ✅ Photo Analysis<br>✅ Insurance Coverage<br>✅ HAL Chat
+      </div>
+    </div>
+
+    <!-- Yearly -->
+    <div style="flex:1 1 200px;background:linear-gradient(135deg,#ECFDF5,#F0FDF4);
+                border:2px solid #059669;border-radius:16px;padding:20px 18px;position:relative">
+      <span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+                   background:#059669;color:white;font-size:10px;font-weight:700;
+                   padding:3px 12px;border-radius:99px;white-space:nowrap">{_save_label}</span>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#059669;
+                  margin-bottom:8px">INSURANCE ANNUAL</div>
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <div style="font-size:28px;font-weight:800;color:#1A1A2E">49.99€</div>
+        <div style="font-size:12px;color:#6B7280">/{_yr_label}</div>
+      </div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">{_ins_label}</div>
+      <div style="font-size:12px;color:#4B5563;line-height:1.8">
+        ✅ AI Triage<br>✅ Κτηνιατρική Αναφορά<br>✅ MSD References<br>
+        ✅ Photo Analysis<br>✅ Insurance Coverage<br>✅ HAL Chat
+      </div>
+    </div>
+
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # Pricing CTA buttons
+    _pc1, _pc2, _pc3 = st.columns(3)
+    with _pc2:
+        if st.button(_mo_btn, key="hero_pricing_monthly", use_container_width=True):
+            if _stripe_monthly != "#":
+                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_monthly}">',
+                            unsafe_allow_html=True)
+    with _pc3:
+        if st.button(_yr_btn, type="primary", key="hero_pricing_yearly", use_container_width=True):
+            if _stripe_yearly != "#":
+                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_yearly}">',
+                            unsafe_allow_html=True)
 
     # Bottom CTA band
     st.markdown(f"""
