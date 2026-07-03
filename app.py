@@ -954,7 +954,12 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
     """Streamlit card: κάλυψη ασφαλιστηρίου + HAL chat μετά από triage αποτέλεσμα."""
-    label = "🐾 Κάλυψη Προγράμματος My Happy Pet" if lang == "el" else "🐾 My Happy Pet Coverage"
+    _provider_name = st.session_state.get("pet_insurance_provider", "")
+    if _provider_name and _provider_name not in ("— Χωρίς ασφάλεια —", "— No insurance —"):
+        _short_provider = _provider_name.split("—")[0].strip() if "—" in _provider_name else _provider_name
+        label = f"🐾 Κάλυψη · {_short_provider}" if lang == "el" else f"🐾 Coverage · {_short_provider}"
+    else:
+        label = "🐾 Κάλυψη Προγράμματος My Happy Pet" if lang == "el" else "🐾 My Happy Pet Coverage"
     with st.spinner("Έλεγχος κάλυψης..." if lang == "el" else "Checking coverage..."):
         result = check_pet_coverage(triage_result, condition, pet_name, species, details)
     if "error" in result:
@@ -1022,11 +1027,11 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         _role_icon = "🧑" if _msg["role"] == "user" else "🤖"
         st.markdown(f"{_role_icon} {_msg['content']}")
 
-    # Quick reply buttons (εμφανίζονται μόνο αν δεν υπάρχει ήδη συνομιλία)
-    if not st.session_state[_chat_key]:
+    # Quick reply buttons — εμφανίζονται πάντα για εύκολη πλοήγηση
+    if len(st.session_state[_chat_key]) < 6:  # κρύβονται μόνο αν η συνομιλία έχει προχωρήσει
         _cols = st.columns(2)
         for _i, _q in enumerate(_q_opts):
-            if _cols[_i % 2].button(_q, key=f"hal_quick_{_i}"):
+            if _cols[_i % 2].button(_q, key=f"hal_quick_{_i}_{len(st.session_state[_chat_key])}"):
                 st.session_state[_chat_key].append({"role": "user", "content": _q})
                 with st.spinner("HAL σκέφτεται..." if lang == "el" else "HAL thinking..."):
                     _ans = _hal_insurance_chat(_q, triage_result, condition, pet_name, species, lang)
@@ -4196,22 +4201,30 @@ def render_home():
         if st.button(t("start"), type="primary", use_container_width=True):
             st.session_state.screen="intake"; st.rerun()
 
-    st.markdown("---")
-    f1,f2,f3,f4 = st.columns(4)
-    with f1:
-        st.markdown('<div class="card"><div style="font-size:32px">📋</div><h3 style="margin-top:12px">MSD Veterinary Manual</h3><p style="font-size:13px;color:#6B7280">Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής.</p></div>', unsafe_allow_html=True)
-    with f2:
-        st.markdown('''<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">Τοξικότητα & Ασφάλεια</h3>
-            <p style="font-size:13px;color:#6B7280">Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες.</p>
-            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Κρεμμύδι</span>
-                <span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Παρακεταμόλη</span>
-            </div></div>''', unsafe_allow_html=True)
-    with f3:
-        st.markdown('<div class="card"><div style="font-size:32px">👥</div><h3 style="margin-top:12px">Για Pet Sitters</h3><p style="font-size:13px;color:#6B7280">Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο.</p></div>', unsafe_allow_html=True)
-    with f4:
-        st.markdown('<div class="card"><div style="font-size:32px">🇬🇷</div><h3 style="margin-top:12px">pet.gov.gr</h3><p style="font-size:13px;color:#6B7280">Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς.</p></div>', unsafe_allow_html=True)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    _hc1, _hc2, _hc3, _hc4 = st.columns(4)
+    _home_cards = [
+        ("📋", "MSD Veterinary Manual",
+         "Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής."
+         if lang=="el" else "Every report is backed by the MSD Vet Manual — the gold standard in vet medicine."),
+        ("⚠️", "Τοξικότητα & Ασφάλεια" if lang=="el" else "Toxicity & Safety",
+         "Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες."
+         if lang=="el" else "Automatic detection of toxic substances — especially critical for cats."),
+        ("👥", "Για Pet Sitters" if lang=="el" else "For Pet Sitters",
+         "Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο."
+         if lang=="el" else "Caring for someone else\'s pet? Create a quick report for the owner or vet."),
+        ("🇬🇷", "pet.gov.gr",
+         "Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς."
+         if lang=="el" else "Links to the official services of the National Pet Registry."),
+    ]
+    for _col, (_ic, _ti, _de) in zip([_hc1,_hc2,_hc3,_hc4], _home_cards):
+        with _col:
+            st.markdown(
+                f'<div class="card" style="height:100%"><div style="font-size:28px">{_ic}</div>'
+                f'<h3 style="margin-top:10px;font-size:14px">{_ti}</h3>'
+                f'<p style="font-size:12px;color:var(--text-secondary);margin-top:4px">{_de}</p></div>',
+                unsafe_allow_html=True
+            )
 
     # "How it works" walkthrough
     render_explainer_video(lang)
@@ -4466,10 +4479,14 @@ def render_intake():
     # Store in session_state immediately for triage flow to read
     if _selected_ins != _ins_opts[0]:
         st.session_state["pet_insurance_provider"] = _selected_ins
-        st.caption(
-            "✅ Θα ελέγξουμε την κάλυψη του προγράμματός σου μετά την αξιολόγηση."
-            if lang=="el" else
-            "✅ We'll check your programme coverage after triage."
+        st.markdown(
+            f'<div style="background:#F0FDF4;border:0.5px solid #86EFAC;border-radius:8px;'
+            f'padding:10px 14px;margin-top:6px;font-size:13px;color:#065F46">'
+            f'✅ <strong>{"Κάλυψη ενεργοποιημένη" if lang=="el" else "Coverage activated"}</strong><br>'
+            f'<span style="font-size:12px;color:#047857">'
+            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και HAL chat για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and HAL chat for policy questions."}'
+            f'</span></div>',
+            unsafe_allow_html=True
         )
     else:
         st.session_state["pet_insurance_provider"] = ""
@@ -5036,7 +5053,13 @@ def render_triage():
     triage_ready = any(ph in last_assistant for ph in ready_phrases)
     # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
     _enough_msgs = len(st.session_state.triage_chat) >= 6
-    _insurance_show = triage_ready or _enough_msgs
+    # Emergency detection — το AI δεν λέει "έχω αρκετά στοιχεία" αλλά "πηγαίνετε αμέσως"
+    _emergency_phrases = ["πηγαίνετε αμέσως", "επείγον κτηνιατρείο", "go immediately",
+                          "emergency vet", "αμέσως σε κτηνιατρείο", "πηγαίνετε αμεσωσ"]
+    _last_lower_check = next((m["content"].lower() for m in reversed(st.session_state.triage_chat)
+                              if m["role"] == "assistant"), "")
+    _is_emergency_msg = any(p in _last_lower_check for p in _emergency_phrases)
+    _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
     _provider_pet = pet.get("insurance_provider", "") if isinstance(pet, dict) else ""
@@ -5129,15 +5152,6 @@ def render_triage():
                         voice_text = edited
                         st.session_state._voice_widget_counter += 1
 
-    st.markdown(
-        f'<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;'
-        f'padding:8px 14px;margin-bottom:6px;font-weight:600;color:#065F46;font-size:14px">'
-        f'✍️ {"Γράψε εδώ" if lang=="el" else "Write here"} '
-        f'<span style="font-weight:400;color:#047857;font-size:12px">'
-        f'{"(στο πλαίσιο στο κάτω μέρος της οθόνης) ⬇️" if lang=="el" else "(in the box at the bottom of the screen) ⬇️"}'
-        f'</span></div>',
-        unsafe_allow_html=True)
-
     user_input = st.chat_input(triage_placeholder_for(pet), key="triage_input")
     if voice_text:
         user_input = voice_text
@@ -5154,11 +5168,22 @@ def render_triage():
         # even while the UI stays in Greek or English.
         render_output_language_picker(lang, key_suffix="triage")
         enabled = triage_ready or len(st.session_state.triage_chat) >= 6
+        _chat_count = len(st.session_state.triage_chat)
+        if enabled:
+            pass  # button is ready
         if st.button(t("generate_report"), type="primary", use_container_width=True, disabled=not enabled):
             st.session_state.screen="report"; st.rerun()
     if not enabled:
-        st.caption("Συνεχίστε — η PetAiNurse θα σας ειδοποιήσει όταν έχει αρκετά." if lang=="el"
-                   else "Continue — PetAiNurse will let you know when she has enough.")
+        _msgs_remaining = max(0, 6 - len(st.session_state.triage_chat))
+        if _msgs_remaining > 0:
+            st.caption(
+                f"💬 {'Απάντησε σε ακόμα μερικές ερωτήσεις — η PetAiNurse θα ξεκλειδώσει την αναφορά αυτόματα.' if lang=='el' else 'Answer a few more questions — PetAiNurse will unlock the report automatically.'}"
+            )
+        else:
+            st.caption(
+                "💬 " + ("Συνέχισε τη συνομιλία — η PetAiNurse θα πει πότε είναι έτοιμη." if lang=="el"
+                         else "Continue the chat — PetAiNurse will say when she's ready.")
+            )
 
 
 def _evidence_context():
