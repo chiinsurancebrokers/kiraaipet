@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PetAiNurse scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --blue:#1237C9; --blue2:#2F55F0; --orange:#FF6B2C; --ink:#0B1B4B; --muted:#5B6794; --line:#D9DEF5; --lav:#E7EAFB; --lav2:#C9D0F5; --good:#059669; --warn:#B45309; --bad:#DC2626; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:transparent; font-family:Inter,system-ui,sans-serif; color:var(--ink); -webkit-text-size-adjust:100%; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:22px; padding:18px 18px 16px; }
+  .eyebrow{ display:inline-flex; font:600 11px/1 Inter,sans-serif; letter-spacing:.12em; text-transform:uppercase; padding:6px 11px; border-radius:999px; color:var(--blue); background:var(--lav); border:1px solid var(--lav2); }
+  h2{ font-family:Sora,Inter,sans-serif; font-size:20px; letter-spacing:-.02em; margin:12px 0 6px; }
+  p{ margin:6px 0; font-size:14.5px; line-height:1.55; color:var(--muted); }
+  ol{ margin:8px 0 4px 20px; padding:0; color:var(--muted); font-size:14px; line-height:1.6; }
+  .btn{ display:block; width:100%; border:0; border-radius:999px; padding:14px 18px; font:700 15.5px Inter,sans-serif; cursor:pointer; margin-top:12px; }
+  .btn.primary{ background:var(--blue); color:#fff; box-shadow:0 12px 28px -12px rgba(18,55,201,.6); }
+  .btn.orange{ background:var(--orange); color:#fff; box-shadow:0 12px 28px -12px rgba(255,107,44,.6); }
+  .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .row{ display:flex; gap:8px; } .row .btn{ margin-top:10px; }
+  .seg{ display:flex; gap:6px; background:var(--lav); border-radius:999px; padding:4px; margin:10px 0 2px; }
+  .seg button{ flex:1; border:0; background:transparent; border-radius:999px; padding:9px 6px; font:600 13px Inter,sans-serif; color:var(--muted); cursor:pointer; }
+  .seg button.on{ background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(11,27,75,.12); }
+  .stage{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:4px 0; }
+  .view{ position:relative; width:100%; max-width:360px; aspect-ratio:4/3; border-radius:20px; overflow:hidden; background:#0B1B4B; }
+  .view video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .view .guide{ position:absolute; inset:18% 14%; border:2.5px dashed rgba(255,255,255,.85); border-radius:18px; }
+  .view .pill{ position:absolute; left:50%; bottom:10px; transform:translateX(-50%); background:rgba(255,255,255,.94); color:var(--ink); font:600 12.5px Inter,sans-serif; padding:6px 12px; border-radius:999px; white-space:nowrap; }
+  .ring{ position:relative; width:150px; height:150px; }
+  .ring svg{ transform:rotate(-90deg); }
+  .ring .num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ring .big{ font:700 38px/1 Sora,Inter,sans-serif; letter-spacing:-.03em; }
+  .ring .small{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .status{ font-weight:600; font-size:14.5px; text-align:center; min-height:22px; }
+  .status.ok{ color:var(--good); } .status.warn{ color:var(--warn); } .status.bad{ color:var(--bad); }
+  canvas.wave{ width:100%; height:64px; border-radius:14px; background:var(--lav); }
+  .res{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
+  .tile{ background:var(--lav); border:1px solid var(--lav2); border-radius:16px; padding:12px; }
+  .tile .k{ font-size:12px; color:var(--muted); } .tile .v{ font:700 26px Sora,Inter,sans-serif; letter-spacing:-.02em; }
+  .tile .v span{ font-size:13px; font-weight:600; color:var(--muted); margin-left:4px; }
+  .note{ font-size:12.5px; color:var(--muted); margin-top:8px; }
+  .tap{ width:190px; height:190px; border-radius:50%; border:0; background:radial-gradient(circle at 35% 30%, #4A6BFF, var(--blue)); color:#fff; font:700 20px Sora,Inter,sans-serif; box-shadow:0 18px 40px -16px rgba(18,55,201,.7); cursor:pointer; touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform .08s; }
+  .tap:active, .tap.hit{ transform:scale(.94); }
+  .tap.orange{ background:radial-gradient(circle at 35% 30%, #FF9A63, var(--orange)); box-shadow:0 18px 40px -16px rgba(255,107,44,.7); }
+  .count{ font:700 44px Sora,Inter,sans-serif; letter-spacing:-.03em; }
+  .hide{ display:none !important; }
+  canvas#grab{ display:none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<canvas id="grab" width="48" height="36"></canvas>
+<script src="./breath_core.js"></script>
+<script>
+(function(){
+"use strict";
+// ── Streamlit component protocol (no build step) ────────────────────────────
+function send(type, data){ window.parent.postMessage(Object.assign({isStreamlitMessage:true, type:type}, data||{}), "*"); }
+function setHeight(){ send("streamlit:setFrameHeight", {height: Math.ceil(document.documentElement.scrollHeight) + 6}); }
+function setValue(v){ send("streamlit:setComponentValue", {value:v, dataType:"json"}); }
+var ARGS = null, started = false;
+window.addEventListener("message", function(ev){
+  var d = ev.data || {};
+  if (d.type === "streamlit:render"){ ARGS = d.args || {}; if (!started){ started = true; init(); } }
+});
+send("streamlit:componentReady", {apiVersion: 1});
+new ResizeObserver(setHeight).observe(document.body);
+
+var T = {
+ el:{
+  b_eb:"ΑΝΑΠΝΟΕΣ ΣΤΟΝ ΥΠΝΟ", b_h:"Μέτρηση αναπνοής με την κάμερα",
+  b_p:"Όταν το κατοικίδιο κοιμάται ή ξεκουράζεται, ο θώρακας ανεβοκατεβαίνει. Η κάμερα το «βλέπει» και μετράει αναπνοές ανά λεπτό. Είναι ο πιο χρήσιμος δείκτης καρδιάς που μπορείς να παρακολουθείς στο σπίτι.",
+  b_steps:["Περίμενε να κοιμηθεί ή να ξαπλώσει ήρεμα (όχι λαχανιασμένο).","Στήριξε το κινητό σε σταθερό σημείο, 40–60 cm πάνω από το σώμα, και δείξε το στήθος/κοιλιά.","Μην αγγίζεις το κινητό για 60 δευτερόλεπτα. Αν κουνηθεί το ζώο, ξεκίνα ξανά."],
+  start:"Ξεκίνα τη μέτρηση", need_cam:"Χρειάζεται πρόσβαση στην κάμερα.", tap_instead:"Προτιμώ να μετρήσω με το χέρι (πατάω σε κάθε αναπνοή)",
+  frame_chest:"Στήθος/κοιλιά εδώ", hold:"Κράτα σταθερά — μετράω…", secs:"δευτ.", brmin:"αναπνοές/λεπτό", analysing:"Ανάλυση…",
+  res_eb:"ΑΠΟΤΕΛΕΣΜΑ", br:"Αναπνοές ηρεμίας", hr:"Σφυγμοί (εκτίμηση)", q:"Ποιότητα", q_good:"καλή", q_fair:"μέτρια", q_tap:"μέτρηση με το χέρι",
+  retry:"Νέα μέτρηση", use:"Χρήση αποτελέσματος →", stop:"Διακοπή",
+  r_moving:"Το ζώο ή το κινητό κουνήθηκε πολύ. Στήριξε το κινητό και περίμενε να ηρεμήσει.",
+  r_no_texture:"Δεν βλέπω αρκετή υφή στην εικόνα (πολύ σκοτεινά ή ομοιόμορφο). Πρόσθεσε φως ή δείξε τρίχωμα/κουβέρτα.",
+  r_noisy:"Δεν έπιασα καθαρό ρυθμό. Δοκίμασε ξανά όταν κοιμάται βαθιά ή μέτρα με το χέρι.", r_short:"Η μέτρηση ήταν πολύ σύντομη.",
+  tb_eb:"ΜΕΤΡΗΜΑ ΑΝΑΠΝΩΝ", tb_h:"Πάτα σε κάθε αναπνοή",
+  tb_p:"Κοίτα το στήθος ή την κοιλιά. Μία αναπνοή = ανεβαίνει και κατεβαίνει μία φορά. Πάτα το κουμπί κάθε φορά που ανεβαίνει. 30 δευτερόλεπτα.",
+  tb_go:"Πάτα για να ξεκινήσεις", tb_tap:"ΠΑΤΑ", tb_left:"απομένουν",
+  th_eb:"ΣΦΥΓΜΟΙ ΜΕ ΤΟ ΧΕΡΙ", th_h:"Πάτα σε κάθε σφυγμό",
+  th_p_dog:"Σκύλος: βρες τον σφυγμό στο εσωτερικό του πίσω μηρού (femoral) ή ακούμπα το χέρι στο στήθος πίσω από τον αριστερό αγκώνα. Πάτα σε κάθε χτύπο για 15 δευτερόλεπτα.",
+  th_p_cat:"Γάτα: ακούμπα το χέρι στο στήθος πίσω από τον αριστερό αγκώνα, ή στον εσωτερικό μηρό. Πάτα σε κάθε χτύπο για 15 δευτερόλεπτα.",
+  th_p_other:"Ακούμπα το χέρι στο στήθος και πάτα σε κάθε χτύπο για 15 δευτερόλεπτα.",
+  th_note:"Η μέτρηση με το χέρι έχει ακρίβεια περίπου ±10%. Ο κτηνίατρος κάνει ακριβή έλεγχο με ακρόαση ή ΗΚΓ.",
+  tap_hint:"Τελευταία χτυπήματα", again_tap:"Ξανά",
+ },
+ en:{
+  b_eb:"SLEEPING BREATHS", b_h:"Measure breathing with the camera",
+  b_p:"When your pet sleeps or rests, the chest rises and falls. The camera watches it and counts breaths per minute. It is the single most useful heart check you can do at home.",
+  b_steps:["Wait until your pet is asleep or lying calmly (not panting).","Prop your phone steady, 40-60 cm above the body, pointing at the chest/belly.","Don't touch the phone for 60 seconds. If the animal moves, start again."],
+  start:"Start measuring", need_cam:"Camera access is needed.", tap_instead:"I'd rather count by hand (tap each breath)",
+  frame_chest:"Chest/belly here", hold:"Hold steady — measuring…", secs:"sec", brmin:"breaths/min", analysing:"Analysing…",
+  res_eb:"RESULT", br:"Resting breathing", hr:"Pulse (estimate)", q:"Quality", q_good:"good", q_fair:"fair", q_tap:"counted by hand",
+  retry:"Measure again", use:"Use this result →", stop:"Stop",
+  r_moving:"The animal or the phone moved too much. Prop the phone and wait for calm.",
+  r_no_texture:"I can't see enough texture (too dark or too uniform). Add light, or point at fur/a blanket.",
+  r_noisy:"I couldn't lock onto a clean rhythm. Try again when deeply asleep, or count by hand.", r_short:"The recording was too short.",
+  tb_eb:"BREATH COUNT", tb_h:"Tap on every breath",
+  tb_p:"Watch the chest or belly. One breath = it rises and falls once. Tap the button each time it rises. 30 seconds.",
+  tb_go:"Tap to start", tb_tap:"TAP", tb_left:"left",
+  th_eb:"PULSE BY HAND", th_h:"Tap on every heartbeat",
+  th_p_dog:"Dog: find the pulse on the inside of the back thigh (femoral) or rest your hand on the chest behind the left elbow. Tap on every beat for 15 seconds.",
+  th_p_cat:"Cat: rest your hand on the chest behind the left elbow, or on the inner thigh. Tap on every beat for 15 seconds.",
+  th_p_other:"Rest your hand on the chest and tap on every beat for 15 seconds.",
+  th_note:"Hand counting is accurate to about ±10%. Your vet checks precisely with a stethoscope or ECG.",
+  tap_hint:"Latest taps", again_tap:"Again",
+ }};
+var L = function(k){ var lang = (ARGS && ARGS.lang === "en") ? "en" : "el"; return T[lang][k]; };
+
+var app = document.getElementById("app");
+function html(s){ app.innerHTML = s; setHeight(); }
+function ring(pct, big, small, color){
+  var R = 66, C = 2*Math.PI*R, off = C*(1-Math.max(0,Math.min(1,pct)));
+  return '<div class="ring"><svg width="150" height="150"><circle cx="75" cy="75" r="'+R+'" stroke="#D9DEF5" stroke-width="9" fill="none"/>'+
+    '<circle cx="75" cy="75" r="'+R+'" stroke="'+(color||"#1237C9")+'" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'"/></svg>'+
+    '<div class="num"><div class="big">'+big+'</div><div class="small">'+(small||"")+'</div></div></div>';
+}
+
+// ── Camera ──────────────────────────────────────────────────────────────────
+var stream = null, wakeLock = null, vid = null;
+function openCamera(){
+  closeCamera();
+  var c = {audio:false, video:{facingMode:{ideal:"environment"}, width:{ideal:640}, height:{ideal:480}, frameRate:{ideal:30, max:30}}};
+  return navigator.mediaDevices.getUserMedia(c).then(function(s){ stream = s; vid.srcObject = s; return vid.play(); });
+}
+function closeCamera(){ if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); } stream = null; }
+function keepAwake(){ try{ if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function(w){ wakeLock = w; }).catch(function(){}); }catch(e){} }
+function releaseAwake(){ try{ if (wakeLock) wakeLock.release(); }catch(e){} wakeLock = null; }
+var gctx = null;
+function grabGrey(){
+  var w = vid.videoWidth, h = vid.videoHeight; if (!w || !h) return null;
+  gctx.drawImage(vid, w*0.2, h*0.2, w*0.6, h*0.6, 0, 0, 48, 36);
+  var d = gctx.getImageData(0, 0, 48, 36).data, g = new Float32Array(48*36);
+  for (var i=0, k=0; i<d.length; i+=4, k++) g[k] = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+  return g;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BREATHING — camera
+// ════════════════════════════════════════════════════════════════════════════
+function breathIntro(msg){
+  html('<div class="card"><span class="eyebrow">'+L("b_eb")+'</span><h2>'+L("b_h")+'</h2><p>'+L("b_p")+'</p><ol>'+
+    L("b_steps").map(function(s){return "<li>"+s+"</li>";}).join("")+'</ol>'+
+    (msg?'<p class="status bad" style="text-align:left">'+msg+'</p>':'')+
+    '<button class="btn primary" id="go">'+L("start")+'</button>'+
+    '<button class="btn ghost" id="tap">'+L("tap_instead")+'</button></div>');
+  document.getElementById("go").onclick = runBreath;
+  document.getElementById("tap").onclick = function(){ tapMode("breath", 30); };
+}
+
+function runBreath(){
+  var seconds = ARGS.duration || 60, tr = new BreathCore.Tracker(), done = false, t0 = null, lastGrab = 0, wavePts = [];
+  html('<div class="card"><span class="eyebrow">'+L("b_eb")+'</span><div class="stage">'+
+    '<div class="view"><video id="vid" playsinline muted></video><div class="guide"></div><div class="pill">'+L("frame_chest")+'</div></div>'+
+    '<div id="ring"></div><div class="status" id="st"></div><canvas class="wave" id="wave"></canvas>'+
+    '<button class="btn ghost" id="cancel">'+L("stop")+'</button></div></div>');
+  vid = document.getElementById("vid"); gctx = document.getElementById("grab").getContext("2d", {willReadFrequently:true});
+  var ringEl = document.getElementById("ring"), st = document.getElementById("st"), wave = document.getElementById("wave");
+  document.getElementById("cancel").onclick = function(){ done = true; closeCamera(); releaseAwake(); breathIntro(); };
+  keepAwake();
+  function drawWave(){
+    var cv = wave, ctx = cv.getContext("2d"), W = cv.width = cv.clientWidth*2, H = cv.height = 128; ctx.clearRect(0,0,W,H);
+    var v = wavePts.slice(-150); if (v.length < 10) return;
+    var m = v.reduce(function(a,b){return a+b;},0)/v.length, mx = Math.max.apply(null, v.map(function(x){return Math.abs(x-m);})) || 1;
+    ctx.lineWidth = 4; ctx.strokeStyle = "#1237C9"; ctx.beginPath();
+    for (var i=0;i<v.length;i++){ var x = i/(v.length-1)*W, y = H/2 - ((v[i]-m)/mx)*(H*0.4); if (i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
+    ctx.stroke();
+  }
+  function loop(now, meta){
+    if (done) return;
+    var tms = (meta && meta.captureTime) ? meta.captureTime : now;
+    if (tms - lastGrab >= 60) {  // ~15 fps is plenty for breathing
+      var g = grabGrey();
+      if (g){
+        if (t0 === null) t0 = tms; lastGrab = tms;
+        tr.push(tms, g, 48, 36);
+        wavePts.push(tr.accY);
+        var el = (tms - t0)/1000;
+        ringEl.innerHTML = ring(el/seconds, Math.max(0, Math.ceil(seconds-el)), L("secs"));
+        var jerkNow = tr.n > 20 && tr.jerk/tr.n > 0.12;
+        st.className = "status " + (jerkNow ? "warn" : "ok");
+        st.textContent = jerkNow ? L("r_moving") : L("hold");
+        if (tr.n % 4 === 0) drawWave();
+        if (el >= seconds){ done = true; finish(); return; }
+      }
+    }
+    sched();
+  }
+  function sched(){ if (vid.requestVideoFrameCallback) vid.requestVideoFrameCallback(loop); else requestAnimationFrame(function(n){ loop(n, null); }); }
+  function finish(){
+    closeCamera(); releaseAwake();
+    html('<div class="card"><div class="stage">'+ring(1,"…",L("analysing"))+'</div></div>');
+    setTimeout(function(){ var r = BreathCore.analyse(tr); showBreath(r); }, 60);
+  }
+  openCamera().then(sched).catch(function(){ breathIntro(L("need_cam")); });
+}
+
+function showBreath(r){
+  if (!r.ok){ breathIntro(L("r_" + (r.reason || "noisy"))); return; }
+  var q = r.quality === "good" ? L("q_good") : L("q_fair");
+  html('<div class="card"><span class="eyebrow">'+L("res_eb")+'</span><div class="res">'+
+    '<div class="tile"><div class="k">'+L("br")+'</div><div class="v">'+r.bpm+'<span>'+L("brmin")+'</span></div></div>'+
+    '<div class="tile"><div class="k">'+L("q")+'</div><div class="v" style="font-size:20px">'+q+'</div></div></div>'+
+    '<p class="note">'+r.breaths+' · '+r.durationS+'s</p>'+
+    '<div class="row"><button class="btn ghost" id="again">'+L("retry")+'</button><button class="btn orange" id="use">'+L("use")+'</button></div></div>');
+  document.getElementById("again").onclick = function(){ breathIntro(); };
+  document.getElementById("use").onclick = function(){
+    setValue({kind:"breath", method:"camera", at:Date.now(), bpm:r.bpm, quality:r.quality, prominence:r.prominence, regular:r.regular, breaths:r.breaths, durationS:r.durationS});
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAP COUNTER — breaths (30 s) or pulse (15 s)
+// ════════════════════════════════════════════════════════════════════════════
+function tapMode(kind, seconds, again){
+  var isB = kind === "breath", sp = (ARGS && ARGS.species) || "dog";
+  var intro = isB ? L("tb_p") : (sp === "dog" ? L("th_p_dog") : sp === "cat" ? L("th_p_cat") : L("th_p_other"));
+  html('<div class="card"><span class="eyebrow">'+(isB?L("tb_eb"):L("th_eb"))+'</span><h2>'+(isB?L("tb_h"):L("th_h"))+'</h2><p>'+intro+'</p>'+
+    '<div class="stage"><div class="count" id="cnt">0</div><div class="status" id="st">'+L("tb_go")+'</div>'+
+    '<button class="tap'+(isB?"":" orange")+'" id="tap">'+L("tb_tap")+'</button><div id="ring"></div></div>'+
+    (isB?'':'<p class="note">'+L("th_note")+'</p>')+
+    '<button class="btn ghost" id="cancel">'+L("stop")+'</button></div>');
+  var taps = [], startedAt = null, done = false, tapBtn = document.getElementById("tap"), cnt = document.getElementById("cnt"), st = document.getElementById("st"), ringEl = document.getElementById("ring");
+  document.getElementById("cancel").onclick = function(){ done = true; isB ? breathIntro() : init(); };
+  function tick(){
+    if (done) return;
+    var el = startedAt === null ? 0 : (performance.now() - startedAt)/1000;
+    ringEl.innerHTML = startedAt === null ? "" : ring(el/seconds, Math.max(0, Math.ceil(seconds-el)), L("tb_left"), isB ? "#1237C9" : "#FF6B2C");
+    if (startedAt !== null && el >= seconds){ done = true; finish(); return; }
+    requestAnimationFrame(tick);
+  }
+  function hit(e){
+    if (e) e.preventDefault();
+    if (done) return;
+    var now = performance.now();
+    if (startedAt === null){ startedAt = now; st.textContent = ""; requestAnimationFrame(tick); }
+    taps.push(now); cnt.textContent = taps.length;
+    tapBtn.classList.add("hit"); setTimeout(function(){ tapBtn.classList.remove("hit"); }, 70);
+    try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+  }
+  tapBtn.addEventListener("pointerdown", hit);
+  function finish(){
+    var n = taps.length, bpm;
+    if (n >= 6){ bpm = Math.round((n - 1) * 60000 / (taps[n-1] - taps[0])); }
+    else bpm = Math.round(n * 60 / seconds);
+    var lo = isB ? 4 : 30, hi = isB ? 120 : 400;
+    var ok = n >= 3 && bpm >= lo && bpm <= hi;
+    html('<div class="card"><span class="eyebrow">'+L("res_eb")+'</span><div class="res">'+
+      '<div class="tile"><div class="k">'+(isB?L("br"):L("hr"))+'</div><div class="v">'+(ok?(isB?"":"~")+bpm:"—")+'<span>'+(isB?L("brmin"):"bpm")+'</span></div></div>'+
+      '<div class="tile"><div class="k">'+L("q")+'</div><div class="v" style="font-size:18px">'+L("q_tap")+'</div></div></div>'+
+      '<div class="row"><button class="btn ghost" id="again">'+L("again_tap")+'</button>'+(ok?'<button class="btn orange" id="use">'+L("use")+'</button>':'')+'</div></div>');
+    document.getElementById("again").onclick = function(){ tapMode(kind, seconds); };
+    var u = document.getElementById("use");
+    if (u) u.onclick = function(){ setValue({kind:isB?"breath":"hr", method:"tap", at:Date.now(), bpm:bpm, quality:"tap", taps:n, durationS:seconds}); };
+  }
+}
+
+function init(){
+  var mode = ARGS.mode || "breath";
+  if (mode === "hr") { tapMode("hr", 15); return; }
+  if (mode === "breath_tap") { tapMode("breath", 30); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { tapMode("breath", 30); return; }
+  breathIntro();
+}
+})();
+</script>
+</body>
+</html>

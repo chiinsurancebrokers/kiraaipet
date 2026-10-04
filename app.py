@@ -15,6 +15,12 @@ import io as _io, base64 as _b64
 import hmac, hashlib, time, unicodedata
 import logging as _logging
 import uuid as _uuid
+import html as _html
+import pet_longevity as _plg
+from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
+                       feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
+                       result_card_html as _pet_result_card_html)
+from petscan_component import petscan_component as _petscan
 
 # "Stay signed in" via a browser cookie (persists login across reloads / new tabs).
 # Degrades gracefully if missing.
@@ -407,6 +413,9 @@ st.markdown("""
 [data-testid="stMarkdownContainer"] { overflow-wrap: break-word !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# Petify-inspired theme: injected after the legacy CSS so it overrides it
+st.markdown(_PETIFY_THEME, unsafe_allow_html=True)
 
 
 # ── KEYS ──────────────────────────────────────────────────────────────────────
@@ -4683,7 +4692,7 @@ def render_intake():
             }
             st.session_state.intake_step = 0
             st.session_state.intake_draft = {}
-            st.session_state.screen = "vitals"
+            st.session_state.screen = "dashboard"
             st.rerun()
 
 
@@ -4905,6 +4914,28 @@ def render_vitals():
 
     with tab_vitals:
         v = st.session_state.vitals
+        _el_v = (lang == "el")
+        with st.expander("🫁 " + ("Μέτρησε αναπνοές/σφυγμούς με την κάμερα ή με το χέρι" if _el_v
+                                  else "Measure breathing / pulse with the camera or by hand"), expanded=False):
+            st.caption("Οι αναπνοές στον ύπνο είναι ο πιο χρήσιμος δείκτης στο σπίτι." if _el_v
+                       else "Sleeping breathing rate is the most useful home measurement.")
+            _S_lg = _lg_state()
+            _pw = petscan_widget("breath", key=f"vit_breath_{st.session_state.get('_vit_b_n', 0)}", duration=60)
+            if _pw and _pw.get("kind") == "breath" and _pw.get("at") != (_S_lg.get("breath") or {}).get("at"):
+                _S_lg["breath"] = _pw; _S_lg["result"] = None
+                _vv = dict(st.session_state.vitals or {}); _vv["br"] = int(_pw["bpm"]); st.session_state.vitals = _vv
+                st.session_state["_vit_b_n"] = st.session_state.get("_vit_b_n", 0) + 1
+                st.rerun()
+            _hw = petscan_widget("hr", key=f"vit_hr_{st.session_state.get('_vit_h_n', 0)}")
+            if _hw and _hw.get("kind") == "hr" and _hw.get("at") != (_S_lg.get("pulse") or {}).get("at"):
+                _S_lg["pulse"] = _hw; _S_lg["result"] = None
+                _vv = dict(st.session_state.vitals or {}); _vv["hr"] = int(_hw["bpm"]); st.session_state.vitals = _vv
+                st.session_state["_vit_h_n"] = st.session_state.get("_vit_h_n", 0) + 1
+                st.rerun()
+            if (_S_lg.get("breath") or _S_lg.get("pulse")):
+                st.success("✓ " + (" · ".join(filter(None, [
+                    (f"αναπνοές {_S_lg['breath']['bpm']}/λεπτό" if _el_v else f"breaths {_S_lg['breath']['bpm']}/min") if _S_lg.get("breath") else "",
+                    (f"σφυγμοί ~{_S_lg['pulse']['bpm']}" if _el_v else f"pulse ~{_S_lg['pulse']['bpm']}") if _S_lg.get("pulse") else ""]))))
         c1,c2,c3 = st.columns(3)
         with c1:
             hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=(int(v.get("hr")) if v.get("hr") else None), placeholder=str(int((hr_range[0]+hr_range[1])//2)))
@@ -5611,6 +5642,12 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     if st.session_state.vitals:
         status_map = classify_pet_vitals(dict(st.session_state.vitals), sp)
         _render_pet_health_pillars(pet, st.session_state.vitals, status_map, st.session_state.report, lang)
+
+    # Longevity check (if the owner did it) — compact result with the same pillars
+    _lgr = (st.session_state.get("longevity") or {}).get("result")
+    if _lgr:
+        st.markdown("##### 🧬 " + (f"Έλεγχος μακροζωίας ({_lgr.get('date','')})" if lang == "el" else f"Longevity check ({_lgr.get('date','')})"))
+        render_pet_longevity_result(_lgr, lang, compact=True)
 
     # MSD Vet Manual references
     if st.session_state.report_refs:
@@ -6483,27 +6520,20 @@ a.pan-hr-aud-card:hover { border-color: #5DCAA5; }
   <div class="pan-hr-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span> {d['h1_end']}</div>
   <div class="pan-hr-sub">{d['sub']}</div>
 """
-    st.markdown(css + body_top, unsafe_allow_html=True)
+    # Legacy hero CSS is still needed by the audience / feature sections below
+    st.markdown(css, unsafe_allow_html=True)
 
-    # CTA buttons (real Streamlit buttons so they can route the app)
-    # Merged: "start assessment" and "create report" lead to the same
-    # intake -> vitals -> triage -> report flow, so they are a single CTA.
+    # Petify-style hero: brand tile, phone-scan visual, flow panel, example page card
+    _mascot_sp = (st.session_state.get("pet") or {}).get("species_key") or "dog"
+    st.markdown(_petify_hero_html(lang, render_mascot(_mascot_sp if _mascot_sp in ("dog", "cat") else "dog", size=120)),
+                unsafe_allow_html=True)
+
+    # CTA (real Streamlit button so it can route the app)
     col_l, col_c, col_r = st.columns([1, 2.4, 1])
     with col_c:
         cta1 = st.button(d["cta_primary"], type="primary", use_container_width=True, key="hero_cta_primary")
     cta2 = False
-
-    # Mascots + floating feature cards — full hero squad (Perro/Gata/Gaz/Ave)
-    st.markdown(f"""
-  {render_hero_group(size=120, show_names=True, caption=True)}
-  <div class="pan-hr-cards">
-    <div class="pan-hr-card c1"><span class="ic">🐾</span>{d['card1']}<span class="check">✓</span></div>
-    <div class="pan-hr-card c2"><span class="ic">🔎</span>{d['card2']}<span class="check">✓</span></div>
-    <div class="pan-hr-card c3"><span class="ic">📄</span>{d['card3']}<span class="check">✓</span></div>
-  </div>
-  <div class="pan-hr-disclaimer"><span>ℹ️</span><span>{d['disclaimer']}</span></div>
-</div>
-""", unsafe_allow_html=True)
+    st.markdown(f'<div class="disclaimer" style="margin-top:14px;">ℹ️ {d["disclaimer"]}</div>', unsafe_allow_html=True)
 
     # "How it works" — detailed 7-step walkthrough (merged in from the old
     # 'home' screen, which duplicated most of this hero screen's content).
@@ -7120,6 +7150,392 @@ def render_admin_page():
                 st.error(f"❌ Σφάλμα αποθήκευσης. {err1 or err2 or ''}")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PETIFY-STYLE HOME · BREATHING / PULSE SCAN · LONGEVITY CHECK
+# Same feature set we built for Asklepios (home with feature cards, a camera
+# based scan, a longevity check feeding the report), adapted for animals:
+# pulse by fingertip does not work through fur, so the scan counts SLEEPING
+# BREATHS from chest motion (or by tapping), and pulse is a tap-along count.
+# See pet_longevity.py for methods and sources.
+# ─────────────────────────────────────────────────────────────────────────────
+def petscan_widget(mode, key, **kw):
+    """Breathing / pulse component. Returns the result dict once the owner
+    presses 'Use this result', else None."""
+    sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
+    return _petscan(mode=mode, lang=st.session_state.get("lang", "el"), species=sp,
+                    key=key, default=None, **kw)
+
+
+def _lg_state():
+    if not isinstance(st.session_state.get("longevity"), dict):
+        st.session_state.longevity = {"breath": None, "pulse": None, "q": {}, "result": None}
+    return st.session_state.longevity
+
+
+def _goto(screen):
+    st.session_state["_hero_seen"] = True
+    st.session_state.screen = screen
+    st.rerun()
+
+
+def render_pet_nav(active):
+    """Compact top menu on every screen once a pet profile exists."""
+    if not (st.session_state.get("pet") or {}).get("name"):
+        return
+    el = st.session_state.lang == "el"
+    items = [("dashboard", "🏠", "Αρχική" if el else "Home"),
+             ("vitals", "❤️", "Ζωτικά" if el else "Vitals"),
+             ("triage", "💬", "Συμπτώματα" if el else "Symptoms"),
+             ("scan", "🫁", "Αναπνοή" if el else "Breathing"),
+             ("longevity", "🧬", "Μακροζωία" if el else "Longevity")]
+    st.markdown(
+        '<style>div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker){flex-wrap:nowrap !important;gap:6px !important;'
+        'background:#fff;border:1px solid #D9DEF5;border-radius:999px;padding:5px;margin:0 0 14px;}'
+        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]{min-width:0 !important;}'
+        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button{min-height:38px !important;padding:0 4px !important;'
+        'border:none !important;box-shadow:none !important;font-size:12.5px !important;}'
+        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button[kind="secondary"]{background:transparent !important;}'
+        'div[data-testid="stElementContainer"]:has(.pn-nav-marker){display:none !important;}'
+        '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{font-size:10.5px !important;}}</style>',
+        unsafe_allow_html=True)
+    cols = st.columns(len(items), gap="small")
+    for _ci, (col, (scr, ic, lbl)) in enumerate(zip(cols, items)):
+        with col:
+            if _ci == 0:
+                st.markdown('<span class="pn-nav-marker"></span>', unsafe_allow_html=True)
+            if st.button(f"{ic} {lbl}", key=f"pnav_{active}_{scr}", use_container_width=True,
+                         type=("primary" if scr == active else "secondary")):
+                if scr != active:
+                    _goto(scr)
+
+
+_PET_FEATURES = {
+    "assess": {"screen": "vitals", "dark": False,
+               "eb": ("ΕΚΤΙΜΗΣΗ ΥΓΕΙΑΣ", "HEALTH ASSESSMENT"),
+               "title": ("💬 Τι παρατηρείς στο κατοικίδιό σου;", "💬 What are you noticing in your pet?"),
+               "body": ("Ζωτικά, φωτογραφίες και συμπτώματα — μία ερώτηση τη φορά — και στο τέλος αναφορά για τον κτηνίατρο με παραπομπές MSD.",
+                        "Vitals, photos and symptoms — one question at a time — then a vet-ready report with MSD references."),
+               "cta": ("Ξεκίνα εκτίμηση →", "Start assessment →")},
+    "photo": {"screen": "vitals", "dark": False,
+              "eb": ("ΦΩΤΟΓΡΑΦΙΑ", "PHOTO"),
+              "title": ("📷 Μάτια, δέρμα, αυτιά, ούλα", "📷 Eyes, skin, ears, gums"),
+              "body": ("Ανέβασε μια φωτογραφία και η AI την περιγράφει και σημειώνει ό,τι αξίζει έλεγχο.",
+                       "Upload a photo and the AI describes it and flags anything worth checking."),
+              "cta": ("Σάρωση φωτογραφίας →", "Scan a photo →")},
+    "scan": {"screen": "scan", "dark": True,
+             "eb": ("ΝΕΟ · ΑΝΑΠΝΟΕΣ ΣΤΟΝ ΥΠΝΟ", "NEW · SLEEPING BREATHS"),
+             "title": ("🫁 Μέτρησε τις αναπνοές με την κάμερα", "🫁 Count breaths with the camera"),
+             "body": ("60 δευτερόλεπτα με το κινητό δίπλα στο κατοικίδιο που κοιμάται. Είναι ο πιο χρήσιμος δείκτης καρδιάς που παρακολουθείς στο σπίτι.",
+                      "60 seconds with your phone beside your sleeping pet. The most useful heart check you can do at home."),
+             "cta": ("Ξεκίνα τη σάρωση →", "Start the scan →")},
+    "longevity": {"screen": "longevity", "dark": True,
+                  "eb": ("ΝΕΟ · ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ", "NEW · LONGEVITY CHECK"),
+                  "title": ("🧬 Πόσο χρονών είναι πραγματικά σε ανθρώπινα;", "🧬 How old are they in human years?"),
+                  "body": ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, βάρος, δόντια, δραστηριότητα και πλάνο για περισσότερα χρόνια μαζί.",
+                           "Age in human years, a wellness score, weight, teeth, activity and a plan for more years together."),
+                  "cta": ("Ξεκίνα τον έλεγχο →", "Start the check →")},
+}
+
+
+def render_pet_feature_card(kind, key):
+    F = _PET_FEATURES[kind]
+    el = st.session_state.get("lang", "el") == "el"
+    i = 0 if el else 1
+    mk = f"pn-feat-{kind}-{key}"
+    st.markdown(_pet_feature_banner_css(mk, F["dark"]), unsafe_allow_html=True)
+    tc, bc = ("#fff", "#D5DCFF") if F["dark"] else ("#0B1B4B", "#5B6794")
+    with st.container(border=True):
+        st.markdown(
+            f'<div class="{mk}" style="padding:4px 4px 2px;">'
+            f'<span class="pn-eyebrow {"dark" if F["dark"] else ""}">{F["eb"][i]}</span>'
+            f'<div style="font-family:Sora,Inter,sans-serif;color:{tc};font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:12px 0 6px;">{F["title"][i]}</div>'
+            f'<div style="color:{bc};font-size:13.5px;line-height:1.6;margin-bottom:10px;">{F["body"][i]}</div></div>',
+            unsafe_allow_html=True)
+        if st.button(F["cta"][i], key=f"pnfeat_{kind}_{key}", use_container_width=True,
+                     type=("secondary" if F["dark"] else "primary")):
+            _need = not (st.session_state.get("pet") or {}).get("name")
+            _goto("intake" if _need else F["screen"])
+
+
+def render_pet_home():
+    """Hub shown after the profile: pet card + feature cards (HAL-style home)."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    pet = st.session_state.pet or {}
+    if not pet.get("name"):
+        st.session_state.screen = "intake"
+        st.rerun()
+    render_pet_nav("dashboard")
+    nm = _html.escape(str(pet.get("name", "")))
+    chips = []
+    if pet.get("species_label"):
+        chips.append(_html.escape(str(pet["species_label"])))
+    if pet.get("breed") and pet.get("breed") != "—":
+        chips.append(_html.escape(str(pet["breed"])))
+    ay, am = int(pet.get("age_y") or 0), int(pet.get("age_m") or 0)
+    if ay or am:
+        chips.append((f"{ay} έτ." if el else f"{ay} y") + (f" {am} μ." if (am and el) else (f" {am} m" if am else "")))
+    if pet.get("weight"):
+        chips.append(f"{pet['weight']} kg")
+    chips_html = "".join(f'<span class="pn-eyebrow dark" style="text-transform:none;letter-spacing:.02em;font-size:12px;">{c}</span>' for c in chips)
+    mascot = render_mascot(mascot_for_pet(pet) or "dog", size=92)
+    greet = (f"Γεια σου, {nm}!" if el else f"Hi, {nm}!")
+    sub = ("Τι θα κάνουμε σήμερα για την υγεία και τα χρόνια του;" if el else "What shall we do today for their health and longevity?")
+    st.markdown(f"""
+<div style="background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), #1237C9;
+  border-radius:26px;padding:24px 26px;color:#fff;display:flex;gap:20px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 30px 60px -34px rgba(18,55,201,.8);margin:0 0 6px;">
+  <div style="background:#FFDCC7;border-radius:24px;padding:10px;flex-shrink:0;">{mascot}</div>
+  <div style="flex:1 1 260px;min-width:0;">
+    <div style="font:700 11px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#FFB48F;">PETAINURSE</div>
+    <div style="font-family:Sora,Inter,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:6px 0 4px;">{greet}</div>
+    <div style="color:#D5DCFF;font-size:14px;line-height:1.5;margin-bottom:12px;">{sub}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">{chips_html}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+    if st.button(("✏️ Αλλαγή προφίλ" if el else "✏️ Edit profile"), key="pnhome_edit"):
+        st.session_state.intake_draft = dict(st.session_state.pet)
+        st.session_state.intake_step = 0
+        _goto("intake")
+
+    def _sec(label):
+        st.markdown(f'<div class="pn-sec">{label}</div>', unsafe_allow_html=True)
+
+    _sec("ΕΚΤΙΜΗΣΗ ΥΓΕΙΑΣ" if el else "HEALTH ASSESSMENT")
+    c1, c2 = st.columns(2, gap="small", vertical_alignment="top")
+    with c1:
+        render_pet_feature_card("assess", "home")
+    with c2:
+        render_pet_feature_card("photo", "home")
+    _sec("ΝΕΕΣ ΥΠΗΡΕΣΙΕΣ" if el else "NEW SERVICES")
+    c3, c4 = st.columns(2, gap="small", vertical_alignment="top")
+    with c3:
+        render_pet_feature_card("scan", "home")
+    with c4:
+        render_pet_feature_card("longevity", "home")
+
+    S = st.session_state.get("longevity") or {}
+    if S.get("result"):
+        _sec("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK")
+        render_pet_longevity_result(S["result"], lang, compact=True)
+    _render_disclaimer_strip()
+    _emergency_banner()
+
+
+def render_pet_longevity_result(res, lang, compact=False):
+    if not res:
+        return
+    el = lang == "el"
+    st.markdown(_pet_result_card_html(res, lang), unsafe_allow_html=True)
+    for a in res.get("alerts", []):
+        st.error(a)
+    st.markdown("".join(_pet_pillar_html(pl, _plg.LEVELS) for pl in res.get("pillars", [])), unsafe_allow_html=True)
+    if compact:
+        return
+    for n in res.get("notes", []):
+        st.warning(n)
+    if res.get("plan"):
+        st.markdown("**" + ("Το πλάνο σας" if el else "Your plan") + "**")
+        for p_ in res["plan"]:
+            st.markdown(f"- {p_}")
+
+
+def render_pet_scan():
+    """Breathing (camera or tap) + pulse (tap) — results feed vitals, triage and the longevity check."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    pet = st.session_state.pet or {}
+    if not pet.get("name"):
+        st.session_state.screen = "intake"
+        st.rerun()
+    render_pet_nav("scan")
+    S = _lg_state()
+    nm = pet.get("name", "")
+    render_doc_header(
+        "Αναπνοές & σφυγμοί", "Breathing & pulse", icon="🫁",
+        sub_el=f"Μέτρηση ηρεμίας για {nm}", sub_en=f"Resting measurement for {nm}",
+        mascot_key=mascot_for_pet(pet))
+    st.markdown(
+        '<div style="font-size:13.5px;color:#5B6794;line-height:1.55;margin:-4px 2px 14px;">' + (
+            "Οι <b>αναπνοές στον ύπνο</b> είναι ο πιο χρήσιμος δείκτης καρδιάς στο σπίτι: πάνω από <b>30 το λεπτό</b> σε ηρεμία αξίζει έλεγχο. "
+            "Είναι <b>εκτίμηση</b> — όχι διάγνωση."
+            if el else
+            "<b>Sleeping breathing rate</b> is the most useful heart check at home: persistently above <b>30 a minute</b> at rest deserves a check. "
+            "It is an <b>estimate</b> — not a diagnosis.") + '</div>', unsafe_allow_html=True)
+
+    def _step(n, title, done=False):
+        st.markdown('<div style="display:flex;align-items:baseline;gap:10px;font-family:Sora,Inter,sans-serif;font-size:19px;font-weight:700;'
+                    'color:#0B1B4B;letter-spacing:-.015em;margin:20px 2px 10px;">'
+                    f'<span style="font:700 12.5px Inter,sans-serif;color:#1237C9;">{n:02d}</span>{title}'
+                    + (' <span style="color:#059669;font-size:14px;">✓</span>' if done else "") + '</div>', unsafe_allow_html=True)
+
+    # 01 — breathing
+    _step(1, "Αναπνοές στον ύπνο" if el else "Sleeping breaths", done=bool(S.get("breath")))
+    if S.get("breath"):
+        b = S["breath"]
+        lv = _plg.level(_plg.srr_level(b["bpm"]), lang)
+        st.success("✓ " + (f"{b['bpm']} αναπνοές/λεπτό" if el else f"{b['bpm']} breaths/min") + f" · {lv['label']}")
+        if b["bpm"] >= 35:
+            st.warning("⚠️ " + ("Πάνω από 35 στην ηρεμία: επανάλαβε αύριο στον ύπνο και μίλα με τον κτηνίατρο αν μένει πάνω από 30. Αν έχει δύσπνοια ή μώβιες ούλες, πήγαινε άμεσα σε επείγοντα."
+                               if el else "Above 35 at rest: repeat tomorrow while asleep and talk to your vet if it stays above 30. If there is laboured breathing or blue gums, go to an emergency clinic now."))
+        if st.button(("↺ Νέα μέτρηση αναπνοών" if el else "↺ Measure breathing again"), key="pnscan_redo_b"):
+            S["breath"] = None; S["result"] = None
+            st.session_state["_pn_b_n"] = st.session_state.get("_pn_b_n", 0) + 1
+            st.rerun()
+    else:
+        v = petscan_widget("breath", key=f"pn_breath_{st.session_state.get('_pn_b_n', 0)}", duration=60)
+        if v and v.get("kind") == "breath":
+            S["breath"] = v; S["result"] = None
+            _vv = dict(st.session_state.vitals or {}); _vv["br"] = int(v["bpm"]); st.session_state.vitals = _vv
+            st.rerun()
+
+    # 02 — pulse by hand
+    _step(2, "Σφυγμοί με το χέρι (προαιρετικό)" if el else "Pulse by hand (optional)", done=bool(S.get("pulse")))
+    if S.get("pulse"):
+        p_ = S["pulse"]
+        st.success("✓ " + (f"~{p_['bpm']} σφυγμοί/λεπτό" if el else f"~{p_['bpm']} beats/min"))
+        if st.button(("↺ Νέα μέτρηση σφυγμών" if el else "↺ Measure pulse again"), key="pnscan_redo_p"):
+            S["pulse"] = None; S["result"] = None
+            st.session_state["_pn_p_n"] = st.session_state.get("_pn_p_n", 0) + 1
+            st.rerun()
+    else:
+        with st.expander(("👆 Πάτα σε κάθε χτύπο (15″)" if el else "👆 Tap along with the pulse (15″)"), expanded=False):
+            v = petscan_widget("hr", key=f"pn_pulse_{st.session_state.get('_pn_p_n', 0)}")
+            if v and v.get("kind") == "hr":
+                S["pulse"] = v; S["result"] = None
+                _vv = dict(st.session_state.vitals or {}); _vv["hr"] = int(v["bpm"]); st.session_state.vitals = _vv
+                st.rerun()
+
+    if S.get("breath") or S.get("pulse"):
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(("💬 Συνέχεια στην εκτίμηση" if el else "💬 Continue to assessment"), type="primary", use_container_width=True, key="pnscan_go_triage"):
+                _goto("vitals")
+        with c2:
+            if st.button(("🧬 Έλεγχος μακροζωίας" if el else "🧬 Longevity check"), use_container_width=True, key="pnscan_go_lg"):
+                _goto("longevity")
+    _render_disclaimer_strip()
+
+
+def render_pet_longevity():
+    lang = st.session_state.lang
+    el = lang == "el"
+    pet = st.session_state.pet or {}
+    if not pet.get("name"):
+        st.session_state.screen = "intake"
+        st.rerun()
+    render_pet_nav("longevity")
+    S = _lg_state()
+    sp = pet.get("species_key", "dog")
+    nm = pet.get("name", "")
+    render_doc_header(
+        "Έλεγχος μακροζωίας", "Longevity check", icon="🧬",
+        sub_el=f"Ηλικία σε ανθρώπινα χρόνια, ευεξία και πλάνο για {nm}",
+        sub_en=f"Age in human years, wellness and a plan for {nm}",
+        mascot_key=mascot_for_pet(pet))
+    st.markdown(
+        '<div style="font-size:13.5px;color:#5B6794;line-height:1.55;margin:-4px 2px 14px;">' + (
+            "Περίπου <b>5 λεπτά</b>: λίγες ερωτήσεις για βάρος, δόντια και δραστηριότητα, και — αν θέλεις — μέτρηση αναπνοών στον ύπνο. "
+            "Είναι <b>εκτίμηση ευεξίας</b>, όχι ιατρική εξέταση."
+            if el else
+            "About <b>5 minutes</b>: a few questions about weight, teeth and activity, plus — if you like — a sleeping breath count. "
+            "It is a <b>wellness estimate</b>, not a medical test.") + '</div>', unsafe_allow_html=True)
+    if sp not in _plg.SUPPORTED:
+        st.warning("Ο έλεγχος μακροζωίας είναι σχεδιασμένος για σκύλους, γάτες και κουνέλια. Για άλλα είδη χρησιμοποίησε την εκτίμηση συμπτωμάτων."
+                   if el else "The longevity check is designed for dogs, cats and rabbits. For other species use the symptom assessment.")
+        if st.button(("← Αρχική" if el else "← Home"), key="pnlg_unsup_back"):
+            _goto("dashboard")
+        return
+
+    def _step(n, title, done=False):
+        st.markdown('<div style="display:flex;align-items:baseline;gap:10px;font-family:Sora,Inter,sans-serif;font-size:19px;font-weight:700;'
+                    'color:#0B1B4B;letter-spacing:-.015em;margin:20px 2px 10px;">'
+                    f'<span style="font:700 12.5px Inter,sans-serif;color:#1237C9;">{n:02d}</span>{title}'
+                    + (' <span style="color:#059669;font-size:14px;">✓</span>' if done else "") + '</div>', unsafe_allow_html=True)
+
+    q = S["q"]
+    # 01 — breathing (re-uses a scan already made)
+    _step(1, "Αναπνοές στον ύπνο (προαιρετικό)" if el else "Sleeping breaths (optional)", done=bool(S.get("breath")))
+    if S.get("breath"):
+        st.success("✓ " + (f"{S['breath']['bpm']} αναπνοές/λεπτό" if el else f"{S['breath']['bpm']} breaths/min"))
+        if st.button(("↺ Νέα μέτρηση" if el else "↺ Measure again"), key="pnlg_redo_b"):
+            S["breath"] = None; S["result"] = None
+            st.session_state["_pn_b_n"] = st.session_state.get("_pn_b_n", 0) + 1
+            st.rerun()
+    else:
+        with st.expander(("🫁 Μέτρησε αναπνοές με την κάμερα ή με το χέρι" if el else "🫁 Count breaths with the camera or by hand"), expanded=False):
+            v = petscan_widget("breath", key=f"pn_breath_{st.session_state.get('_pn_b_n', 0)}", duration=60)
+            if v and v.get("kind") == "breath":
+                S["breath"] = v; S["result"] = None
+                _vv = dict(st.session_state.vitals or {}); _vv["br"] = int(v["bpm"]); st.session_state.vitals = _vv
+                st.rerun()
+
+    # 02 — questionnaire
+    _step(2, "Λίγες ερωτήσεις" if el else "A few questions", done=bool(S.get("result")))
+    with st.container(border=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            _ribs = {("Τα νιώθω εύκολα, φαίνονται" if el else "Easy to feel, visible"): "easy",
+                     ("Τα νιώθω με ελαφρύ άγγιγμα" if el else "Feel them with light touch"): "ok",
+                     ("Τα νιώθω δύσκολα, με πίεση" if el else "Hard to feel, need pressure"): "hard",
+                     ("Δεν τα νιώθω καθόλου" if el else "Can't feel them at all"): "none"}
+            _rk = list(_ribs.keys())
+            _cur = next((k for k, v_ in _ribs.items() if v_ == q.get("ribs", "ok")), _rk[1])
+            ribs = st.selectbox(("Πλευρά (ψηλάφηση)" if el else "Ribs (feel along the side)"), _rk, index=_rk.index(_cur), key="pnlg_ribs")
+        with c2:
+            _wst = {("Έντονη μέση από πάνω" if el else "Clear waist from above"): "marked",
+                    ("Ελαφριά μέση" if el else "Slight waist"): "slight",
+                    ("Ίσιο σώμα, χωρίς μέση" if el else "Straight, no waist"): "none",
+                    ("Φουσκωμένη κοιλιά/πλάτη" if el else "Rounded belly/back"): "bulge"}
+            _wk = list(_wst.keys())
+            _cur = next((k for k, v_ in _wst.items() if v_ == q.get("waist", "slight")), _wk[1])
+            waist = st.selectbox(("Σχήμα σώματος (από πάνω)" if el else "Body shape (from above)"), _wk, index=_wk.index(_cur), key="pnlg_waist")
+        _dn = {("Καθαρά δόντια, φρέσκια ανάσα" if el else "Clean teeth, fresh breath"): "clean",
+               ("Ελαφριά πλάκα" if el else "Light plaque"): "mild",
+               ("Καφέ πέτρα, κόκκινα ούλα" if el else "Brown tartar, red gums"): "tartar",
+               ("Έντονη μυρωδιά, πόνος ή χαλαρά δόντια" if el else "Strong smell, pain or loose teeth"): "bad"}
+        _dk = list(_dn.keys())
+        _cur = next((k for k, v_ in _dn.items() if v_ == q.get("dental", "mild")), _dk[1])
+        dental = st.selectbox(("Στόμα & δόντια" if el else "Mouth & teeth"), _dk, index=_dk.index(_cur), key="pnlg_dental")
+        c3, c4 = st.columns(2)
+        with c3:
+            act = st.slider(("Λεπτά δραστηριότητας την ημέρα" if el else "Minutes of activity per day"), 0, 180,
+                            int(q.get("active_min", 30)), step=5, key="pnlg_act")
+        with c4:
+            indoor = st.checkbox(("Ζει κυρίως μέσα στο σπίτι" if el else "Lives mainly indoors"), value=bool(q.get("indoor", True)), key="pnlg_indoor")
+        v1 = st.checkbox(("Εμβόλια σε ισχύ" if el else "Vaccines up to date"), value=bool(q.get("vaccines_ok")), key="pnlg_vax")
+        v2 = st.checkbox(("Αντιπαρασιτική αγωγή (ψύλλοι, τσιμπούρια, σκουλήκια)" if el else "Parasite prevention (fleas, ticks, worms)"), value=bool(q.get("parasites_ok")), key="pnlg_par")
+        v3 = st.checkbox(("Check-up στον κτηνίατρο τους τελευταίους 12 μήνες" if el else "Vet check-up in the last 12 months"), value=bool(q.get("checkup_12m")), key="pnlg_chk")
+        q.update({"ribs": _ribs[ribs], "waist": _wst[waist], "dental": _dn[dental], "active_min": int(act),
+                  "indoor": bool(indoor), "vaccines_ok": bool(v1), "parasites_ok": bool(v2), "checkup_12m": bool(v3)})
+    if not pet.get("weight"):
+        st.caption("💡 " + ("Πρόσθεσε το βάρος στο προφίλ για πιο ακριβές εύρος ζωής." if el else "Add the weight to the profile for a more accurate lifespan range."))
+
+    if st.button(("🧬 Δες το αποτέλεσμα" if el else "🧬 See the result"), type="primary", use_container_width=True, key="pnlg_go"):
+        S["result"] = _plg.analyse(pet, q, breath=S.get("breath"), pulse=S.get("pulse"), lang=lang)
+        S["result"]["date"] = datetime.now().strftime("%d/%m/%Y")
+        for a in S["result"].get("alerts", []):
+            if a.startswith("🚨"):
+                _set_emergency_from_text(a)
+        st.rerun()
+
+    if S.get("result"):
+        _step(3, "Το αποτέλεσμά σας" if el else "Your result", done=True)
+        render_pet_longevity_result(S["result"], lang)
+        st.caption("ℹ️ " + ("Μέθοδοι: ηλικία σε ανθρώπινα (επιγενετικό ρολόι Wang 2020 για σκύλους, πίνακας AAFP για γάτες), 9βάθμια κλίμακα σωματικής κατάστασης, "
+                           "αναπνοές ύπνου >30/λεπτό ως όριο ελέγχου (καρδιολογική πρακτική). Εκτίμηση ευεξίας — όχι διάγνωση."
+                           if el else "Methods: human-equivalent age (Wang 2020 epigenetic clock for dogs, AAFP table for cats), 9-point body condition scale, "
+                           "sleeping breathing rate >30/min as the check threshold (cardiology practice). Wellness estimate — not a diagnosis."))
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(("💬 Συνέχεια στην εκτίμηση" if el else "💬 Continue to assessment"), use_container_width=True, key="pnlg_to_assess"):
+                _goto("vitals")
+        with c2:
+            if st.button(("↺ Νέος έλεγχος" if el else "↺ New check"), use_container_width=True, key="pnlg_new"):
+                st.session_state.pop("longevity", None); st.rerun()
+    _render_disclaimer_strip()
+
+
 # ── ROUTER ────────────────────────────────────────────────────────────────────
 _page_param = st.query_params.get("page")
 if _page_param == "admin":
@@ -7167,9 +7583,12 @@ if screen == "home":
     st.session_state.screen = "intake"
     st.rerun()
 elif screen=="intake": render_intake()
-elif screen=="vitals": render_vitals()
-elif screen=="triage": render_triage()
-elif screen=="report": render_report()
+elif screen=="dashboard": render_pet_home()
+elif screen=="scan": render_pet_scan()
+elif screen=="longevity": render_pet_longevity()
+elif screen=="vitals": render_pet_nav("vitals"); render_vitals()
+elif screen=="triage": render_pet_nav("triage"); render_triage()
+elif screen=="report": render_pet_nav("triage"); render_report()
 else: render_intake()
 
 # Persist login cookie on a clean render pass after successful login
