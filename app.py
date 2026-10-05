@@ -6904,7 +6904,9 @@ def render_pet_landing(gate=False):
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
-    render_benchmark_section(lang)
+    # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
+    if os.environ.get("SHOW_BENCHMARK", "off").strip().lower() in ("1", "on", "true", "yes"):
+        render_benchmark_section(lang)
     render_plans_section(lang, gate, _cta)
     if gate:
         if st.session_state.get("_login_plan"):
