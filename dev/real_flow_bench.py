@@ -57,9 +57,12 @@ def call(model, system, messages, max_tokens=1024, temperature=None):
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 529) and attempt < 5:
                 time.sleep(4 * (attempt + 1) + random.random() * 3); continue
-            return "ERR HTTP %s %s" % (e.code, e.read()[:200])
+            msg = "ERR HTTP %s %s" % (e.code, e.read()[:300])
+            print("@@E", model, msg, flush=True)
+            return msg
         except Exception as e:
             if attempt < 5: time.sleep(4); continue
+            print("@@E", model, "ERR %s" % e, flush=True)
             return "ERR %s" % e
     return "ERR"
 
@@ -119,6 +122,8 @@ def run_case(v, nurse_model, rep):
     stop = "max_turns"; banner = False
     for turn in range(MAX_NURSE_TURNS):
         reply = call(nurse_model, system, chat, 3000)
+        if reply.startswith("ERR"):
+            stop = "api_error"; break
         chat.append({"role": "assistant", "content": reply})
         n = strip_accents(reply)
         if any(strip_accents(k) in n for k in EMERGENCY_KEYWORDS): banner = True
@@ -127,6 +132,8 @@ def run_case(v, nurse_model, rep):
         if any(strip_accents(p) in n for p in READY):
             stop = "ready"; break
         ans = call(OWNER_MODEL, osys, [{"role": "user", "content": "The nurse asked: \"%s\"\nReply as the owner." % reply}], 200, 0.0)
+        if ans.startswith("ERR"):
+            stop = "api_error"; break
         chat.append({"role": "user", "content": ans.strip()})
     transcript = "\n".join(("OWNER: " if m["role"] == "user" else "NURSE: ") + m["content"] for m in chat)
     report = ""
@@ -138,7 +145,8 @@ def run_case(v, nurse_model, rep):
     jin = "CHAT:\n" + transcript + ("\n\nREPORT:\n" + report if report else "")
     judge = call(JUDGE_MODEL, JUDGE_SYS, [{"role": "user", "content": jin}], 1024).strip().upper()
     judge = next((l for l in ("NO_GUIDANCE", "SELF_CARE", "EMERGENCY", "URGENT") if l in judge), "INVALID")
-    last_assist = next(m["content"] for m in reversed(chat) if m["role"] == "assistant")
+    last_assist = next((m["content"] for m in reversed(chat) if m["role"] == "assistant"), "")
+    if stop == "api_error": judge = "API_ERROR"
     return {"id": v["id"], "gt": v["ground_truth_category"], "model": nurse_model, "rep": rep, "stop": stop,
             "turns": sum(1 for m in chat if m["role"] == "assistant"), "banner": banner,
             "app_level": app_level(last_assist), "judge": judge, "transcript": transcript, "report_head": report[:1500]}
