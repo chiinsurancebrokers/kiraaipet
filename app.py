@@ -1791,12 +1791,14 @@ def render_history_consent(lang="el", key="hc"):
         '<div style="background:#EEF1FF;border:1px solid #D0D6F5;border-radius:20px;padding:16px 18px;margin:8px 0 8px;">'
         f'<div style="font:800 16px Sora,Inter,sans-serif;color:#0B1B4B;">📁 {"Να κρατάμε το ιστορικό του κατοικιδίου σου;" if el else "Keep your pet’s history?"}</div>'
         '<div style="font-size:13px;color:#2B3566;line-height:1.6;margin-top:6px;">'
-        + (f"Αν συμφωνείς, αποθηκεύουμε τα <b>κείμενα</b> των αποτελεσμάτων (αναφορές, εξετάσεις, φωτογραφίες, ζωτικά), κρυπτογραφημένα, "
-           f"ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να τα έχουν ως αναφορά και να συγκρίνεις νέες εξετάσεις. "
-           f"<b>Διαγράφονται οριστικά μετά από {HISTORY_MONTHS} μήνες.</b> Δεν αποθηκεύουμε αρχεία ή φωτογραφίες. Μπορείς να αλλάξεις γνώμη ή να σβήσεις τα πάντα όποτε θέλεις."
+        + (f"Αν συμφωνείς, κρατάμε <b>μόνο το γραπτό συμπέρασμα της AI</b> (π.χ. «η ALT είναι αυξημένη», «ερυθρότητα στο μάτι») από τις αναφορές, τις εξετάσεις, τις φωτογραφίες και τα ζωτικά, κρυπτογραφημένο, "
+           f"ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να το έχουν ως αναφορά και να συγκρίνεις νέες εξετάσεις. "
+           f"<b>Το ίδιο το PDF ή η φωτογραφία σου δεν αποθηκεύεται ποτέ</b>· μένει μόνο το κείμενο της ανάλυσης. "
+           f"<b>Διαγράφεται οριστικά μετά από {HISTORY_MONTHS} μήνες.</b> Μπορείς να αλλάξεις γνώμη ή να σβήσεις τα πάντα όποτε θέλεις."
            if el else
-           f"If you agree, we store the result <b>texts</b> (reports, labs, photos, vitals), encrypted, so the nurse, the report and the second opinion can use them as reference and you can compare new results. "
-           f"<b>They are permanently deleted after {HISTORY_MONTHS} months.</b> We never store files or photos. You can change your mind or delete everything at any time.")
+           f"If you agree, we keep <b>only the AI’s written conclusion</b> (e.g. “ALT is elevated”, “redness in the eye”) from reports, labs, photos and vitals, encrypted, so the nurse, the report and the second opinion can use it as reference and you can compare new results. "
+           f"<b>Your actual PDF or photo is never stored</b>; only the analysis text remains. "
+           f"<b>It is permanently deleted after {HISTORY_MONTHS} months.</b> You can change your mind or delete everything at any time.")
         + '</div></div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
@@ -2479,11 +2481,11 @@ def render_history_page():
         '.pn-h p{font-size:13px;color:#5B6794;line-height:1.55;margin:0;}'
         '.pn-hr{font-size:12px;color:#5B6794;margin:0 0 6px;}</style>'
         f'<div class="pn-h"><h4>📁 {"Αρχείο" if el else "Archive"} · {_html.escape(nm)}</h4><p>'
-        + (f"Εδώ μένουν τα ευρήματα του {_html.escape(nm)} (αναφορές, εξετάσεις, φωτογραφίες, ζωτικά) ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να τα έχουν ως αναφορά, "
-           f"και να ανεβάζεις νέες εξετάσεις για σύγκριση. <b>Διατηρούνται {HISTORY_MONTHS} μήνες και μετά διαγράφονται μόνιμα.</b> Αποθηκεύουμε μόνο τα κείμενα των αποτελεσμάτων, όχι τα αρχεία ή τις φωτογραφίες σου, κρυπτογραφημένα."
+        + (f"Εδώ μένουν τα γραπτά συμπεράσματα της AI για τον/την {_html.escape(nm)} (αναφορές, εξετάσεις, φωτογραφίες, ζωτικά) ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να τα έχουν ως αναφορά, "
+           f"και να ανεβάζεις νέες εξετάσεις για σύγκριση. <b>Διατηρούνται {HISTORY_MONTHS} μήνες και μετά διαγράφονται μόνιμα.</b> Δεν αποθηκεύουμε ποτέ το ίδιο το PDF ή τη φωτογραφία σου, μόνο το κείμενο της ανάλυσης, κρυπτογραφημένο."
            if el else
-           f"{_html.escape(nm)}'s findings (reports, labs, photos, vitals) are kept here so the nurse, the report and the second opinion can use them as reference, "
-           f"and so you can upload new results to compare. <b>They are kept for {HISTORY_MONTHS} months and then permanently deleted.</b> We store only the result texts, never your files or photos, encrypted.")
+           f"The AI’s written conclusions for {_html.escape(nm)} (reports, labs, photos, vitals) are kept here so the nurse, the report and the second opinion can use them as reference, "
+           f"and so you can upload new results to compare. <b>They are kept for {HISTORY_MONTHS} months and then permanently deleted.</b> We never store your actual PDF or photo, only the analysis text, encrypted.")
         + '</p></div>', unsafe_allow_html=True)
     consent = history_consent(email)
     if consent is None:
@@ -6243,9 +6245,9 @@ def render_privacy_page():
             "με το κουμπί παρακάτω.\n"
             "- **Προφίλ κατοικιδίων** (όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό που συμπλήρωσες): αποθηκεύονται "
             "κρυπτογραφημένα (Fernet) στον λογαριασμό σου ώστε να τα βρίσκεις όταν ξαναμπείς. Διαγράφονται με το κουμπί παρακάτω.\n"
-            "- **Αρχείο κατοικιδίου (μόνο Plus, μόνο αν το επιτρέψεις ρητά)**: τα **κείμενα** των αποτελεσμάτων (αναφορά, δεύτερη γνώμη, ανάλυση εξετάσεων και φωτογραφιών, ζωτικά) "
-            "αποθηκεύονται κρυπτογραφημένα (Fernet) για **6 μήνες** και μετά **διαγράφονται μόνιμα και αυτόματα**. Χρησιμεύουν ως αναφορά για τις επόμενες αξιολογήσεις. "
-            "Τα ίδια τα αρχεία και οι φωτογραφίες δεν αποθηκεύονται ποτέ. Μπορείς να το απενεργοποιήσεις ή να διαγράψεις εγγραφές ανά πάσα στιγμή από «Αρχείο κατοικιδίου».\n"
+            "- **Αρχείο κατοικιδίου (μόνο Plus, μόνο αν το επιτρέψεις ρητά)**: το **γραπτό συμπέρασμα της AI** (αναφορά, δεύτερη γνώμη, κείμενο ανάλυσης εξετάσεων και φωτογραφιών, ζωτικά) "
+            "αποθηκεύεται κρυπτογραφημένο (Fernet) για **6 μήνες** και μετά **διαγράφεται μόνιμα και αυτόματα**. Χρησιμεύει ως αναφορά για τις επόμενες αξιολογήσεις. "
+            "Τα ίδια τα αρχεία PDF και οι φωτογραφίες δεν αποθηκεύονται ποτέ. Μπορείς να το απενεργοποιήσεις ή να διαγράψεις εγγραφές ανά πάσα στιγμή από «Αρχείο κατοικιδίου».\n"
             "- **Συνδρομή & χρήση**: κρατάμε τη συνδρομή σου Plus και μόνο το πλήθος (ημερομηνίες) των δωρεάν ελέγχων "
             "κάθε μήνα, για να εφαρμόζεται το δωρεάν όριο· όχι το περιεχόμενο των ελέγχων.\n"
             "- **Λογαριασμός (email) & προτιμήσεις γλώσσας**: κρατούνται μόνο όσο είσαι συνδεδεμένος/η.\n"
@@ -6275,9 +6277,9 @@ def render_privacy_page():
             "the button below.\n"
             "- **Pet profiles** (name, species, breed, age, weight, history you entered): stored Fernet-encrypted on your "
             "account so they are there when you sign back in. Deleted by the button below.\n"
-            "- **Pet archive (Plus only, and only if you explicitly opt in)**: the result **texts** (report, second opinion, lab and photo analysis, vitals) are stored "
-            "Fernet-encrypted for **6 months** and then **permanently and automatically deleted**. They serve as reference for later assessments. "
-            "The files and photos themselves are never stored. You can turn it off or delete entries any time from “Pet archive”.\n"
+            "- **Pet archive (Plus only, and only if you explicitly opt in)**: the **AI’s written conclusion** (report, second opinion, text of the lab and photo analysis, vitals) is stored "
+            "Fernet-encrypted for **6 months** and then **permanently and automatically deleted**. It serves as reference for later assessments. "
+            "The PDF files and photos themselves are never stored. You can turn it off or delete entries any time from “Pet archive”.\n"
             "- **Subscription & usage**: we keep your Plus subscription and only the count (dates) of free checks "
             "per month to apply the free limit — not the content of the checks.\n"
             "- **Account email & language preference**: kept only while you're logged in.\n"
