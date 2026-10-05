@@ -802,6 +802,12 @@ def claude_analyze_pet_lab(file_bytes, mime_type, pet, conversation, lang, file_
         for m in (conversation or [])[-6:]
     ) if conversation else ("Δεν έχει καταγραφεί συνομιλία ακόμη." if lang=="el" else "No conversation yet.")
 
+    try:
+        _lh = history_context(pet)
+    except Exception:
+        _lh = ""
+    if _lh:
+        convo_txt += "\n\n" + _lh + "\n(Compare the new results with previous ones when the same parameters appear.)"
     species = pet.get("species_label","")
     breed   = pet.get("breed","")
     age     = f"{pet.get('age_y',0)}y {pet.get('age_m',0)}m"
@@ -1703,7 +1709,7 @@ def delete_draft(email):
         log_event("supabase_delete", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="pet_drafts")
 
 
-# ── PET PROFILES (per account, Fernet-encrypted; profiles only — never chats/photos) ──
+# ── PET PROFILES (per account, Fernet-encrypted; profiles only — findings live in the 6-month archive below) ──
 def save_pets(email, pets, active=0):
     sb = _supabase_client()
     if not sb or not email or not _ENC_OK:
@@ -1737,6 +1743,175 @@ def delete_pets(email):
         sb.table("user_pets").delete().eq("user_email", email).execute()
     except Exception as e:
         log_event("supabase_delete", ok=False, error=str(e), table="user_pets")
+
+
+# ── PET HISTORY ARCHIVE (Plus) ─────────────────────────────────────────────────
+# Text findings only (report + second opinion, lab analysis text, photo analysis text, vitals) —
+# never the uploaded files/photos. Fernet-encrypted in `pet_records`; every record expires after
+# HISTORY_MONTHS months and is then permanently deleted (daily pg_cron job + purge on every read).
+HISTORY_MONTHS = 6
+_HIST_KINDS = {"report": ("📋", "Αναφορά", "Report"), "lab": ("🧪", "Εξέταση", "Lab result"),
+               "photo": ("📷", "Φωτογραφία", "Photo"), "vitals": ("🫀", "Ζωτικά", "Vitals")}
+
+
+def _pet_key(email, pet=None):
+    pet = pet if isinstance(pet, dict) else (st.session_state.get("pet") or {})
+    nm = str(pet.get("name", "")).strip().lower()
+    return hashlib.sha256(f"{(email or '').lower()}|{nm}".encode()).hexdigest()[:16]
+
+
+def history_enabled(email=""):
+    email = email or st.session_state.get("auth_user", "")
+    if not (email and _ENC_OK and paywall_enabled() and _supabase_client()):
+        return False
+    if not has_plus(email):
+        return False
+    if "_hist_off" not in st.session_state:
+        st.session_state["_hist_off"] = bool(load_user_pref(email, "history_off", False))
+    return not st.session_state["_hist_off"]
+
+
+def set_history_enabled(email, on):
+    st.session_state["_hist_off"] = not on
+    save_user_pref(email, "history_off", not on)
+    st.session_state.pop("_hist_ctx", None)
+
+
+def save_record(kind, title, payload, pet=None):
+    """Archive one finding for the active pet (Plus, history on). Silent no-op otherwise."""
+    email = st.session_state.get("auth_user", "")
+    try:
+        if not history_enabled(email):
+            return
+        pet = pet if isinstance(pet, dict) else (st.session_state.get("pet") or {})
+        if not pet.get("name"):
+            return
+        body = {"title": str(title)[:140], "payload": payload, "pet": pet.get("name", "")}
+        raw = json.dumps(body, ensure_ascii=False)
+        sig = hashlib.sha256((kind + raw).encode()).hexdigest()
+        done = st.session_state.setdefault("_hist_saved", set())
+        if sig in done:
+            return
+        sb = _supabase_client()
+        _ins = sb.table("pet_records").insert({
+            "user_email": email, "pet_key": _pet_key(email, pet), "kind": kind,
+            "data": _fernet().encrypt(raw.encode()).decode(),
+            "expires_at": (datetime.utcnow() + timedelta(days=30 * HISTORY_MONTHS + 1)).isoformat() + "Z",
+        }).execute()
+        try:
+            st.session_state.setdefault("_hist_ids", set()).add((_ins.data or [{}])[0].get("id"))
+        except Exception:
+            pass
+        done.add(sig)
+        st.session_state.pop("_hist_ctx", None)
+        log_event("supabase_write", ok=True, table="pet_records", kind=kind)
+    except Exception as e:
+        log_event("supabase_write", ok=False, error=str(e)[:120], table="pet_records")
+
+
+def purge_expired_records(email):
+    sb = _supabase_client()
+    if not (sb and email):
+        return
+    try:
+        sb.table("pet_records").delete().eq("user_email", email).lt("expires_at", datetime.utcnow().isoformat() + "Z").execute()
+    except Exception as e:
+        log_event("supabase_delete", ok=False, error=str(e)[:120], table="pet_records")
+
+
+def load_records(pet=None, email=""):
+    """Decrypted, non-expired records for a pet, newest first: [{id, kind, created_at, expires_at, title, payload}]."""
+    email = email or st.session_state.get("auth_user", "")
+    sb = _supabase_client()
+    if not (sb and email and _ENC_OK):
+        return []
+    purge_expired_records(email)
+    out = []
+    try:
+        res = (sb.table("pet_records").select("id,kind,data,created_at,expires_at")
+                 .eq("user_email", email).eq("pet_key", _pet_key(email, pet))
+                 .order("created_at", desc=True).limit(100).execute())
+        for r in res.data or []:
+            try:
+                d = json.loads(_fernet().decrypt(r["data"].encode()).decode())
+            except Exception:
+                continue
+            out.append({"id": r["id"], "kind": r["kind"], "created_at": r["created_at"], "expires_at": r["expires_at"],
+                        "title": d.get("title", ""), "payload": d.get("payload", {})})
+    except Exception as e:
+        log_event("supabase_read", ok=False, error=str(e)[:120], table="pet_records")
+    return out
+
+
+def delete_record(rec_id, email=""):
+    email = email or st.session_state.get("auth_user", "")
+    sb = _supabase_client()
+    if sb and email:
+        try:
+            sb.table("pet_records").delete().eq("id", rec_id).eq("user_email", email).execute()
+        except Exception as e:
+            log_event("supabase_delete", ok=False, error=str(e)[:120], table="pet_records")
+    st.session_state.pop("_hist_ctx", None)
+
+
+def delete_all_records(pet=None, email=""):
+    email = email or st.session_state.get("auth_user", "")
+    sb = _supabase_client()
+    if sb and email:
+        try:
+            q = sb.table("pet_records").delete().eq("user_email", email)
+            if pet is not None:
+                q = q.eq("pet_key", _pet_key(email, pet))
+            q.execute()
+        except Exception as e:
+            log_event("supabase_delete", ok=False, error=str(e)[:120], table="pet_records")
+    st.session_state.pop("_hist_ctx", None)
+    st.session_state["_hist_saved"] = set()
+
+
+def _record_brief(r, limit=600):
+    p = r.get("payload") or {}
+    k = r["kind"]
+    if k == "report":
+        txt = (p.get("report", "") or "")
+        so = (p.get("second_opinion", "") or "")
+        t = f"Complaint: {p.get('complaint','')}. Assessment: {txt}" + (f" Second opinion: {so}" if so else "")
+    elif k == "lab":
+        t = p.get("analysis", "")
+    elif k == "photo":
+        t = f"{p.get('scan_label','')}: {p.get('analysis','')}"
+    else:
+        t = ", ".join(f"{a}={b}" for a, b in (p or {}).items())
+    t = " ".join(str(t).split())
+    return t[:limit] + ("…" if len(t) > limit else "")
+
+
+def history_context(pet=None, max_chars=3600):
+    """Plain-text digest of the pet's archived records (last 6 months) for the prompts. '' if none/disabled.
+    Records created in this very session are skipped (they are already in the live evidence)."""
+    email = st.session_state.get("auth_user", "")
+    if not history_enabled(email):
+        return ""
+    pet = pet if isinstance(pet, dict) else (st.session_state.get("pet") or {})
+    ck = f"{_pet_key(email, pet)}"
+    cache = st.session_state.get("_hist_ctx")
+    if cache and cache[0] == ck and time.time() - cache[1] < 90:
+        return cache[2]
+    parts, total = [], 0
+    _mine = st.session_state.get("_hist_ids", set())
+    for r in [x for x in load_records(pet, email) if x["id"] not in _mine][:12]:
+        ico, el_, en_ = _HIST_KINDS.get(r["kind"], ("", r["kind"], r["kind"]))
+        line = f"- {str(r['created_at'])[:10]} [{en_}] {r['title']}: {_record_brief(r)}"
+        if total + len(line) > max_chars:
+            break
+        parts.append(line); total += len(line)
+    txt = ""
+    if parts:
+        txt = ("PET HISTORY FROM PREVIOUS SESSIONS (archive, at most 6 months old). Use only as REFERENCE: note trends or "
+               "changes versus earlier results when relevant, never present old results as current, and never repeat them "
+               "verbatim:\n" + "\n".join(parts))
+    st.session_state["_hist_ctx"] = (ck, time.time(), txt)
+    return txt
 
 
 # ── USER PREFERENCES (per-account, plain JSON — not encrypted) ───────────────
@@ -1933,7 +2108,7 @@ def invalidate_subscription_cache(email: str):
 FREE_TRIAGE_PER_MONTH = 3
 PLUS_PRICE_MONTH = "4,99€"
 PLUS_PRICE_YEAR = "49,99€"
-PAID_SCREENS = {"vitals", "scan", "photo", "labs", "longevity", "diary", "insurance", "report"}
+PAID_SCREENS = {"vitals", "scan", "photo", "labs", "longevity", "diary", "insurance", "report", "history"}
 
 _PLUS_SERVICES = [
     ("💬", ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
@@ -2261,6 +2436,77 @@ def render_billing_agent(lang, plus, row):
         chat.append({"role": "assistant", "content": r, "action": a}); st.rerun()
 
 
+def render_history_page():
+    """Archive of the active pet's findings (Plus). 6-month retention, delete one / all, on/off switch."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    email = st.session_state.get("auth_user", "")
+    pet = st.session_state.get("pet") or {}
+    nm = pet.get("name", "")
+    st.markdown(
+        '<style>.pn-h{background:#fff;border:1px solid #DDE2F8;border-radius:22px;padding:16px 18px;margin:8px 0 12px;}'
+        '.pn-h h4{font:800 18px Sora,Inter,sans-serif;color:#0B1B4B;margin:0 0 4px;}'
+        '.pn-h p{font-size:13px;color:#5B6794;line-height:1.55;margin:0;}'
+        '.pn-hr{font-size:12px;color:#5B6794;margin:0 0 6px;}</style>'
+        f'<div class="pn-h"><h4>📁 {"Αρχείο" if el else "Archive"} · {_html.escape(nm)}</h4><p>'
+        + (f"Εδώ μένουν τα ευρήματα του {_html.escape(nm)} (αναφορές, εξετάσεις, φωτογραφίες, ζωτικά) ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να τα έχουν ως αναφορά, "
+           f"και να ανεβάζεις νέες εξετάσεις για σύγκριση. <b>Διατηρούνται {HISTORY_MONTHS} μήνες και μετά διαγράφονται μόνιμα.</b> Αποθηκεύουμε μόνο τα κείμενα των αποτελεσμάτων, όχι τα αρχεία ή τις φωτογραφίες σου, κρυπτογραφημένα."
+           if el else
+           f"{_html.escape(nm)}'s findings (reports, labs, photos, vitals) are kept here so the nurse, the report and the second opinion can use them as reference, "
+           f"and so you can upload new results to compare. <b>They are kept for {HISTORY_MONTHS} months and then permanently deleted.</b> We store only the result texts, never your files or photos, encrypted.")
+        + '</p></div>', unsafe_allow_html=True)
+    on = history_enabled(email)
+    new_on = st.toggle(("Αποθήκευση ιστορικού" if el else "Save history"), value=on, key="hist_toggle")
+    if new_on != on:
+        set_history_enabled(email, new_on); st.rerun()
+    if not new_on:
+        st.info("Το ιστορικό είναι απενεργοποιημένο: δεν αποθηκεύεται τίποτα νέο και δεν χρησιμοποιείται ως αναφορά. Τα υπάρχοντα μένουν μέχρι να λήξουν ή να τα διαγράψεις." if el
+                else "History is off: nothing new is saved or used as reference. Existing records stay until they expire or you delete them.")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button(("➕ Νέες εξετάσεις" if el else "➕ Upload new labs"), use_container_width=True, key="hist_labs", type="primary"):
+            _goto("labs")
+    with c2:
+        if st.button(("🩺 Νέος έλεγχος" if el else "🩺 New check"), use_container_width=True, key="hist_triage"):
+            _goto("triage")
+    recs = load_records(pet, email)
+    if not recs:
+        st.caption("Δεν υπάρχουν ακόμη αποθηκευμένα ευρήματα. Θα προστίθενται αυτόματα μετά από κάθε αναφορά, εξέταση ή φωτογραφία." if el
+                   else "No saved findings yet. They are added automatically after each report, lab result or photo.")
+        return
+    for r in recs:
+        ico, k_el, k_en = _HIST_KINDS.get(r["kind"], ("•", r["kind"], r["kind"]))
+        d = str(r["created_at"])[:10]
+        ex = str(r["expires_at"])[:10]
+        with st.expander(f"{ico} {k_el if el else k_en} · {d} · {r['title'][:60]}"):
+            st.markdown(f'<div class="pn-hr">🗑️ {"Διαγράφεται οριστικά στις" if el else "Permanently deleted on"} {ex}</div>', unsafe_allow_html=True)
+            p = r["payload"] or {}
+            if r["kind"] == "report":
+                st.markdown(p.get("report", ""))
+                if p.get("second_opinion"):
+                    st.markdown("**" + ("Δεύτερη γνώμη" if el else "Second opinion") + "**")
+                    st.markdown(p["second_opinion"])
+            elif r["kind"] in ("lab", "photo"):
+                st.markdown(p.get("analysis", ""))
+            else:
+                st.markdown(", ".join(f"**{a}**: {b}" for a, b in p.items()))
+            if st.button(("🗑️ Διαγραφή" if el else "🗑️ Delete"), key=f"hist_del_{r['id']}"):
+                delete_record(r["id"], email); st.rerun()
+    st.markdown("---")
+    if st.session_state.get("_hist_confirm"):
+        st.warning(("Θα διαγραφούν όλα τα αποθηκευμένα ευρήματα του " + nm + ". Δεν γίνεται αναίρεση.") if el
+                   else f"All saved findings for {nm} will be deleted. This cannot be undone.")
+        y, n = st.columns(2)
+        with y:
+            if st.button(("Ναι, διαγραφή όλων" if el else "Yes, delete all"), type="primary", use_container_width=True, key="hist_all_yes"):
+                delete_all_records(pet, email); st.session_state["_hist_confirm"] = False; st.rerun()
+        with n:
+            if st.button(("Άκυρο" if el else "Cancel"), use_container_width=True, key="hist_all_no"):
+                st.session_state["_hist_confirm"] = False; st.rerun()
+    elif st.button(("🗑️ Διαγραφή όλου του αρχείου" if el else "🗑️ Delete the whole archive"), use_container_width=True, key="hist_all"):
+        st.session_state["_hist_confirm"] = True; st.rerun()
+
+
 def render_account_page():
     lang = st.session_state.lang
     el = lang == "el"
@@ -2329,6 +2575,9 @@ def render_plan_banner(lang="el"):
     if has_plus():
         st.markdown('<div style="display:inline-block;background:#EEF1FF;color:#2328BE;border-radius:999px;font:700 12px Inter,sans-serif;padding:5px 12px;margin:0 0 10px;">'
                     '✨ PetsAIHealth Plus ' + ("ενεργό" if el else "active") + '</div>', unsafe_allow_html=True)
+        if (st.session_state.get("pet") or {}).get("name") and st.button(("📁 Αρχείο κατοικιδίου" if el else "📁 Pet archive"),
+                                                                          key="plan_hist", use_container_width=True):
+            _goto("history")
         return
     left = free_triage_left()
     dots = "".join(f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:{"#2328BE" if k < left else "#D3D9F5"};"></span>'
@@ -3402,7 +3651,8 @@ def petainurse_system(pet=None):
     # the chosen output language matches the UI language (base prompt already
     # has the right rules); otherwise appends the OUTPUT LANGUAGE OVERRIDE
     # block plus the language-specific CLINICAL TERMINOLOGY bullets.
-    return prompt + output_language_directive()
+    _h = history_context(pet)
+    return prompt + output_language_directive() + (("\n\n" + _h) if _h else "")
 
 
 # ── MASCOTS ───────────────────────────────────────────────────────────────────
@@ -5158,6 +5408,9 @@ def _second_opinion_generate(pet, lang):
         f"Write your review in {_review_lang}."
     )
     gpt_system += output_language_directive()
+    _hist = history_context(pet)
+    if _hist:
+        _evid += f"\n\n{_hist}"
     user_prompt = (
         f"PET: {pet.get('name')}, {pet.get('species_label')} "
         f"({pet.get('breed')}), {pet.get('age_y')}y\n\n"
@@ -5329,6 +5582,11 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             except Exception as _e:
                 _so, _so_err = "", str(_e)
             st.session_state.report_gpt = _so
+        _first = next((m["content"] for m in st.session_state.triage_chat if m["role"] == "user"), "")
+        save_record("report", _first[:80] or "Report",
+                    {"complaint": _first[:300], "report": st.session_state.report,
+                     "second_opinion": st.session_state.get("report_gpt", ""),
+                     "recs": st.session_state.get("report_recs") or {}}, pet)
         _progress.progress(100, text=("✅ Έτοιμη η αναφορά!" if lang=="el" else "✅ Report ready!"))
         _progress.empty()
         st.rerun()
@@ -6093,6 +6351,9 @@ def render_privacy_page():
             "με το κουμπί παρακάτω.\n"
             "- **Προφίλ κατοικιδίων** (όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό που συμπλήρωσες): αποθηκεύονται "
             "κρυπτογραφημένα (Fernet) στον λογαριασμό σου ώστε να τα βρίσκεις όταν ξαναμπείς. Διαγράφονται με το κουμπί παρακάτω.\n"
+            "- **Αρχείο κατοικιδίου (μόνο Plus)**: τα **κείμενα** των αποτελεσμάτων (αναφορά, δεύτερη γνώμη, ανάλυση εξετάσεων και φωτογραφιών, ζωτικά) "
+            "αποθηκεύονται κρυπτογραφημένα (Fernet) για **6 μήνες** και μετά **διαγράφονται μόνιμα και αυτόματα**. Χρησιμεύουν ως αναφορά για τις επόμενες αξιολογήσεις. "
+            "Τα ίδια τα αρχεία και οι φωτογραφίες δεν αποθηκεύονται ποτέ. Μπορείς να το απενεργοποιήσεις ή να διαγράψεις εγγραφές ανά πάσα στιγμή από «Αρχείο κατοικιδίου».\n"
             "- **Συνδρομή & χρήση**: κρατάμε τη συνδρομή σου Plus και μόνο το πλήθος (ημερομηνίες) των δωρεάν ελέγχων "
             "κάθε μήνα, για να εφαρμόζεται το δωρεάν όριο· όχι το περιεχόμενο των ελέγχων.\n"
             "- **Λογαριασμός (email) & προτιμήσεις γλώσσας**: κρατούνται μόνο όσο είσαι συνδεδεμένος/η.\n"
@@ -6122,6 +6383,9 @@ def render_privacy_page():
             "the button below.\n"
             "- **Pet profiles** (name, species, breed, age, weight, history you entered): stored Fernet-encrypted on your "
             "account so they are there when you sign back in. Deleted by the button below.\n"
+            "- **Pet archive (Plus only)**: the result **texts** (report, second opinion, lab and photo analysis, vitals) are stored "
+            "Fernet-encrypted for **6 months** and then **permanently and automatically deleted**. They serve as reference for later assessments. "
+            "The files and photos themselves are never stored. You can turn it off or delete entries any time from “Pet archive”.\n"
             "- **Subscription & usage**: we keep your Plus subscription and only the count (dates) of free checks "
             "per month to apply the free limit — not the content of the checks.\n"
             "- **Account email & language preference**: kept only while you're logged in.\n"
@@ -6148,6 +6412,7 @@ def render_privacy_page():
             if _email:
                 delete_draft(_email)
                 delete_pets(_email)
+                delete_all_records(None, _email)
                 sb = _supabase_client()
                 if sb:
                     try:
@@ -6874,6 +7139,7 @@ def render_pet_scan():
         st.session_state.vitals = vd
         classify_pet_vitals(vd, sp)
         if vd:
+            save_record("vitals", "Ζωτικά" if el else "Vitals", {k_: v_ for k_, v_ in vd.items() if v_})
             with st.spinner("Ανάλυση..." if el else "Analysing..."):
                 vtext = "\n".join(f"- {k}: {val}" for k, val in vd.items())
                 prompt = (f"Κατοικίδιο: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), "
@@ -7237,6 +7503,7 @@ def render_pet_photo():
                 "scan_label": sel_idx,
                 "analysis": analysis,
             })
+            save_record("photo", str(sel_idx), {"scan_label": str(sel_idx), "analysis": analysis})
 
             # Button to continue to triage with findings
             if st.button("➤ " + ("Στείλε το εύρημα στη νοσηλεύτρια →" if lang=="el"
@@ -7330,6 +7597,7 @@ def render_pet_labs():
                         st.session_state.lab_findings.append({
                             "file_name": lab_file.name, "analysis": analysis,
                         })
+                        save_record("lab", lab_file.name, {"file_name": lab_file.name, "analysis": analysis}, pet)
                         finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
                                        if lang=="el" else
                                        f"Lab result ({lab_file.name}):\n\n{analysis}")
@@ -7520,6 +7788,7 @@ elif screen == "intake":
         if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
             st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
     render_intake()
+elif screen == "history": render_pet_nav("history"); render_history_page()
 elif screen == "paid": render_paid_page()
 elif screen == "account": render_pet_nav("account"); render_account_page()
 elif screen == "plus": render_paywall_page("plus")
