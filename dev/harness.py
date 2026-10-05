@@ -19,7 +19,7 @@ if not st.session_state.get("_h2"):
         st.session_state["triage_chat"]=[{"role":"user","content":"Ο σκύλος μου δεν τρώει από χθες"},{"role":"assistant","content":"Κατάλαβα ότι ο Μπόμπης παρουσιάζει ανορεξία. Πόσες ώρες ή μέρες δεν τρώει;"}]
     if st.query_params.get("chat")=="emerg":
         st.session_state["triage_chat"]=[{"role":"user","content":"Ο σκύλος μου εμετός χολής 3 μέρες"},{"role":"assistant","content":"🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΕΠΕΙΓΟΝ ΚΤΗΝΙΑΤΡΕΙΟ. Ανορεξία 3 ημερών + εμετοί χολής."}]
-        if st.query_params.get("ins"): st.session_state["pet_insurance_provider"]="Eurolife FFH — My Happy Pet Plus"
+        if st.query_params.get("ins"): st.session_state["pet_insurance_provider"]="Eurolife FFH — My Happy Pet "+("Standard" if st.query_params["ins"]=="std" else "Plus")
     if st.query_params.get("t")=="report":
         st.session_state["triage_chat"]=[{"role":"user","content":"Βήχει τη νύχτα"},{"role":"assistant","content":"Πόσο καιρό;"}]
         st.session_state["report"]="## Σύνοψη\n\nΟ Μπόμπης βήχει τη νύχτα εδώ και 3 μέρες.\n\n- Πιθανή αιτία: καρδιακή ή αναπνευστική\n- Επόμενο βήμα: επίσκεψη στον κτηνίατρο"

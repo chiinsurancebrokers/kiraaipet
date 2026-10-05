@@ -1017,41 +1017,55 @@ def claude(messages, system="", max_tokens=3000, timeout=60):
 # Ο πελάτης πληρώνει απευθείας στο κτηνιατρείο με μειωμένες τιμές.
 # ΜΗΝ αναφέρεις αυτό στον χρήστη — παρουσίαζε ως κάλυψη.
 
-_PET_INSURANCE_POLICY = """ΠΡΟΓΡΑΜΜΑ: Eurolife FFH My Happy Pet PLUS
-Ισχύς: 12/11/2025-12/11/2026 | Αγία Παρασκευή Αττικής
-ΥΠΟΧΡΕΩΤΙΚΟ: Κάλεσε 210-9303811 ΠΡΙΝ ή κατά τη χρήση (24/7).
-ΓΕΩΓΡΑΦΙΑ: ΜΟΝΟ Αττική και Θεσσαλονίκη.
-[INTERNAL] Ειδική τιμολόγηση. Πελάτης πληρώνει απευθείας. ΠΟΤΕ μην το αναφέρεις. [END INTERNAL]
+_POLICY_COMMON = """EUROLIFE FFH — MY HAPPY PET (σκύλοι και γάτες) | Πηγή: IPID v3_07 2026, κατάλογος δικτύου 09.25.
+ΥΠΟΧΡΕΩΤΙΚΟ: Επικοινωνία ΠΡΩΤΑ με το Συντονιστικό Κέντρο 210 9303811 (ραντεβού Δευ-Παρ 8:00-20:00, επείγοντα 24/7) πριν από κάθε επίσκεψη, εξέταση, νοσηλεία ή επέμβαση.
+ΓΕΩΓΡΑΦΙΑ: ΜΟΝΟ νομοί Αττικής και Θεσσαλονίκης, σε μέλη του συμβεβλημένου δικτύου και συνεργαζόμενες κλινικές.
+[INTERNAL] Ειδική τιμολόγηση. Ο πελάτης πληρώνει απευθείας στο κτηνιατρείο. ΠΟΤΕ μην το αναφέρεις. [END INTERNAL]
+ΠΕΡΙΟΔΟΣ ΑΝΑΜΟΝΗΣ: 45 ημέρες από την έναρξη για Νοσοκομειακή Περίθαλψη-Πράξεις και Διαγνωστικές Εξετάσεις (όχι στην ανανέωση).
+ΔΕΝ ΚΑΛΥΠΤΕΤΑΙ: ζώο χωρίς microchip· φάρμακα εκτός νοσηλείας (εξαίρεση: cushing, καρδιοαναπνευστικά, ορμονολογικά, χημειοθεραπείες)·
+  ογκολογικές επεμβάσεις πέραν δερματικών όγκων· ακτινοβολίες· τραυματισμοί σε αγώνες/κυνομαχίες/κυνήγι/φρούρηση· panel εξετάσεων.
+  Στη νοσηλεία εξαιρούνται σκευάσματα για cushing/καρδιοαναπνευστικά/ορμονολογικά/χημειοθεραπείες και ενδοφλέβιος ορός.
+ΗΡΕΜΗΣΗ/ΑΝΑΙΣΘΗΣΙΑ: ξεχωριστό ποσό συμμετοχής (Προσάρτημα Α).
+ΚΟΙΝΕΣ ΤΙΜΕΣ (χωρίς ΦΠΑ όπου αναγράφεται): Νοσηλεία 22€ συν ΦΠΑ/ημέρα, εντατική 32€ συν ΦΠΑ/ημέρα (δωμάτιο, τροφή και φάρμακα νοσηλείας)·
+  απεριόριστες χειρουργικές επεμβάσεις και πράξεις με συμμετοχή του Προσαρτήματος Α· οδοντιατρικός καθαρισμός με υπερήχους 40€ συν ΦΠΑ·
+  λοιπές οδοντιατρικές πράξεις με τον συμφωνημένο τιμοκατάλογο.
+ΕΝΔΕΙΚΤΙΚΕΣ ΤΙΜΕΣ ΠΡΟΣΑΡΤΗΜΑΤΟΣ Α (ο πλήρης τιμοκατάλογος είναι στους όρους, πες ΠΑΝΤΑ "ενδεικτικά"): γενική αίματος 5€, βιοχημικές 3€ η καθεμία,
+  υπέρηχος κοιλιάς 50€, ακτινογραφία 20€, αναισθησία μηχανή 45€, γενική ούρων 8€, κυστεοτομή 155€, ρήξη χιαστών 300€, GDV 450€.
+ΠΡΟΝΟΜΙΑ (προσφορά συνεργατών, μπορεί να αλλάξουν): pension 12€ συν ΦΠΑ/ημέρα (1 δωρεάν ανά 6)· προσφορές 1+1 και εκπτώσεις 10-20% σε τροφές/προϊόντα·
+  εξειδικευμένες επεμβάσεις στην Πλακεντία με σταθερή συμμετοχή· grooming: 1 δωρεάν + 30% έκπτωση· εκπαίδευση σκύλου: 2 δωρεάν συνεδρίες + 30% έκπτωση."""
 
-ΚΑΝΟΝΑΣ ΚΛΙΝΙΚΗΣ:
-- EMERGENCY: ΠΑΝΤΑ Νοσοκομείο 24ωρα, πρώτη επιλογή: ΠΛΑΚΕΝΤΙΑ ΑΓ. ΠΑΡΑΣΚΕΥΗ (Αλ. Παναγούλη 31)
-- URGENT/SELF_CARE: ΠΑΝΤΑ πρώτη επιλογή: ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ (Ελαιώνων 5, Παλλήνη)
+_POLICY_PLUS = """ΠΡΟΓΡΑΜΜΑ: My Happy Pet PLUS
+ΕΠΙΣΚΕΨΕΙΣ (συμβεβλημένο δίκτυο): 2 ΔΩΡΕΑΝ επισκέψεις τον χρόνο (Δευ-Παρ 9-21, εκτός αργιών, για πρόληψη ή ασθένεια/ατύχημα). Από την 3η και μετά απεριόριστες:
+  10€/επίσκεψη (Δευ-Παρ 9-21) ή 30€ (Δευ-Παρ 21-9, ΣΚ, αργίες). ΔΩΡΕΑΝ επανεξέταση της ίδιας πάθησης μετά από σύσταση γιατρού.
+ΣΥΝΕΡΓΑΖΟΜΕΝΕΣ ΚΛΙΝΙΚΕΣ: απεριόριστες επισκέψεις ΜΟΝΟ για επείγον περιστατικό (10€/30€ όπως παραπάνω), με απολογιστική αποζημίωση.
+ΚΑΤ' ΟΙΚΟΝ επίσκεψη: 20€ (Δευ-Παρ 9-21) / 40€ (εκτός ωραρίου, ΣΚ, αργίες). ΦΥΣΙΚΟΘΕΡΑΠΕΙΕΣ: απεριόριστες, 45€ συν ΦΠΑ/επίσκεψη.
+ΕΞΕΤΑΣΕΙΣ: απεριόριστες διαγνωστικές (με συμμετοχή) για πρόληψη ή ασθένεια/ατύχημα/νοσηλεία στο δίκτυο· στις συνεργαζόμενες μόνο για επείγον ή νοσηλεία.
+ΕΤΗΣΙΟΣ ΠΡΟΛΗΠΤΙΚΟΣ ΕΛΕΓΧΟΣ (check-up) ΔΩΡΕΑΝ: σκύλοι: γενική αίματος, ουρία, κρεατινίνη, AST, ALT, ALP, λεϊσμανίαση, ερλιχίωση·
+  γάτες: γενική αίματος, γενική ούρων, ουρία, κρεατινίνη, AST, ALT, FIV/FELV. Δωρεάν έλεγχος-καθαρισμός αυτιών και οδοντιατρικός έλεγχος.
+ΕΜΒΟΛΙΑ (δίκτυο): έως 12 μηνών 19€ συν ΦΠΑ/εμβόλιο (έως 4 τον χρόνο)· πενταπλό ενηλίκων 16,50€ συν ΦΠΑ· επταπλό 22,50€ συν ΦΠΑ.
+  ΕΚΤΟΣ: εμβόλια λευχαιμίας γάτας, FIP, λεϊσμανίασης, kennel cough.
+ΦΡΟΝΤΙΔΑ: 1 ΔΩΡΕΑΝ περιποίηση ομορφιάς + 30% έκπτωση στις επόμενες· 2 ΔΩΡΕΑΝ συνεδρίες εκπαίδευσης + 30% έκπτωση."""
 
-ΔΙΚΤΥΟ ΑΤΤΙΚΗ:
-Νοσοκομεία 24ωρα: ΠΛΑΚΕΝΤΙΑ ΑΓ.ΠΑΡΑΣΚΕΥΗ (Αλ.Παναγούλη 31), ΠΛΑΚΕΝΤΙΑ ΑΛΙΜΟΣ (Λ.Αλίμου 37), ΝΟΣΟΚΟΜΕΙΟ ΖΩΩΝ ΑΘΗΝΩΝ (Πικέρμι), ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΓΕΡΑΚΑ-ΒΟΣΣΟΥ (Ερμού 8)
-Κτηνιατρεία: ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ (Ελαιώνων 5 Παλλήνη), ΑΓΓΕΛΑΚΗ ΕΛΕΝΗ (Σολωνός 61 Χαλάνδρι), ΑΡΣΕΝΙΟΥ ΔΗΜΗΤΡΙΟΣ (Παιανία), ΒΑΛΜΑΣ ΜΑΡΙΟΣ (Ηράκλειο), ΡΟΥΜΕΛΙΩΤΗ ΚΑΛΛΙΟΠΗ (Πολύγωνο), ΡΙΖΙΩΤΗ ΓΑΛΑΤΕΙΑ (Ν.Φιλαδέλφεια), VETERNITY VET SERVICES (Ν.Σμύρνη), ΘHVET (Περιστέρι)
-Φυσικοθεραπεία: ΘΑΝΟΠΟΥΛΟΥ ΔΑΝΑΗ-PHYSIO4PAWS (Κεραμεικού 4, Χολαργός)
-Grooming: Νοσοκομείο Ζώων Μοδέστος, ΤΟ ΠΑΠΙΓΙΟΝ (x2), ZETA PET GROOMING
-Εκπαίδευση: THE PERFECT DOG (Χολαργός), ΚΟΥΝΕΛΑΣ ΒΑΣΙΛΕΙΟΣ-KRAFT HILL
+_POLICY_STANDARD = """ΠΡΟΓΡΑΜΜΑ: My Happy Pet STANDARD (στενότερο από το Plus)
+ΕΠΙΣΚΕΨΕΙΣ: ΜΟΝΟ κατόπιν ΕΠΕΙΓΟΝΤΟΣ περιστατικού λόγω ασθένειας ή ατυχήματος: απεριόριστες, 10€/επίσκεψη (Δευ-Παρ 9-21) ή 30€ (Δευ-Παρ 21-9, ΣΚ, αργίες),
+  σε συμβεβλημένο δίκτυο και συνεργαζόμενες κλινικές (απολογιστική αποζημίωση).
+ΔΕΝ ΠΕΡΙΛΑΜΒΑΝΕΙ: δωρεάν επισκέψεις για πρόληψη, κατ' οίκον επισκέψεις, φυσικοθεραπείες, δωρεάν ετήσιο check-up, τιμές εμβολίων του προγράμματος.
+  Αν ρωτηθείς για αυτά, πες ότι ΔΕΝ περιλαμβάνονται στο Standard και ότι υπάρχουν στο Plus.
+ΕΞΕΤΑΣΕΙΣ: απεριόριστες διαγνωστικές (με συμμετοχή) ΜΟΝΟ κατόπιν επείγοντος ή στο πλαίσιο νοσοκομειακής περίθαλψης.
+ΦΡΟΝΤΙΔΑ (συμβεβλημένο δίκτυο): 1 ΔΩΡΕΑΝ περιποίηση ομορφιάς-καλλωπισμού + 30% έκπτωση στις επόμενες· 2 ΔΩΡΕΑΝ συνεδρίες εκπαίδευσης σκύλου + 30% έκπτωση."""
 
-ΤΙ ΠΛΗΡΩΝΕΙ Ο ΠΕΛΑΤΗΣ:
-Επισκέψεις: 2 ΔΩΡΕΑΝ/έτος (Δευ-Παρ 9-21). 3η+: 10ευρω εντος / 30ευρω εκτος ωραριου-ΣΚ-αργιες.
-Κατοικον: 20ευρω / 40ευρω εκτος ωραριου. Φυσικοθεραπεια: 45ευρω/επισκεψη.
-Εξετασεις (ΕΝΔΕΙΚΤΙΚΑ - υπαρχουν δεκαδες εξετασεις στον πληρη τιμοκαταλογο Προσαρτημα Α):
-  Συνηθεστερες: γενικη αιματος 5ευρω, βιοχημικες (AST/ALT/κρεατινινη κλπ) 3ευρω εκαστη,
-  υπερηχος κοιλιας 50ευρω, ακτινογραφια 20ευρω, αναισθησια μηχανη 45ευρω,
-  Λεϊσμανια screening 13ευρω, Ερλιχιωση screening 15ευρω, γενικη ουρων 8ευρω.
-  ΣΗΜΑΝΤΙΚΟ: Αυτες ειναι ενδεικτικες - ο πληρης καταλογος ειναι στους ορους του προγραμματος.
-Νοσηλεια: 15ευρω/ημερα, εντατικη 25ευρω/ημερα.
-Χειρουργεια: κυστεοτομη 155ευρω, ρηξη χιαστων 300ευρω, GDV 450ευρω, GDV+σπληνεκτομη 660ευρω, καθετηριασμος 30ευρω.
-Εμβολια: πενταπλο 10ευρω, επταπλο 16ευρω. Check up: ΔΩΡΕΑΝ 1x/ετος.
-Grooming: 1 ΔΩΡΕΑΝ/ετος. Εκπαιδευση: 2 ΔΩΡΕΑΝ/ετος + 30% εκπτωση.
-Εκτος: εμβολια Λεϊσμανιασης/FIP/Kennel Cough."""
+
+def _policy_text(provider=""):
+    """Official terms for the selected programme (common terms + programme-specific block)."""
+    p = (provider or st.session_state.get("pet_insurance_provider", "") or "").lower()
+    block = _POLICY_STANDARD if "standard" in p else _POLICY_PLUS
+    return _POLICY_COMMON + "\n\n" + block
+
 
 _PET_INSURANCE_SYSTEM = """Εισαι η Pets’health, συμβουλος Pets’health για το προγραμμα Eurolife My Happy Pet.
 Μιλας ΠΑΝΤΑ ως: "Με το προγραμμα σου...", "Δικαιουσαι...", "Το προγραμμα σου περιλαμβανει..."
 ΠΟΤΕ δεν εξηγεις εσωτερικη λειτουργια προγραμματος.
-ΚΑΝΟΝΑΣ: EMERGENCY=Νοσοκομειο 24ωρα πρωτα, URGENT/SELF_CARE=ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ πρωτα.
+ΚΑΝΟΝΑΣ: EMERGENCY=24ωρο νοσοκομειο ή συνεργαζομενη 24ωρη κλινικη της περιοχης πρωτα. URGENT/SELF_CARE=κοντινο συμβεβλημενο κτηνιατρειο. Αν δεν ξερεις αν ο χρηστης ειναι Αττικη ή Θεσσαλονικη, πες το γενικα και ζητα το Συντονιστικο 210 9303811.
 
 ΚΡΙΣΙΜΟ ΓΙΑ ΕΞΕΤΑΣΕΙΣ:
 Το προγραμμα εχει ΠΛΗΡΗ τιμοκαταλογο εξετασεων (Προσαρτημα Α) με δεκαδες εξετασεις.
@@ -1072,8 +1086,8 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
     _t0 = time.time()
     pet_label = f"{pet_name} ({species})" if pet_name else species
     prompt = (
-        f"Προγραμμα:\n{_PET_INSURANCE_POLICY}\n\n"
-        f"Περιστατικο {pet_label}, Αγια Παρασκευη:\n"
+        f"Προγραμμα:\n{_policy_text()}\n\n"
+        f"Περιστατικο {pet_label} (Αττικη/Θεσσαλονικη):\n"
         f"Triage: {triage_result} | {condition}\n{details}\n"
         f"Τι πληρωνει; Που να παει; JSON μονο."
     )
@@ -1100,7 +1114,7 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
 def _hal_insurance_chat(question: str, triage_result: str, condition: str,
                         pet_name: str, species: str, lang: str) -> str:
     """HAL: απαντά σε ερώτηση για κάλυψη ασφαλιστηρίου."""
-    system = """Είσαι η Pets’health, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
+    system = """Είσαι η Pets’health, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet (Plus ή Standard, όπως δίνεται στο κείμενο προγράμματος).
 Απαντάς σε ερωτήσεις πελατών για την κάλυψη του συμβολαίου τους.
 Μιλάς ΠΑΝΤΑ ως: "Με το πρόγραμμά σου...", "Δικαιούσαι...", "Το πρόγραμμά σου περιλαμβάνει..."
 ΠΟΤΕ δεν αναφέρεις πώς λειτουργεί εσωτερικά (ειδική τιμολόγηση κλπ).
@@ -1116,7 +1130,7 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 Απαντάς σύντομα, φιλικά, στη γλώσσα του χρήστη."""
 
     prompt = (
-        "Προγραμμα:\n" + _PET_INSURANCE_POLICY + "\n\n"
+        "Προγραμμα:\n" + _policy_text() + "\n\n"
         + f"Κατοικιδιο: {pet_name} ({species}) | Triage: {triage_result} | {condition}\n\n"
         + f"Ερωτηση χρηστη: {question}\n\n"
         + "Αποντησε συντομα και φιλικα."
@@ -1129,47 +1143,89 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
     )
 
 
-# Contracted Eurolife FFH My Happy Pet network (Attica) — kind: "h" = 24h hospital, "v" = vet clinic
+# Contracted Eurolife FFH My Happy Pet network — catalogue "Κατάλογος Συμβεβλημένου Δικτύου και Συνεργαζόμενων Κλινικών", updated 09.25.
+# region: "A" Attica / "T" Thessaloniki. kind: h = 24h contracted hospital, c = cooperating 24h clinic (emergency only),
+# v = contracted clinic/vet, d = diagnostic centre, o = home-visit vet (Plus), p = physiotherapist (Plus).
 _EUROLIFE_NETWORK = [
-    ("ΠΛΑΚΕΝΤΙΑ ΑΓ. ΠΑΡΑΣΚΕΥΗ", "Αλ. Παναγούλη 31, Αγ. Παρασκευή", "h"),
-    ("ΠΛΑΚΕΝΤΙΑ ΑΛΙΜΟΣ", "Λ. Αλίμου 37, Άλιμος", "h"),
-    ("ΝΟΣΟΚΟΜΕΙΟ ΖΩΩΝ ΑΘΗΝΩΝ", "Πικέρμι", "h"),
-    ("ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΓΕΡΑΚΑ-ΒΟΣΣΟΥ", "Ερμού 8, Γέρακας", "h"),
-    ("ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ", "Ελαιώνων 5, Παλλήνη", "v"),
-    ("ΑΓΓΕΛΑΚΗ ΕΛΕΝΗ", "Σολωνός 61, Χαλάνδρι", "v"),
-    ("ΑΡΣΕΝΙΟΥ ΔΗΜΗΤΡΙΟΣ", "Παιανία", "v"),
-    ("ΒΑΛΜΑΣ ΜΑΡΙΟΣ", "Ηράκλειο Αττικής", "v"),
-    ("ΡΟΥΜΕΛΙΩΤΗ ΚΑΛΛΙΟΠΗ", "Πολύγωνο", "v"),
-    ("ΡΙΖΙΩΤΗ ΓΑΛΑΤΕΙΑ", "Ν. Φιλαδέλφεια", "v"),
-    ("VETERNITY VET SERVICES", "Ν. Σμύρνη", "v"),
-    ("ΘHVET", "Περιστέρι", "v"),
+    ("A", "h", "ΠΛΑΚΕΝΤΙΑ ΚΤΗΝΙΑΤΡΙΚΗ ΚΛΙΝΙΚΗ — ΑΓ. ΠΑΡΑΣΚΕΥΗ", "Αλ. Παναγούλη 31, Αγ. Παρασκευή"),
+    ("A", "h", "ΠΛΑΚΕΝΤΙΑ ΚΤΗΝΙΑΤΡΙΚΗ ΚΛΙΝΙΚΗ — ΑΛΙΜΟΣ", "Λ. Αλίμου 37, Άλιμος"),
+    ("A", "h", "ΝΟΣΟΚΟΜΕΙΟ ΖΩΩΝ ΑΘΗΝΩΝ", "21ο χλμ Λ. Μαραθώνος, Πικέρμι"),
+    ("A", "h", "ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΓΕΡΑΚΑ — ΒΟΣΣΟΥ", "Αικατερίνης Ερμού 8 & Καμελίας, Γέρακας"),
+    ("A", "v", "ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ", "Ελαιώνων 5, Παλλήνη"),
+    ("A", "v", "ΝΟΣΟΚΟΜΕΙΟ ΖΩΩΝ ΜΟΔΕΣΤΟΣ", "Λ. Θησέως 35, Νέα Ερυθραία"),
+    ("A", "v", "ΑΓΓΕΛΑΚΗ ΕΛΕΝΗ", "Σόλωνος 61, Χαλάνδρι"),
+    ("A", "v", "ΚΕΡΑΜΙΔΑΣ ΚΩΣΤΑΣ", "Αχαρνών 70, Κηφισιά"),
+    ("A", "v", "ΑΡΣΕΝΙΟΥ ΔΗΜΗΤΡΙΟΣ", "Ι. Μεταξά 33, Παιανία"),
+    ("A", "v", "ΒΑΛΜΑΣ ΜΑΡΙΟΣ", "Αχαιών 5, Ηράκλειο"),
+    ("A", "v", "ΡΟΥΜΕΛΙΩΤΗ ΚΑΛΛΙΟΠΗ", "Αμφικλείας 50, Πολύγωνο"),
+    ("A", "v", "ΡΙΖΙΩΤΗ ΓΑΛΑΤΕΙΑ", "Σαραντόγλου 11, Νέα Φιλαδέλφεια"),
+    ("A", "v", "ΜΠΑΜΠΛΕΝΗΣ ΘΕΟΔΩΡΟΣ", "Διοχάρους 9, Χίλτον"),
+    ("A", "v", "ΠΑΠΑΔΕΑ ΗΛΕΚΤΡΑ", "Φιλαδελφείας 125, Αχαρνές"),
+    ("A", "v", "ΜΑΡΑΦΕΛΙΑΣ ΠΑΝΑΓΙΩΤΗΣ", "Γ. Παπανδρέου 45, Ζωγράφου"),
+    ("A", "v", "ΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΖΩΩΝ ΣΥΝΤΡΟΦΙΑΣ (ΚΩΝΣΤΑΝΤΑΡΑΣ ΙΩΑΝΝΗΣ)", "Βορείου Ηπείρου 93, Γλυφάδα (Τερψιθέα)"),
+    ("A", "v", "ΚΟΤΖΑΜΠΑΣΑΚΗ ΑΡΓΥΡΗ (ANIMED)", "Ρος Φλέμινγκ 10, Λαύριο"),
+    ("A", "v", "ΚΙΚΗ ΣΟΝΙΑ", "Μάχης Αναλάτου 71, Νέος Κόσμος"),
+    ("A", "v", "ΚΟΥΠΑΤΣΙΑΡΗΣ ΓΙΩΡΓΟΣ", "Φαιδριάδων 87-91, Άνω Κυψέλη"),
+    ("A", "d", "ALFA VET", "Φιλοσόφων 40, Νέα Κηφισιά"),
+    ("A", "d", "ΜΑΝΤΖΙΑΡΑΣ ΓΙΩΡΓΟΣ — ECHOVET", "Λ. Κηφισίας 22, Μαρούσι"),
+    ("A", "o", "ΓΑΛΑΝΑΚΗΣ ΓΙΩΡΓΟΣ (κατ' οίκον)", "Σωκράτους 1 — εξυπηρετεί Αγ. Στέφανο, Δροσιά, Εκάλη, Καπανδρίτι, Κρυονέρι"),
+    ("A", "p", "ΘΑΝΟΠΟΥΛΟΥ ΔΑΝΑΗ — PHYSIO4PAWS", "Κεραμεικού 4, Χολαργός"),
+    ("T", "h", "ΠΛΑΚΕΝΤΙΑ ΚΤΗΝΙΑΤΡΙΚΗ ΚΛΙΝΙΚΗ", "Σμύρνης 6, Νέο Ρύσιο, Θέρμη"),
+    ("T", "c", "ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΘΕΣΣΑΛΟΝΙΚΗΣ", "Σοφούλη 27, Πυλαία"),
+    ("T", "c", "ΑΓΙΟΣ ΜΟΔΕΣΤΟΣ", "Αεροδρομίου 59Α, Αμφιθέα, Ωραιόκαστρο"),
+    ("T", "v", "ΘΕΟΧΑΡΗΣ ΛΑΦΤΣΙΔΗΣ", "1ο χλμ Θέρμης-Πανοράματος 67"),
+    ("T", "v", "ΒΙΓΓΟΠΟΥΛΟΥ ΕΛΠΙΔΑ", "Καρόλου Ντηλ 30, Κέντρο Θεσσαλονίκης"),
+    ("T", "v", "ΣΤΑΜΑΤΙΟΥ ΙΩΑΝΝΗΣ", "Μαρμαρά 47, Καλαμαριά"),
+    ("T", "v", "ΧΑΤΖΗ ΜΑΡΘΑ", "Βρυούλων 20, Καλαμαριά"),
+    ("T", "v", "ΧΡΗΣΤΟΥ ΓΕΩΡΓΙΟΣ (ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΤΡΙΑΝΔΡΙΑΣ)", "Αγ. Σπυρίδωνος 1, Τριανδρία"),
+    ("T", "v", "ΑΙΒΑΖΙΔΗΣ ΙΑΚΩΒΟΣ", "Καραολή & Δημητρίου 194, Εύοσμος"),
+    ("T", "o", "ΤΖΙΟΥΒΑΡΑΣ ΝΙΚΟΣ (κατ' οίκον)", "Χαψά 4 & Αιγαίου, Καλαμαριά"),
+    ("T", "o", "Μ. ΕΞΑΡΧΟΠΟΥΛΟΥ — ΕΥΡΩΠΑΪΚΟ ΚΕΝΤΡΟ ΚΑΤΟΙΚΙΔΙΩΝ ΖΩΩΝ (κατ' οίκον)", "25ης Μαρτίου 25, Νέοι Επιβάτες"),
+    ("T", "p", "DOG PHYSIOTHERAPY — ΣΤΕΛΛΑ ΚΕΧΑΓΙΑ", "Αγίου Σάββα 2, Θεσσαλονίκη"),
 ]
+_NET_COORD_PHONE = "210 9303811"
 
 
-def render_network_clinics(triage_level="SELF_CARE", lang="el"):
-    """Contracted-network clinics for the selected Eurolife programme, ordered by the triage level:
-    EMERGENCY -> 24h hospitals first (Πλακέντια Αγ. Παρασκευή first choice); otherwise Περράκη Γρηγορία first."""
+def render_network_clinics(triage_level="SELF_CARE", lang="el", provider=""):
+    """Contracted-network clinics for the selected Eurolife programme and region (Attica / Thessaloniki).
+    Order: EMERGENCY -> 24h hospitals and cooperating 24h clinics first; otherwise contracted clinics first.
+    Home-visit vets and physios are shown only for Plus."""
     import urllib.parse as _up
     el = lang == "el"
-    hosp = [c for c in _EUROLIFE_NETWORK if c[2] == "h"]
-    vets = [c for c in _EUROLIFE_NETWORK if c[2] == "v"]
-    ordered = (hosp + vets) if triage_level == "EMERGENCY" else (vets + hosp)
-    ttl = ("Συμβεβλημένα κτηνιατρεία του προγράμματός σου" if el else "Contracted clinics for your programme")
-    sub = (("Επείγον: πρώτα τα 24ωρα νοσοκομεία. Κάλεσε το 210 9303811 πριν ή κατά την επίσκεψη." if el
-            else "Emergency: 24h hospitals first. Call 210 9303811 before or during the visit.")
-           if triage_level == "EMERGENCY" else
-           ("Πρώτη επιλογή το κτηνιατρείο Περράκη. Κάλεσε το 210 9303811 πριν ή κατά την επίσκεψη." if el
-            else "First choice is the Perrakis clinic. Call 210 9303811 before or during the visit."))
-    def _row(i, nm, ad, kind):
+    plus = "standard" not in (provider or st.session_state.get("pet_insurance_provider", "")).lower()
+    region = st.radio("📍", ["A", "T"], horizontal=True, key="pn_net_region", label_visibility="collapsed",
+                      format_func=lambda r: ("Αττική" if el else "Attica") if r == "A" else ("Θεσσαλονίκη" if el else "Thessaloniki"))
+    order = ["h", "c", "v"] if triage_level == "EMERGENCY" else ["v", "h", "c"]
+    extra_kinds = ["d"] + (["o", "p"] if plus else [])
+    items = [c for c in _EUROLIFE_NETWORK if c[0] == region]
+    main = [c for k in order for c in items if c[1] == k]
+    extra = [c for k in extra_kinds for c in items if c[1] == k]
+    badge = {"h": ("24ωρο νοσοκομείο", "24h hospital"), "c": ("24ωρη συνεργαζόμενη (επείγοντα)", "24h cooperating (emergencies)"),
+             "v": ("Κτηνιατρείο", "Clinic"), "d": ("Διαγνωστικό κέντρο", "Diagnostic centre"),
+             "o": ("Κατ' οίκον", "Home visits"), "p": ("Φυσικοθεραπευτής", "Physiotherapist")}
+    icon = {"h": "🏥", "c": "🏥", "v": "🩺", "d": "🔬", "o": "🏠", "p": "🦴"}
+    prog = ("Plus" if plus else "Standard")
+    note = (("Επείγον: πρώτα τα 24ωρα. Στο Standard οι επισκέψεις καλύπτονται μόνο για επείγοντα (10€ / 30€ εκτός ωραρίου)."
+             if el else "Emergency: 24h places first. Standard covers visits only for emergencies (€10 / €30 out of hours).")
+            if (not plus and triage_level == "EMERGENCY") else
+            ("Επείγον: πρώτα τα 24ωρα νοσοκομεία και οι 24ωρες συνεργαζόμενες κλινικές." if el
+             else "Emergency: 24h hospitals and 24h cooperating clinics first.") if triage_level == "EMERGENCY" else
+            ("Στο Standard καλύπτονται επισκέψεις μόνο για επείγοντα περιστατικά. Για μη επείγον, κάλεσε πρώτα το Συντονιστικό." if (el and not plus)
+             else "Standard covers visits only for emergencies. For non-urgent cases call the coordination centre first." if not plus else
+             "Στο Plus έχεις 2 δωρεάν επισκέψεις τον χρόνο σε συμβεβλημένο κτηνιατρείο." if el else
+             "Plus includes 2 free visits a year at a contracted clinic."))
+
+    def _row(i, c):
+        _r, k, nm, ad = c
         q = _up.quote_plus(f"{nm} {ad}")
-        badge = ("24ωρο" if el else "24h") if kind == "h" else ("Κτηνιατρείο" if el else "Clinic")
-        first = '<span class="pn-net-first">' + ("Πρώτη επιλογή" if el else "First choice") + '</span>' if i == 0 else ""
+        first = ('<span class="pn-net-first">' + ("Πρώτη επιλογή" if el else "First choice") + '</span>') if i == 0 else ""
         return (f'<a class="pn-net-row" href="https://www.google.com/maps/search/?api=1&query={q}" target="_blank" rel="noopener">'
-                f'<span class="pn-net-ic">{"🏥" if kind == "h" else "🩺"}</span><span class="pn-net-tx"><b>{nm}</b>{first}'
-                f'<small>{ad} · {badge}</small></span><span class="pn-net-go">↗</span></a>')
-    rows_all = [_row(i, *c) for i, c in enumerate(ordered)]
+                f'<span class="pn-net-ic">{icon[k]}</span><span class="pn-net-tx"><b>{nm}</b>{first}'
+                f'<small>{ad} · {badge[k][0 if el else 1]}</small></span><span class="pn-net-go">↗</span></a>')
+    rows_main = [_row(i, c) for i, c in enumerate(main)]
+    rows_extra = [_row(99, c) for c in extra]
     st.markdown(
-        '<style>.pn-net{background:#fff;border:1px solid #D9DEF5;border-radius:22px;padding:16px 16px 10px;margin:12px 0 6px;}'
+        '<style>.pn-net{background:#fff;border:1px solid #D9DEF5;border-radius:22px;padding:16px 16px 10px;margin:8px 0 6px;}'
         '.pn-net h4{font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;margin:0 0 3px;letter-spacing:-.02em;}'
         '.pn-net p{font-size:12.5px;color:#5B6794;margin:0 0 10px;line-height:1.45;}'
         '.pn-net-row{display:flex;align-items:center;gap:12px;padding:10px 6px;border-top:1px solid #EEF0FB;text-decoration:none !important;color:#0B1B4B !important;}'
@@ -1177,11 +1233,18 @@ def render_network_clinics(triage_level="SELF_CARE", lang="el"):
         '.pn-net-tx{flex:1;min-width:0;font-size:13.5px;line-height:1.3;}.pn-net-tx b{font-weight:700;}'
         '.pn-net-tx small{display:block;color:#5B6794;font-size:12px;margin-top:2px;}'
         '.pn-net-first{margin-left:8px;background:#FF6B2C;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 8px;}'
-        '.pn-net-go{color:#1237C9;font-weight:800;}</style>'
-        f'<div class="pn-net"><h4>🏥 {ttl}</h4><p>{sub}</p>{"".join(rows_all[:4])}</div>', unsafe_allow_html=True)
-    with st.expander(f"{'Όλο το δίκτυο' if el else 'Full network'} ({len(rows_all) - 4} {'ακόμη' if el else 'more'})"):
-        st.markdown('<div class="pn-net" style="border:none;padding:0;margin:0;">' + "".join(rows_all[4:]) + '</div>',
-                    unsafe_allow_html=True)
+        '.pn-net-go{color:#1237C9;font-weight:800;}'
+        '.pn-net-call{display:block;text-align:center;background:#1237C9;color:#fff !important;font-weight:700;border-radius:999px;padding:12px;text-decoration:none !important;margin:2px 0 8px;}</style>'
+        f'<div class="pn-net"><h4>🏥 {"Συμβεβλημένα κτηνιατρεία" if el else "Contracted clinics"} · My Happy Pet {prog}</h4>'
+        f'<p>{note}</p>{"".join(rows_main[:4])}</div>', unsafe_allow_html=True)
+    if rows_main[4:] or rows_extra:
+        with st.expander(f"{'Όλο το δίκτυο' if el else 'Full network'} ({len(rows_main) - 4 + len(rows_extra)} {'ακόμη' if el else 'more'})"):
+            st.markdown('<div class="pn-net" style="border:none;padding:0;margin:0;">' + "".join(rows_main[4:] + rows_extra) + '</div>',
+                        unsafe_allow_html=True)
+    st.markdown(f'<a class="pn-net-call" href="tel:2109303811">📞 ' + ("Πρώτα κάλεσε το Συντονιστικό Κέντρο" if el else "Call the coordination centre first")
+                + f' · {_NET_COORD_PHONE}</a><div style="font-size:11.5px;color:#5B6794;text-align:center;margin-bottom:8px;">'
+                + ("Είναι υποχρεωτικό πριν από κάθε επίσκεψη. Το δίκτυο μπορεί να αλλάξει (κατάλογος 09.25)." if el
+                   else "Required before every visit. The network can change (catalogue 09.25).") + '</div>', unsafe_allow_html=True)
 
 
 def render_insurance_prompt(lang="el"):
@@ -4296,7 +4359,7 @@ def render_triage():
         _condition = _first_user[:120] if _first_user else ""
         _pet_name  = pet.get("name", "") if isinstance(pet, dict) else ""
         _species   = pet.get("species", "σκύλος") if isinstance(pet, dict) else "σκύλος"
-        render_network_clinics(_triage_level, lang)
+        render_network_clinics(_triage_level, lang, _provider)
         if has_insurance_subscription(_email):
             render_insurance_coverage_card(
                 triage_result=_triage_level,
