@@ -2929,7 +2929,11 @@ def _hero_avatar(pet=None):
     Gaz for rabbits, Ave for birds — falling back to the 🐾 emoji if no
     artwork is available for this species."""
     key = mascot_for_pet(pet) or "dog"
-    b64 = MASCOT_IMG.get(key)
+    try:
+        from hero_avatars import HERO_AVATARS as _HA
+    except Exception:
+        _HA = {}
+    b64 = _HA.get(key) or MASCOT_IMG.get(key)
     if not b64:
         return "🐾"
     try:
@@ -4350,7 +4354,9 @@ def render_triage():
         'div[data-testid="stForm"]:has(.pn-compose-marker) div[data-baseweb="textarea"],'
         'div[data-testid="stForm"]:has(.pn-compose-marker) div[data-baseweb="base-input"]{border:none !important;background:transparent !important;}'
         'div[data-testid="stForm"]:has(.pn-compose-marker) button{border-radius:999px !important;min-height:42px !important;font-weight:700 !important;}'
-        'div[data-testid="stElementContainer"]:has(.pn-compose-marker){display:none !important;}</style>',
+        'div[data-testid="stElementContainer"]:has(.pn-compose-marker){display:none !important;}'
+        '[data-testid="stChatMessage"] > img[alt="assistant avatar"]{width:46px !important;height:46px !important;min-width:46px;border-radius:50% !important;object-fit:cover;background:#fff;image-rendering:auto;}'
+        '</style>',
         unsafe_allow_html=True)
     with st.form("pn_compose", clear_on_submit=True, border=False):
         st.markdown('<span class="pn-compose-marker"></span>', unsafe_allow_html=True)
@@ -4475,18 +4481,24 @@ def render_triage():
 
     # ── Create the vet report ────────────────────────────────────────────────
     _n_msgs = len(st.session_state.triage_chat)
-    enabled = triage_ready or _n_msgs >= 6
+    _nurse_done = bool(triage_ready or _is_emergency_msg)      # the nurse herself says she has enough
+    enabled = _nurse_done or _n_msgs >= 6                      # report can be generated (earlier = less complete)
     st.markdown('<div class="pn-sec">' + ("ΤΕΛΟΣ: ΑΝΑΦΟΡΑ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ" if lang=="el" else "FINAL STEP: THE VET REPORT") + '</div>',
                 unsafe_allow_html=True)
     with st.container(border=True):
-        st.progress(min(1.0, _n_msgs / 6.0))
-        st.caption(
-            ("✅ Έχω αρκετά στοιχεία — η αναφορά είναι έτοιμη." if lang=="el" else "✅ I have enough information — the report is ready.")
-            if enabled else
-            ("💬 Απάντησε σε μερικές ακόμα ερωτήσεις και η αναφορά ξεκλειδώνει αυτόματα." if lang=="el"
-             else "💬 Answer a few more questions and the report unlocks automatically."))
+        st.progress(1.0 if _nurse_done else min(0.9, _n_msgs / 8.0))
+        if _nurse_done:
+            st.caption("✅ Η νοσηλεύτρια έχει αρκετά στοιχεία — μπορείς να δημιουργήσεις την αναφορά." if lang=="el"
+                       else "✅ The nurse has enough information — you can create the report.")
+        elif enabled:
+            st.caption("💬 Η νοσηλεύτρια έχει ακόμη ερωτήσεις. Μπορείς να δημιουργήσεις αναφορά ήδη τώρα, αλλά αν απαντήσεις πρώτα θα είναι πιο πλήρης."
+                       if lang=="el" else
+                       "💬 The nurse still has questions. You can create the report now, but answering first makes it more complete.")
+        else:
+            st.caption("💬 Απάντησε σε μερικές ακόμα ερωτήσεις και η αναφορά ξεκλειδώνει αυτόματα." if lang=="el"
+                       else "💬 Answer a few more questions and the report unlocks automatically.")
         render_output_language_picker(lang, key_suffix="triage")
-        if st.button(t("generate_report"), type="primary", use_container_width=True,
+        if st.button(t("generate_report"), type=("primary" if _nurse_done else "secondary"), use_container_width=True,
                      disabled=not enabled, key="pn_gen_report"):
             st.session_state.screen = "report"; st.rerun()
     with st.expander(("ℹ️ Συχνές παθήσεις για το είδος του" if lang=="el" else "ℹ️ Common conditions for this species"), expanded=False):
