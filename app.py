@@ -1100,35 +1100,57 @@ _PET_INSURANCE_SYSTEM = """Εισαι η Pets’health, συμβουλος Pets�
 {"covered":"yes/no","cost_summary":"...","recommended_clinic":"ονομα + διευθυνση","nearby_network":"αλλες κλινικες δικτυου","action":"...","tip":"..."}"""
 
 
-def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλος", details=""):
-    """Ελέγχει κάλυψη Eurolife My Happy Pet PLUS και επιστρέφει κόστος + κλινική."""
+def _parse_coverage_json(raw):
+    """Parse the model's JSON; repair truncated/unterminated output field-by-field."""
     import re as _re
+    clean = _re.sub(r"^```[a-z]*\n?", "", (raw or "").strip()).strip()
+    clean = _re.sub(r"\n?```$", "", clean).strip()
+    m = _re.search(r"\{.*\}", clean, _re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            pass
+    out = {}
+    for k in ("covered", "cost_summary", "recommended_clinic", "nearby_network", "action", "tip"):
+        mm = _re.search(r'"%s"\s*:\s*"((?:[^"\\]|\\.)*)' % k, clean, _re.DOTALL)
+        if mm and mm.group(1).strip():
+            out[k] = mm.group(1).replace('\\"', '"').replace("\\n", " ").strip()
+    return out
+
+
+def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλος", details=""):
+    """Ελέγχει κάλυψη Eurolife My Happy Pet (Plus/Standard) και επιστρέφει κόστος + κλινική."""
     _t0 = time.time()
     pet_label = f"{pet_name} ({species})" if pet_name else species
+    _prov = st.session_state.get("pet_insurance_provider", "")
+    _ck = f"_cov::{_prov}|{triage_result}|{condition}|{species}"
+    if st.session_state.get(_ck):
+        return st.session_state[_ck]
     prompt = (
         f"Προγραμμα:\n{_policy_text()}\n\n"
         f"Περιστατικο {pet_label} (Αττικη/Θεσσαλονικη):\n"
         f"Triage: {triage_result} | {condition}\n{details}\n"
-        f"Τι πληρωνει; Που να παει; JSON μονο."
+        f"Τι πληρωνει; Που να παει; JSON μονο. Καθε πεδιο το πολυ 40 λεξεις."
     )
-    raw = claude(
-        messages=[{"role": "user", "content": prompt}],
-        system=_PET_INSURANCE_SYSTEM,
-        max_tokens=800,
-        timeout=45,
-    )
-    clean = _re.sub(r"^```[a-z]*\n?", "", raw.strip()).strip()
-    clean = _re.sub(r"\n?```$", "", clean).strip()
-    m = _re.search(r"\{.*\}", clean, _re.DOTALL)
-    if m:
-        clean = m.group(0)
-    try:
-        result = json.loads(clean)
+    result = {}
+    raw = ""
+    for _attempt in range(2):
+        raw = claude(
+            messages=[{"role": "user", "content": prompt}],
+            system=_PET_INSURANCE_SYSTEM,
+            max_tokens=1800,
+            timeout=45,
+        )
+        result = _parse_coverage_json(raw)
+        if result.get("cost_summary") or result.get("action") or result.get("recommended_clinic"):
+            break
+    if result.get("cost_summary") or result.get("action") or result.get("recommended_clinic"):
         log_event("pet_coverage_check", ok=True, ms=(time.time()-_t0)*1000, triage=triage_result)
+        st.session_state[_ck] = result
         return result
-    except Exception as e:
-        log_event("pet_coverage_check", ok=False, ms=(time.time()-_t0)*1000, error=str(e))
-        return {"error": f"Coverage check failed: {e}", "raw": raw[:300]}
+    log_event("pet_coverage_check", ok=False, ms=(time.time()-_t0)*1000, error="unparseable")
+    return {"error": "Δεν μπόρεσα να ολοκληρώσω τον έλεγχο κάλυψης. Κάλεσε το Συντονιστικό 210 9303811.", "raw": (raw or "")[:300]}
 
 
 def _hal_insurance_chat(question: str, triage_result: str, condition: str,
@@ -1146,7 +1168,8 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 ΚΡΙΣΙΜΟ ΓΙΑ ΔΙΚΤΥΟ: Όταν κατευθύνεις σε κλινική, αναφέρε και άλλες επιλογές
 του δικτύου κοντά στην περιοχή του χρήστη.
 
-Απαντάς σύντομα, φιλικά, στη γλώσσα του χρήστη."""
+Απαντάς σύντομα, φιλικά, στη γλώσσα του χρήστη.
+ΣΤΕΙΡΩΣΗ/ΕΥΝΟΥΧΙΣΜΟΣ: Στο Προσάρτημα Α αναγράφονται συμμετοχές για ωοθηκυστερεκτομή και ευνουχισμό. Αν ρωτηθείς, δώσε αυτά τα ποσά (ανά είδος/βάρος) και πες καθαρά ότι αν η προγραμματισμένη (μη επείγουσα) στείρωση αποζημιώνεται το επιβεβαιώνει το Συντονιστικό 210 9303811 — μην το υποσχεθείς."""
 
     prompt = (
         "Προγραμμα:\n" + _policy_text() + "\n\n"
@@ -1295,7 +1318,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     """Streamlit card: κάλυψη ασφαλιστηρίου + Pets’health chat μετά από triage αποτέλεσμα."""
     _provider_name = st.session_state.get("pet_insurance_provider", "")
     if _provider_name and _provider_name not in ("— Χωρίς ασφάλεια —", "— No insurance —"):
-        _short_provider = _provider_name.split("—")[0].strip() if "—" in _provider_name else _provider_name
+        _short_provider = _provider_name.split("—")[-1].strip() if "—" in _provider_name else _provider_name
         label = f"🐾 Κάλυψη · {_short_provider}" if lang == "el" else f"🐾 Coverage · {_short_provider}"
     else:
         label = "🐾 Κάλυψη Προγράμματος My Happy Pet" if lang == "el" else "🐾 My Happy Pet Coverage"
@@ -4522,6 +4545,54 @@ def _evidence_context():
     return photo_ctx, lab_ctx
 
 
+def _second_opinion_generate(pet, lang):
+    """GPT-4o peer review of the report. Returns (text, error_message)."""
+    _pctx, _lctx = _evidence_context()
+    _evid = ""
+    if _pctx:
+        _evid += f"\n\nPHOTO ANALYSIS FINDINGS:\n{_pctx}"
+    if _lctx:
+        _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
+    _review_lang = output_language_name()
+    gpt_system = (
+        "You are a veterinary clinical reasoning assistant helping review an "
+        "AI-generated educational summary about a pet (a companion animal — "
+        "dog, cat, rabbit, or bird). This is an educational review, NOT a "
+        "diagnosis and NOT human medical advice. The pet owner will discuss "
+        "all findings with a licensed veterinarian before any treatment.\n\n"
+        "Your job: read the Pets’health AI summary below and provide a "
+        "constructive peer review — note what the summary handles well, "
+        "flag anything you would add or reconsider, suggest alternative "
+        "differentials the veterinarian might want to rule out, and call "
+        "out any red flags. Cite reasoning, not authority. Keep it concise "
+        "(≤350 words), structured with short headed sections, and species-appropriate. "
+        "Always end with the reminder that only a licensed veterinarian can diagnose or "
+        "prescribe.\n\n"
+        f"Write your review in {_review_lang}."
+    )
+    gpt_system += output_language_directive()
+    user_prompt = (
+        f"PET: {pet.get('name')}, {pet.get('species_label')} "
+        f"({pet.get('breed')}), {pet.get('age_y')}y\n\n"
+        f"AI EDUCATIONAL SUMMARY (to be reviewed):\n"
+        f"---\n{st.session_state.report}\n---{_evid}\n\n"
+        f"Provide your peer review of the summary above. Note strengths, "
+        f"suggest additions or alternative differentials the veterinarian "
+        f"should consider, and highlight any red flags. Be specific and "
+        f"species-appropriate. End by reminding the owner to consult a "
+        f"licensed veterinarian."
+    )
+    gpt_result = gpt4o(prompt=user_prompt, system=gpt_system, max_tokens=4000)
+    low = (gpt_result or "").strip().lower()
+    bad = (low.startswith(("i'm sorry", "i am sorry", "i can't", "i cannot", "gpt-4o unavailable"))
+           or "can't assist" in low or "cannot assist" in low
+           or any(m in low for m in ("είμαι ο perro", "είμαι η gata", "είμαι ο gaz", "είμαι ο ave",
+                                     "i'm perro", "i'm gata", "i'm gaz", "i'm ave")))
+    if bad or not low:
+        return "", (gpt_result or "")[:300]
+    return sanitize_ai_text(gpt_result), ""
+
+
 def render_report():
     render_stepper("report")
     pet  = st.session_state.pet
@@ -4664,6 +4735,13 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         # Step 3 — Personalized recommendations
         st.session_state.report_recs = generate_pet_recommendations(
             pet, vitals_text, conversation, st.session_state.report, lang)
+        if get_openai_key():
+            _progress.progress(88, text=f"{_status_label}  ·  " + ("🤖 Δεύτερη κτηνιατρική γνώμη…" if lang=="el" else "🤖 Second veterinary opinion…"))
+            try:
+                _so, _so_err = _second_opinion_generate(pet, lang)
+            except Exception as _e:
+                _so, _so_err = "", str(_e)
+            st.session_state.report_gpt = _so
         _progress.progress(100, text=("✅ Έτοιμη η αναφορά!" if lang=="el" else "✅ Report ready!"))
         _progress.empty()
         st.rerun()
@@ -4684,7 +4762,76 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
 
     _sh("report", "Η εκτίμηση για " + (nm or "το κατοικίδιο"), "Assessment for " + (nm or "your pet"),
         "Σύνοψη συζήτησης, πιθανές αιτίες και επόμενο βήμα", "Chat summary, possible causes and next step", "cool")
+    st.markdown(
+        '<style>'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker){display:none !important;}'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"]{'
+        'background:#fff;border:1px solid #DDE2F8;border-radius:22px;padding:20px 24px 12px;margin:6px 0 4px;'
+        'box-shadow:0 4px 16px rgba(35,40,190,.06);}'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"] h1{'
+        'font-size:20px !important;line-height:1.3;color:#0B1B4B;margin:0 0 6px !important;padding:0 !important;}'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"] h2{'
+        'font-size:12.5px !important;font-weight:800 !important;letter-spacing:.09em;text-transform:uppercase;color:#2328BE;'
+        'background:#EEF1FF;border-radius:10px;padding:8px 12px !important;margin:18px 0 8px !important;}'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"] hr{margin:10px 0;border-color:#EEF0FB;}'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"] p,'
+        'div[data-testid="stElementContainer"]:has(.pn-rep-marker) + div[data-testid="stElementContainer"] li{font-size:14.5px;line-height:1.6;}'
+        '</style><span class="pn-rep-marker"></span>', unsafe_allow_html=True)
     st.markdown(st.session_state.report)
+
+    # ── Second opinion: an extra service, shown right under the analysis in its own blue card ──
+    if get_openai_key():
+        st.markdown(
+            '<style>'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker){'
+            'background:linear-gradient(180deg,#EEF1FF 0%,#E4E9FF 100%);border:1.5px solid #B9C3F2;border-radius:22px;'
+            'padding:18px 20px 16px;margin:18px 0;box-shadow:0 6px 20px rgba(35,40,190,.10);}'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker) h1,'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker) h2{font-size:15px !important;'
+            'color:#2328BE;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px !important;}'
+            '</style>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown(
+                '<span class="pn-so-marker"></span>'
+                '<div style="display:flex;align-items:center;gap:12px;">'
+                '<div style="width:44px;height:44px;border-radius:14px;background:#2328BE;color:#fff;display:flex;'
+                'align-items:center;justify-content:center;font-size:22px;">🩺</div>'
+                '<div><div style="font:700 17px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;">'
+                + ("Δεύτερη κτηνιατρική γνώμη" if lang == "el" else "Second veterinary opinion") +
+                ' <span style="background:#2328BE;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;'
+                'vertical-align:middle;letter-spacing:.06em;">' + ("ΕΠΙΠΛΕΟΝ ΥΠΗΡΕΣΙΑ" if lang == "el" else "EXTRA SERVICE") + '</span></div>'
+                '<div style="font-size:12.5px;color:#5B6794;margin-top:2px;">'
+                + ("Ανεξάρτητος έλεγχος της εκτίμησης από δεύτερο μοντέλο AI (GPT-4o)" if lang == "el"
+                   else "An independent check of the assessment by a second AI model (GPT-4o)") +
+                '</div></div></div>', unsafe_allow_html=True)
+            if not st.session_state.get("report_gpt"):
+                st.caption("Δεν είναι διαθέσιμη ακόμη." if lang == "el" else "Not available yet.")
+                if st.button(("🔄 Ζήτα δεύτερη γνώμη" if lang == "el" else "🔄 Request second opinion"),
+                             type="primary", key="pet_gpt_request"):
+                    if _rate_limit_gate("gpt4o_second_opinion"):
+                        with st.spinner("GPT-4o…"):
+                            _so, _so_err = _second_opinion_generate(pet, lang)
+                        if _so:
+                            st.session_state.report_gpt = _so
+                            st.rerun()
+                        else:
+                            st.error(("Δεν ήταν δυνατή η δεύτερη γνώμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο."
+                                      if lang == "el" else "The second opinion isn't available right now. Please try again shortly."))
+            else:
+                st.markdown(st.session_state.report_gpt)
+                if st.session_state.get("_gpt_integrated"):
+                    st.success("✓ " + ("Ενσωματώθηκε στην τελική εκτίμηση και στα exports."
+                                       if lang == "el" else "Integrated into the final assessment and exports."))
+                else:
+                    if st.button(("➕ Ενσωμάτωση στην αναφορά (PDF/HTML)" if lang == "el"
+                                  else "➕ Add to report (PDF/HTML)"),
+                                 key="pet_gpt_integrate", use_container_width=True):
+                        _hdr = "## " + ("ΔΕΥΤΕΡΗ ΓΝΩΜΗ (GPT-4o)" if lang == "el" else "SECOND OPINION (GPT-4o)")
+                        st.session_state["_report_with_gpt"] = (
+                            (st.session_state.report or "").rstrip() + "\n\n---\n\n" + _hdr + "\n\n"
+                            + (st.session_state.report_gpt or "").strip())
+                        st.session_state["_gpt_integrated"] = True
+                        st.rerun()
 
     # Photo findings card — if the user uploaded any photos during intake/triage,
     # the AI vision analyses become visible evidence in the final report.
@@ -4790,143 +4937,6 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             for a in st.session_state.report_refs:
                 st.markdown(f"**[{a['title']}]({a['url']})**")
 
-    # GPT-4o second opinion
-    if get_openai_key():
-        with st.expander(f"🤖 {t('second_opinion')}"):
-            if not st.session_state.report_gpt:
-                if st.button("Get GPT-4o Veterinary Second Opinion", type="secondary"):
-                    if not _rate_limit_gate("gpt4o_second_opinion"):
-                        st.stop()
-                    with st.spinner("GPT-4o reviewing..."):
-                        _pctx, _lctx = _evidence_context()
-                        _evid = ""
-                        if _pctx:
-                            _evid += f"\n\nPHOTO ANALYSIS FINDINGS:\n{_pctx}"
-                        if _lctx:
-                            _evid += f"\n\nLAB / TEST RESULT ANALYSIS:\n{_lctx}"
-
-                        # Dedicated veterinary-reviewer system prompt. The
-                        # main petainurse_system() is written for Claude in a
-                        # role-playing nurse-hero persona ("you are Perro,
-                        # ask one question at a time") which trips OpenAI's
-                        # content guardrails when applied to a clinical
-                        # second-opinion task — the model returns "I'm sorry,
-                        # I can't assist with that". Framing it as an
-                        # educational veterinary peer review on an existing
-                        # AI-generated report (not a primary diagnosis, not
-                        # role-play, explicitly animal-only) keeps GPT-4o
-                        # compliant and useful.
-                        _review_lang = output_language_name()
-                        gpt_system = (
-                            "You are a veterinary clinical reasoning assistant helping review an "
-                            "AI-generated educational summary about a pet (a companion animal — "
-                            "dog, cat, rabbit, or bird). This is an educational review, NOT a "
-                            "diagnosis and NOT human medical advice. The pet owner will discuss "
-                            "all findings with a licensed veterinarian before any treatment.\n\n"
-                            "Your job: read the Pets’health AI summary below and provide a "
-                            "constructive peer review — note what the summary handles well, "
-                            "flag anything you would add or reconsider, suggest alternative "
-                            "differentials the veterinarian might want to rule out, and call "
-                            "out any red flags. Cite reasoning, not authority. Keep it concise "
-                            "(≤350 words), structured, and species-appropriate. Always end with "
-                            "the reminder that only a licensed veterinarian can diagnose or "
-                            "prescribe.\n\n"
-                            f"Write your review in {_review_lang}."
-                        )
-                        # Same clinical-terminology guard rails GPT-4o gets that
-                        # Claude does — only kicks in if the user picked an
-                        # output language different from the UI language.
-                        gpt_system += output_language_directive()
-
-                        user_prompt = (
-                            f"PET: {pet.get('name')}, {pet.get('species_label')} "
-                            f"({pet.get('breed')}), {pet.get('age_y')}y\n\n"
-                            f"PETAINURSE AI EDUCATIONAL SUMMARY (to be reviewed):\n"
-                            f"---\n{st.session_state.report}\n---{_evid}\n\n"
-                            f"Provide your peer review of the summary above. Note strengths, "
-                            f"suggest additions or alternative differentials the veterinarian "
-                            f"should consider, and highlight any red flags. Be specific and "
-                            f"species-appropriate. End by reminding the owner to consult a "
-                            f"licensed veterinarian."
-                        )
-
-                        gpt_result = gpt4o(prompt=user_prompt, system=gpt_system, max_tokens=4000)
-                        # If GPT refused or the API errored, surface that to
-                        # the admin instead of saving a useless "I'm sorry…"
-                        # into the report. The string-check matches both
-                        # OpenAI refusal phrasing and our own "GPT-4o
-                        # unavailable: …" sentinel from gpt4o().
-                        _gr_low = (gpt_result or "").strip().lower()
-                        _is_refusal = (
-                            _gr_low.startswith("i'm sorry") or
-                            _gr_low.startswith("i am sorry") or
-                            _gr_low.startswith("i can't") or
-                            _gr_low.startswith("i cannot") or
-                            "can't assist" in _gr_low or
-                            "cannot assist" in _gr_low
-                        )
-                        _is_error = _gr_low.startswith("gpt-4o unavailable")
-                        # If the model produced a triage-style intro (mascot
-                        # name + "superhero" wording + asking follow-up
-                        # questions) it's role-playing Pets’health instead of
-                        # reviewing the report — discard and ask the admin
-                        # to retry. This happens when an old/cached prompt
-                        # bleeds into the GPT call.
-                        _hero_intro_markers = [
-                            "superhero της petainurse",
-                            "superhero of petainurse",
-                            "petainurse's superhero",
-                            "είμαι ο perro", "είμαι η gata",
-                            "είμαι ο gaz",   "είμαι ο ave",
-                            "i'm perro",     "i'm gata",
-                            "i'm gaz",       "i'm ave",
-                        ]
-                        _is_wrong_role = any(m in _gr_low for m in _hero_intro_markers)
-                        if _is_refusal or _is_error or _is_wrong_role:
-                            _why = ("⚠️ Wrong-role response — το μοντέλο ξεκίνησε νέα συνομιλία τριάζ αντί για review."
-                                    if _is_wrong_role else
-                                    ("⚠️ Refusal" if _is_refusal else "⚠️ API error"))
-                            st.error(
-                                (f"{_why}\n\n"
-                                 f"**Απάντηση μοντέλου:** `{(gpt_result or '')[:500]}`\n\n"
-                                 "Δοκίμασε ξανά σε λίγο."
-                                 if lang == "el" else
-                                 f"{_why}\n\n"
-                                 f"**Model response:** `{(gpt_result or '')[:500]}`\n\n"
-                                 "Try again shortly.")
-                            )
-                        else:
-                            st.session_state.report_gpt = sanitize_ai_text(gpt_result)
-                            st.rerun()
-            else:
-                st.markdown(st.session_state.report_gpt)
-                # Integration: if the second opinion adds value, the user can fold
-                # it into the main report so it shows up in the on-screen
-                # assessment AND in every downstream export (PDF/HTML).
-                st.divider()
-                if st.session_state.get("_gpt_integrated"):
-                    st.success("✓ " + ("Ενσωματώθηκε στην τελική εκτίμηση παραπάνω και στα exports."
-                                       if lang=="el" else
-                                       "Integrated into the final assessment above and in all exports."))
-                else:
-                    if st.button(("➕ Ενσωμάτωση στην τελική εκτίμηση" if lang=="el"
-                                  else "➕ Integrate into final assessment"),
-                                 type="primary", use_container_width=True, key="pet_gpt_integrate"):
-                        _hdr = "## " + ("ΔΕΥΤΕΡΗ ΓΝΩΜΗ (GPT-4o)" if lang=="el"
-                                        else "SECOND OPINION (GPT-4o)")
-                        st.session_state.report = (
-                            (st.session_state.report or "").rstrip()
-                            + "\n\n---\n\n" + _hdr + "\n\n"
-                            + (st.session_state.report_gpt or "").strip()
-                        )
-                        st.session_state["_gpt_integrated"] = True
-                        st.rerun()
-                    st.caption(("💡 Προσθέτει τη δεύτερη γνώμη ως ξεχωριστή ενότητα στην αναφορά "
-                                "και σε όλα τα exports (PDF/HTML)."
-                                if lang=="el" else
-                                "💡 Adds the second opinion as a separate section in the report "
-                                "and in every export (PDF/HTML)."))
-
     # Emergency vets
     with st.expander("🚨 " + ("Επείγοντα Κτηνιατρεία" if lang=="el" else "Emergency Vet Clinics")):
         render_emergency_vets(lang)
@@ -4964,6 +4974,8 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     render_govgr_links(lang)
 
     # Actions
+    _export_report = (st.session_state.get("_report_with_gpt") if st.session_state.get("_gpt_integrated")
+                      and st.session_state.get("_report_with_gpt") else st.session_state.report)
     fname = f"petainurse_report_{pet.get('name','pet')}_{datetime.now().strftime('%Y%m%d')}"
     c1,c2,c3,c4 = st.columns(4)
     with c1:
@@ -4977,12 +4989,12 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
             st.session_state.screen = "dashboard"
             st.rerun()
     with c2:
-        st.download_button("📄 TXT", data=st.session_state.report,
+        st.download_button("📄 TXT", data=_export_report,
                            file_name=fname+".txt", mime="text/plain", use_container_width=True)
     with c3:
         st.download_button("📄 PDF/HTML",
                            data=generate_pet_html_report(pet, st.session_state.vitals,
-                                                          st.session_state.report, st.session_state.report_refs, lang,
+                                                          _export_report, st.session_state.report_refs, lang,
                                                           lab_findings=st.session_state.lab_findings,
                                                           recs=st.session_state.get("report_recs"),
                                                           species_key=sp),
@@ -5005,7 +5017,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         if vbits:
             wa_lines.append(("Ζωτικά: " if lang=="el" else "Vitals: ") + ", ".join(vbits))
         # Clean markdown so it reads well in WhatsApp
-        rep = _re_wa.sub(r"[#*>`|]", "", st.session_state.report or "").strip()
+        rep = _re_wa.sub(r"[#*>`|]", "", _export_report or "").strip()
         rep = _re_wa.sub(r"\n{3,}", "\n\n", rep)
         # Cap length — wa.me pre-fill fails on very long URLs
         if len(rep) > 1500:

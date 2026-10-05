@@ -22,7 +22,8 @@ if not st.session_state.get("_h2"):
         if st.query_params.get("ins"): st.session_state["pet_insurance_provider"]="Eurolife FFH — My Happy Pet "+("Standard" if st.query_params["ins"]=="std" else "Plus")
     if st.query_params.get("t")=="report":
         st.session_state["triage_chat"]=[{"role":"user","content":"Βήχει τη νύχτα"},{"role":"assistant","content":"Πόσο καιρό;"}]
-        st.session_state["report"]="## Σύνοψη\n\nΟ Μπόμπης βήχει τη νύχτα εδώ και 3 μέρες.\n\n- Πιθανή αιτία: καρδιακή ή αναπνευστική\n- Επόμενο βήμα: επίσκεψη στον κτηνίατρο"
+        if st.query_params.get("gpt"): st.session_state["report_gpt"]="## Δυνατά σημεία\n\nΗ εκτίμηση καλύπτει τα βασικά.\n\n## Πρόσθετες διαφορικές\n\n- Τραχειοβρογχίτιδα\n- Καρδιακή ανεπάρκεια\n\nΜόνο κτηνίατρος μπορεί να κάνει διάγνωση."
+        st.session_state["report"]="# 🐾 Κτηνιατρική Αναφορά\n\n**Ασθενής:** Μπόμπης\n\n---\n\n## 1. ΚΥΡΙΟ ΠΑΡΑΠΟΝΟ\n\nΒήχας.\n\n## 2. ΕΚΤΙΜΗΣΗ\n\n## Σύνοψη\n\nΟ Μπόμπης βήχει τη νύχτα εδώ και 3 μέρες.\n\n- Πιθανή αιτία: καρδιακή ή αναπνευστική\n- Επόμενο βήμα: επίσκεψη στον κτηνίατρο"
         st.session_state["report_refs"]=[{"title":"Cough in dogs","url":"https://www.msdvetmanual.com"}]
         st.session_state["vitals"]={"hr":110,"br":28,"temp":38.6}
         st.session_state["photo_findings"]=[{"scan_label":"Μάτι","analysis":"Ελαφρά ερυθρότητα."}]
