@@ -6764,10 +6764,10 @@ def render_benchmark_section(lang="el"):
     """Landing: transparency about the open VetTriageBench-45 preprint (figures from the Zenodo record, v2)."""
     el = lang == "el"
     url = os.environ.get("BENCHMARK_URL", "https://doi.org/10.5281/zenodo.21127217").strip()
-    stats = [("45", "Σενάρια σκύλων & γατών" if el else "Dog & cat scenarios", "ίσα μοιρασμένα σε επείγον, επιτακτικό, ήπιο" if el else "equally split: emergency, urgent, self-care"),
-             ("100%", "Ευαισθησία σε σαφή επείγοντα" if el else "Sensitivity on clear emergencies", "και τα 2 μοντέλα: GDV, επιληπτική κρίση, δηλητηρίαση" if el else "both models: GDV, seizures, poisoning"),
-             ("0%", "Επικίνδυνη υποεκτίμηση" if el else "Unsafe undertriage", "Claude Sonnet 4.6, το μοντέλο της εφαρμογής" if el else "Claude Sonnet 4.6, the app’s model"),
-             ("73%", "Ακρίβεια Claude Sonnet 4.6" if el else "Claude Sonnet 4.6 accuracy", "95% CI 59–84%, n=45" if el else "95% CI 59–84%, n=45")]
+    stats = [("45", "Σενάρια: 25 σκύλοι, 20 γάτες" if el else "Scenarios: 25 dogs, 20 cats", "15 επείγοντα, 15 επιτακτικά, 15 ήπια" if el else "15 emergency, 15 urgent, 15 self-care"),
+             ("15/15", "Επείγοντα που αναγνώρισε το Claude" if el else "Emergencies caught by Claude", "GPT-4o: 14/15" if el else "GPT-4o: 14/15"),
+             ("0%", "Επικίνδυνη υποεκτίμηση" if el else "Unsafe undertriage", "Claude Sonnet 4.6 · GPT-4o: 1 περίπτωση (2,2%)" if el else "Claude Sonnet 4.6 · GPT-4o: 1 case (2.2%)"),
+             ("73%", "Ακρίβεια Claude Sonnet 4.6" if el else "Claude Sonnet 4.6 accuracy", "95% CI 59–84%· τα διαστήματα των μοντέλων επικαλύπτονται" if el else "95% CI 59–84%; the models’ intervals overlap")]
     st.markdown(
         '<style>.pn-bm{background:#fff;border:1px solid #DDE2F8;border-radius:28px;padding:28px 28px 22px;margin:26px 0 8px;}'
         '.pn-bm .eb{font:800 12px Inter,sans-serif;letter-spacing:.14em;color:#1237C9;}'
@@ -6782,18 +6782,22 @@ def render_benchmark_section(lang="el"):
         '<div class="pn-bm"><div class="eb">' + ("ΔΙΑΦΑΝΕΙΑ" if el else "TRANSPARENCY") + '</div>'
         '<h3>' + ("Δημοσιεύσαμε ανοιχτό benchmark για κτηνιατρικό triage σκύλων και γατών" if el
                   else "We published an open benchmark for dog and cat veterinary triage") + '</h3>'
-        '<p>' + ("Το <b>VetTriageBench-45</b> (preprint, Zenodo, Ιούλιος 2026) έχει 45 τυποποιημένα σενάρια, με μεθοδολογία προσαρμοσμένη από τη μελέτη Semigran et al. (BMJ, 2015) για ελεγκτές συμπτωμάτων ανθρώπων. "
-                 "Είναι ανοιχτό και αναπαραγώγιμο. Το Claude Sonnet 4.6 δεν υποτίμησε επικίνδυνα κανένα σενάριο· το GPT-4o ξέφυγε σε ένα (φραγή ουρήθρας σε γάτα). Και τα δύο αναγνώρισαν όλα τα σαφή επείγοντα."
+        '<p>' + ("Το <b>VetTriageBench-45</b> (preprint, Zenodo, Ιούλιος 2026) έχει 45 τυποποιημένα σενάρια, με μεθοδολογία προσαρμοσμένη από τη μελέτη Semigran et al. (BMJ, 2015) για ελεγκτές συμπτωματών ανθρώπων. "
+                 "Είναι ανοιχτό και αναπαραγώγιμο. Το Claude Sonnet 4.6 αναγνώρισε και τα 15 επείγοντα· το GPT-4o ξέφυγε σε ένα (PA014). "
+                 "<b>Η αδυναμία που βρήκαμε:</b> στα «επιτακτικά» (urgent) το Claude ταίριαξε σωστά μόνο 5 από 15 και ανέβασε τα υπόλοιπα σε επείγον. Είναι ασφαλής υπερεκτίμηση, αλλά μπορεί να οδηγεί σε περιττές επισκέψεις."
                  if el else
                  "<b>VetTriageBench-45</b> (preprint, Zenodo, July 2026) has 45 standardised scenarios, with a methodology adapted from Semigran et al. (BMJ, 2015) for human symptom checkers. "
-                 "It is open and reproducible. Claude Sonnet 4.6 did not dangerously undertriage any scenario; GPT-4o missed one (a feline urethral obstruction). Both recognised every clear emergency.") + '</p>'
+                 "It is open and reproducible. Claude Sonnet 4.6 caught all 15 emergencies; GPT-4o missed one (PA014). "
+                 "<b>The weakness we found:</b> in the urgent tier Claude matched only 5 of 15 and escalated the rest to emergency. That is safe over-triage, but it can lead to unnecessary visits.") + '</p>'
         '<div class="pn-bms">' + "".join(f'<div><b>{a}</b><span>{b}</span><small>{c}</small></div>' for a, b, c in stats) + '</div>'
         '<div class="lim"><b>' + ("Τι δεν σημαίνει: " if el else "What it does not mean: ") + '</b>'
         + ("δοκιμάστηκε το μοντέλο, όχι ολόκληρη η εφαρμογή· είναι preprint και δεν έχει περάσει peer review· οι σωστές απαντήσεις των σεναρίων έχουν διαμορφωθεί με βοήθεια AI και δεν έχουν ακόμη επικυρωθεί από κτηνιάτρους (προγραμματισμένο στο v2.0)· "
-           "το δείγμα είναι μικρό (n=45) και δεν κάνουμε κατάταξη μοντέλων· η δοκιμή έγινε από εμάς. Η PetsAIHealth δεν κάνει διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
+           "το δείγμα είναι μικρό (n=45, περιθώριο περίπου ±15 μονάδες) και δεν κάνουμε κατάταξη μοντέλων· η οδηγία της δοκιμής «σε αμφιβολία, επείγον» ενισχύει την ασφάλεια αλλά φουσκώνει τα επείγοντα και την υπερεκτίμηση· τα σενάρια είναι δομημένα και η γλώσσα των ιδιοκτητών θα διαφέρει· η δοκιμή έγινε από εμάς. "
+           "Η PetsAIHealth δεν κάνει διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
            if el else
            "the model was tested, not the whole app; it is a preprint without peer review; the scenario answers were developed with AI assistance and are not yet validated by veterinarians (planned for v2.0); "
-           "the sample is small (n=45) and we do not rank models; the test was run by us. PetsAIHealth does not diagnose and does not replace a veterinarian.")
+           "the sample is small (n=45, margin about ±15 points) and we do not rank models; the test prompt’s “when unsure, emergency” rule boosts safety but inflates emergencies and over-triage; scenarios are structured and real owner language will differ; the test was run by us. "
+           "PetsAIHealth does not diagnose and does not replace a veterinarian.")
         + '</div></div>', unsafe_allow_html=True)
     if url:
         st.link_button(("Δες το benchmark και τα δεδομένα ↗" if el else "See the benchmark and data ↗"), url)
