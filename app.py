@@ -6244,7 +6244,7 @@ def render_plans_section(lang="el", gate=False, cta=None):
                 f'<ul>{li(plus_items, "✨")}</ul></div>', unsafe_allow_html=True)
             _em = st.session_state.get("auth_user", "")
             if gate or not _em:
-                st.markdown('<a class="pn-cta plus" href="#pn-login">' + ("Ξεκίνα με Plus ↓" if el else "Start with Plus ↓") + '</a>'
+                st.markdown('<a class="pn-cta plus" target="_self" href="?plan=plus#pn-login">' + ("Ξεκίνα με Plus ↓" if el else "Start with Plus ↓") + '</a>'
                             '<div style="font-size:12px;opacity:.8;margin:0 0 6px;">'
                             + ("Συνδέσου πρώτα· η πληρωμή γίνεται μετά τη σύνδεση." if el else "Sign in first; payment comes right after.")
                             + '</div>', unsafe_allow_html=True)
@@ -7118,6 +7118,10 @@ if _page_param in CATEGORY_SLUGS:
     render_category_page(_page_param)
     st.stop()
 
+if st.query_params.get("plan") == "plus":
+    st.session_state["_plan_intent"] = "plus"
+    del st.query_params["plan"]
+
 if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
@@ -7147,6 +7151,8 @@ def _ensure_pets_loaded():
 
 
 _ensure_pets_loaded()
+if st.session_state.pop("_plan_intent", None) == "plus" and paywall_enabled() and not has_plus():
+    st.session_state.screen = "plus"
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
