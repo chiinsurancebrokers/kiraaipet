@@ -1716,9 +1716,9 @@ def render_login_gate():
     if is_logged_in():
         return True
 
-    st.markdown(f'''<div style="background:rgba(5,150,105,0.06);border:1px solid rgba(5,150,105,0.15);border-radius:14px;padding:20px 22px;text-align:center;margin:10px 0">
+    st.markdown(f'''<div style="background:#EEF1FF;border:1px solid #D9DEF5;border-radius:14px;padding:20px 22px;text-align:center;margin:10px 0">
         <div style="font-size:34px;margin-bottom:6px">🔒</div>
-        <div style="font-size:16px;font-weight:700;color:#1A1A2E">{"Σύνδεση" if lang=="el" else "Sign in"}</div>
+        <div style="font-size:16px;font-weight:700;color:#0B1B4B">{"Σύνδεση" if lang=="el" else "Sign in"}</div>
         <div style="font-size:13px;color:#6B7280;margin-top:4px">{"Email + κωδικός μίας χρήσης. Χωρίς password." if lang=="el" else "Email + one-time code. No password."}</div>
     </div>''', unsafe_allow_html=True)
 
@@ -5186,88 +5186,9 @@ def render_insurance_promo(lang: str = "el"):
     )
 
 
-def render_login_hero(lang):
-    """Compact hero strip for the login screen — logo, one-line value prop,
-    and mascots, all above the fold so the login form isn't pushed down by
-    the full marketing banner."""
-    if lang == "el":
-        kicker = "PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ"
-        title  = "Πες τι παρατηρείς."
-        accent = "Λάβε εκτίμηση."
-        sub    = "Δομημένη σύνοψη με κτηνιατρικές αναφορές, σε λίγα λεπτά — πριν ή αντί για το ιατρείο."
-    else:
-        kicker = "PETAINURSE · AI VET NURSE"
-        title  = "Tell us what's going on."
-        accent = "Get an assessment."
-        sub    = "A structured summary with veterinary references, in minutes — before or alongside your vet visit."
-
-    st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800;1,900&family=Inter:wght@400;500;600;700;800&display=swap');
-.pan-hero {{
-  background: linear-gradient(180deg, #F0FDF4 0%, #ECFDF5 100%);
-  border: 1px solid rgba(5,150,105,0.08);
-  border-radius: 24px; padding: 28px 32px; margin: 8px 0 18px;
-  text-align: center; font-family: 'Inter', system-ui, sans-serif;
-}}
-.pan-hero-kicker {{
-  display: inline-flex; align-items: center; gap: 8px;
-  background: white; border: 1px solid #E5E7EB; border-radius: 999px;
-  padding: 6px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
-  color: #059669; margin-bottom: 14px;
-}}
-.pan-hero-title {{
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 34px; font-weight: 800; line-height: 1.15;
-  color: #1A1A2E; letter-spacing: -1px; margin: 0 0 6px;
-}}
-.pan-hero-title .accent {{ color: #0EA5E9; font-style: italic; }}
-.pan-hero-sub {{
-  font-size: 14px; color: #4B5563; max-width: 480px;
-  margin: 0 auto; line-height: 1.55;
-}}
-.pan-hero-mascots {{
-  display: flex; justify-content: center; gap: 14px; margin-top: 18px;
-}}
-.pan-hero-mascots > div {{
-  background: white; border-radius: 16px; padding: 6px 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}}
-@media (max-width: 640px) {{
-  .pan-hero {{ padding: 22px 18px; border-radius: 18px; }}
-  .pan-hero-title {{ font-size: 26px; }}
-  .pan-hero-sub {{ font-size: 13px; }}
-}}
-</style>
-<div class="pan-hero">
-  <div class="pan-hero-kicker">🐾 {kicker}</div>
-  <div class="pan-hero-title">{title} <span class="accent">{accent}</span></div>
-  <div class="pan-hero-sub">{sub}</div>
-  {render_hero_group(size=72, show_names=True, gap=10, caption=True)}
-</div>
-""", unsafe_allow_html=True)
-    render_insurance_promo(lang)
-
-
 def render_login_screen():
-    """Full-page login shown at the very start when auth is enabled.
-    Compact 'hero' layout: lang switch, short value-prop strip with mascots,
-    and the login form — all above the fold."""
-    lang = st.session_state.lang
-    c1, c2 = st.columns([6,1])
-    with c2:
-        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ", key="login_lang"):
-            st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
-
-    # Compact hero — logo, one-line value prop, mascots
-    render_login_hero(lang)
-
-    # Login form — front and center
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        render_login_gate()
-
-    _render_disclaimer_strip()
+    """Landing page with the sign-in form embedded (no separate login screen)."""
+    render_pet_landing(gate=True)
 
 
 # ── COOKIE MANAGER (once) — persistent login ──────────────────────────────────
@@ -5758,7 +5679,7 @@ def render_pet_nurse_card():
                 _goto("vets")
 
 
-def render_pet_landing():
+def render_pet_landing(gate=False):
     """Hero / landing: what PetAiNurse does + the other services."""
     from petify_ui import landing_parts as _lp
     lang = st.session_state.lang
@@ -5782,10 +5703,20 @@ def render_pet_landing():
             st.rerun()
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
-    _cta("land_cta_top")
+    if gate:
+        _g1, _g2, _g3 = st.columns([1, 2, 1])
+        with _g2:
+            render_login_gate()
+    else:
+        _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
-    _cta("land_cta_bottom")
+    if gate:
+        st.markdown('<a href="#" style="display:block;text-align:center;background:#1237C9;color:#fff;font-weight:700;'
+                    'padding:14px;border-radius:999px;text-decoration:none;margin-top:6px;">'
+                    + ("↑ Συνδέσου για να ξεκινήσεις" if el else "↑ Sign in to get started") + '</a>', unsafe_allow_html=True)
+    else:
+        _cta("land_cta_bottom")
     st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
                 unsafe_allow_html=True)
 
@@ -6483,7 +6414,7 @@ if auth_enabled() and not is_logged_in():
 
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
-if screen == "home" and not st.session_state.get("_landing_seen"):
+if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
     render_pet_landing()
 elif screen == "landing":
     render_pet_landing()
