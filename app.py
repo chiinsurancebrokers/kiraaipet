@@ -4407,7 +4407,10 @@ def render_triage():
     if _provider and not _provider_ss:
         st.session_state["pet_insurance_provider"] = _provider
     _no_ins_opts  = ("— Χωρίς ασφάλεια —", "— No insurance —", "")
-    _has_provider = bool(_provider) and _provider not in _no_ins_opts and str(_provider).startswith("Eurolife")
+    _pl = str(_provider).lower()
+    # Legacy saved values ("Eurolife FFH" with no programme) don't count: ask which programme.
+    _has_provider = (bool(_provider) and _provider not in _no_ins_opts and _pl.startswith("eurolife")
+                     and ("plus" in _pl or "standard" in _pl))
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
     # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
