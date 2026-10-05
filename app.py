@@ -6206,7 +6206,7 @@ def render_plans_section(lang="el", gate=False, cta=None):
         'box-shadow:0 12px 30px rgba(35,40,190,.25);height:100%;}'
         + (_P % "pn-plan-plus") + ' a.stLinkButton, ' + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"]{background:#fff !important;border:none !important;}'
         + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"] p{color:#2328BE !important;font-weight:800 !important;}'
-        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:416px;}}'
+        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:320px;}}'
         '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
         '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
         '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
@@ -6231,11 +6231,6 @@ def render_plans_section(lang="el", gate=False, cta=None):
                 f'<div class="eb">{"ΔΩΡΕΑΝ" if el else "FREE"}</div>'
                 f'<div class="pr">0€ <small>/ {"για πάντα" if el else "forever"}</small></div>'
                 f'<ul>{li(free_items, "✓")}</ul></div>', unsafe_allow_html=True)
-            if gate:
-                st.markdown('<a class="pn-cta free" href="#pn-login">' + ("Ξεκίνα δωρεάν ↓" if el else "Start free ↓") + '</a>',
-                            unsafe_allow_html=True)
-            elif cta:
-                cta("land_cta_plans")
     with c2:
         with st.container():
             st.markdown(
@@ -6244,11 +6239,12 @@ def render_plans_section(lang="el", gate=False, cta=None):
                 f'<div class="pr">{PLUS_PRICE_MONTH} <small>/ {"μήνα" if el else "month"} · {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</small></div>'
                 f'<ul>{li(plus_items, "✨")}</ul></div>', unsafe_allow_html=True)
             _em = st.session_state.get("auth_user", "")
-            if gate or not _em:
-                st.markdown('<a class="pn-cta plus" target="_self" href="?plan=plus#pn-login">' + ("Ξεκίνα με Plus ↓" if el else "Start with Plus ↓") + '</a>'
-                            '<div style="font-size:12px;opacity:.8;margin:0 0 6px;">'
-                            + ("Συνδέσου πρώτα· η πληρωμή γίνεται μετά τη σύνδεση." if el else "Sign in first; payment comes right after.")
+            if gate:
+                st.markdown('<div style="font-size:12.5px;opacity:.85;margin:10px 0 6px;">'
+                            + ("Συνδέσου παρακάτω· η πληρωμή γίνεται μετά τη σύνδεση." if el else "Sign in below; payment comes after.")
                             + '</div>', unsafe_allow_html=True)
+            elif not _em:
+                pass
             elif has_plus(_em):
                 st.markdown('<div class="pn-cta plus">✨ ' + ("Το Plus είναι ενεργό" if el else "Plus is active") + '</div>', unsafe_allow_html=True)
             else:
@@ -7119,10 +7115,6 @@ if _page_param in CATEGORY_SLUGS:
     render_category_page(_page_param)
     st.stop()
 
-if st.query_params.get("plan") == "plus":
-    st.session_state["_plan_intent"] = "plus"
-    del st.query_params["plan"]
-
 if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
@@ -7152,8 +7144,6 @@ def _ensure_pets_loaded():
 
 
 _ensure_pets_loaded()
-if st.session_state.pop("_plan_intent", None) == "plus" and paywall_enabled() and not has_plus():
-    st.session_state.screen = "plus"
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
