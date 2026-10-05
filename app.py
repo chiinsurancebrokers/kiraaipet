@@ -6168,6 +6168,49 @@ def render_pet_nurse_card():
                 _goto("vets")
 
 
+def render_plans_section(lang="el"):
+    """Landing: Free vs Plus side by side."""
+    el = lang == "el"
+    i = 0 if el else 1
+    free_items = [
+        ("3 έλεγχοι συμπτωμάτων τον μήνα", "3 symptom checks a month"),
+        ("1 κατοικίδιο", "1 pet"),
+        ("Κτηνίατρος κοντά σου & επείγοντα", "Find a vet near you & emergencies"),
+        ("Λίστα συμβεβλημένων κλινικών Eurolife", "Eurolife contracted clinics list"),
+    ]
+    plus_items = [
+        ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
+        ("Απεριόριστα κατοικίδια, με επεξεργάσιμο προφίλ", "Unlimited pets with editable profiles"),
+        ("Κτηνιατρική αναφορά + δεύτερη γνώμη", "Veterinary report + second opinion"),
+        ("Ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο", "Vitals, photos, labs, longevity, diary"),
+        ("Ασφάλιση Eurolife (Plus & Standard): κάλυψη, κόστος, ερωτήσεις", "Eurolife insurance (Plus & Standard): cover, costs, questions"),
+    ]
+    li = lambda items, ic: "".join(f'<li><span>{ic}</span>{t[i]}</li>' for t in items)
+    st.markdown(
+        '<style>.pn-pl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:26px 0 8px;}'
+        '.pn-pl .c{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:22px 22px 18px;}'
+        '.pn-pl .c.plus{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);color:#fff;border:none;box-shadow:0 12px 30px rgba(35,40,190,.25);}'
+        '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
+        '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
+        '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
+        '.pn-pl ul{list-style:none;margin:14px 0 0;padding:0;}'
+        '.pn-pl li{display:flex;gap:9px;font-size:13.5px;line-height:1.45;padding:6px 0;}'
+        '.pn-pl li span{flex-shrink:0;}'
+        '.pn-pl .tag{display:inline-block;background:#FF6B35;color:#fff;font:800 10px Inter,sans-serif;letter-spacing:.08em;padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;}'
+        '</style>'
+        '<div style="font:800 12px Inter,sans-serif;letter-spacing:.14em;color:#1237C9;margin-top:26px;">'
+        + ("ΠΛΑΝΑ" if el else "PLANS") + '</div>'
+        '<div style="font:800 26px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:4px 0 0;">'
+        + ("Ξεκίνα δωρεάν. Ξεκλείδωσε τα πάντα με Plus." if el else "Start free. Unlock everything with Plus.") + '</div>'
+        '<div class="pn-pl">'
+        f'<div class="c"><div class="eb">{"ΔΩΡΕΑΝ" if el else "FREE"}</div>'
+        f'<div class="pr">0€ <small>/ {"για πάντα" if el else "forever"}</small></div>'
+        f'<ul>{li(free_items, "✓")}</ul></div>'
+        f'<div class="c plus"><div class="eb">PETS’HEALTH PLUS<span class="tag">{"ΟΛΕΣ ΟΙ ΥΠΗΡΕΣΙΕΣ" if el else "EVERYTHING"}</span></div>'
+        f'<div class="pr">{PLUS_PRICE_MONTH} <small>/ {"μήνα" if el else "month"} · {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</small></div>'
+        f'<ul>{li(plus_items, "✨")}</ul></div></div>', unsafe_allow_html=True)
+
+
 def render_pet_landing(gate=False):
     """Hero / landing: what Pets’health does + the other services."""
     from petify_ui import landing_parts as _lp
@@ -6200,6 +6243,7 @@ def render_pet_landing(gate=False):
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
+    render_plans_section(lang)
     if gate:
         st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
         _g1, _g2, _g3 = st.columns([1, 2, 1])
