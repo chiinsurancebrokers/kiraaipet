@@ -2801,7 +2801,7 @@ PETAINURSE_EL = """Είσαι η Pets’health — AI κτηνιατρικός �
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
-- ΣΥΣΤΑΣΗ/INTRO: Στο πρώτο σου μήνυμα (καλωσόρισμα), ΜΗΝ πεις «Είμαι η Pets’health». Συστήσου ως ο/η {hero_name}, ο/η superhero της Pets’health και {hero_role}. Π.χ. «Είμαι ο/η {hero_name} — ο/η superhero της Pets’health και {hero_role}! Είμαι εδώ για να βοηθήσω εσένα και τον/την {{pet_name}}.» (προσάρμοσε γένος ανάλογα με το όνομα του ήρωα).
+- ΚΑΛΩΣΟΡΙΣΜΑ: Το καλωσόρισμα έχει ΗΔΗ εμφανιστεί στον χρήστη. ΜΗΝ συστηθείς ξανά, ΜΗΝ γράψεις «Γεια σου», ΜΗΝ χρησιμοποιήσεις τίτλους (#) ή emoji ήρωα. Απάντησε κατευθείαν σε 1-2 σύντομες προτάσεις και κάνε ΜΙΑ ερώτηση.
 - ΜΟΡΦΗ ΕΡΩΤΗΣΕΩΝ: ΠΟΤΕ μη γράφεις τίτλους όπως «Ερώτηση Τριάζ #1» ή «Ερώτηση #2». Μίλα απευθείας, σαν να ρωτάει ο/η {hero_name} (ο/η νοσηλευτής/τρια-ήρωας του κατοικιδίου) — π.χ. ξεκίνα φυσικά με «Για να σε βοηθήσω καλύτερα...» ή κατευθείαν με την ερώτηση, χωρίς αριθμημένους τίτλους ή ετικέτες "Τριάζ".
 - ΓΛΩΣΣΑ: Γράφε ΑΠΟΚΛΕΙΣΤΙΚΑ στα Ελληνικά. ΠΟΤΕ μη χρησιμοποιείς κινέζικους/ιαπωνικούς/κορεάτικους ή άλλους μη-ελληνικούς/λατινικούς χαρακτήρες (π.χ. όχι «腹水»). Αν χρειαστείς ιατρικό όρο, γράψ' τον στα Ελληνικά ή Λατινικά.
 - ΥΦΟΣ: Χρησιμοποίησε «Πηγαίνετε» (όχι «Πάντε») και σωστά ελληνικά προστακτικής.
@@ -2840,7 +2840,7 @@ Rules:
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
-- INTRO: In your first (welcome) message, do NOT say "I am Pets’health". Introduce yourself as {hero_name}, Pets’health's superhero and {hero_role}. E.g. "I'm {hero_name} — Pets’health's superhero and {hero_role}! I'm here to help you and {{pet_name}}."
+- WELCOME: The welcome message has ALREADY been shown. Do NOT introduce yourself again, do NOT say hello, do NOT use headings (#) or hero emoji. Answer directly in 1-2 short sentences and ask ONE question.
 - QUESTION FORMAT: NEVER write headings like "Triage Question #1" or "Question #2". Speak directly, as if {hero_name} (the pet's nurse-hero) is asking — e.g. start naturally with "To help you better..." or go straight into the question, with no numbered titles or "Triage" labels.
 - LANGUAGE: Write ONLY in English. NEVER use Chinese/Japanese/Korean or any non-Latin characters (e.g. no «腹水»). Use Latin medical terms if needed.
 - When ready: "I have enough information — we can generate a veterinary report." """
@@ -4289,6 +4289,7 @@ def render_triage():
             _set_emergency_from_text(reply)
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
+        reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
         st.session_state.triage_chat.append({"role":"assistant","content":reply})
 
     _pn_evidence_bar()
