@@ -3216,6 +3216,33 @@ def _set_emergency_from_text(text):
         st.session_state["triage_emergency"] = True
 
 
+# AI-assigned triage level. The nurse prompt ends a final message with
+# [TRIAGE: EMERGENCY|URGENT|SELF_CARE]; the tag is stripped from the chat bubble
+# and stored on the message so banner / clinics / coverage do not have to guess
+# the level from keywords ("δεν είναι επείγον" used to look like an emergency).
+_TRIAGE_TAG_RE = _re_san.compile(r"\[\s*TRIAGE\s*:\s*(EMERGENCY|URGENT|SELF[_ -]?CARE)\s*\]", _re_san.I)
+
+def parse_triage_tag(text):
+    """Return (text_without_tag, level|None). Level is the LAST tag found."""
+    if not text:
+        return text, None
+    found = _TRIAGE_TAG_RE.findall(text)
+    if not found:
+        return text, None
+    lvl = found[-1].upper().replace(" ", "_").replace("-", "_")
+    if lvl == "SELFCARE":
+        lvl = "SELF_CARE"
+    clean = _TRIAGE_TAG_RE.sub("", text).rstrip()
+    return clean, lvl
+
+def _ai_triage_level():
+    """Level the nurse assigned in the last assistant message (None if no tag)."""
+    for m in reversed(st.session_state.get("triage_chat", [])):
+        if m.get("role") == "assistant":
+            return m.get("level")
+    return None
+
+
 def _emergency_banner():
     """Show emergency footer banner only when triage detected an emergency."""
     if st.session_state.get("triage_emergency"):
@@ -3616,7 +3643,21 @@ PETAINURSE_EL = """Είσαι η PetsAIHealth — AI κτηνιατρικός ν
 
 Κανόνες:
 - ΠΑΝΤΑ συστήνεις κτηνίατρο για διάγνωση/θεραπεία
-- Κόκκινες σημαίες → ΑΜΕΣΟ επείγον κτηνιατρείο. Σε αυτή την περίπτωση ΣΤΑΜΑΤΑ το τριάζ — ΜΗΝ κάνεις άλλη ερώτηση. Πες με μία σαφή, σύντομη πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ» και τελείωσε εκεί.
+- ΤΡΙΑΖ ΣΕ ΤΡΙΑ ΕΠΙΠΕΔΑ. Διάλεξε το επίπεδο ΜΕ ΒΑΣΗ ΤΑ ΣΤΟΙΧΕΙΑ, όχι από φόβο. Το να στέλνεις ένα σταθερό, ζωηρό ζώο στο επείγον είναι ΛΑΘΟΣ: ταλαιπωρεί το ζώο, κοστίζει και χάνει την εμπιστοσύνη του ιδιοκτήτη. Το να καθυστερήσεις ένα πραγματικό επείγον είναι ΠΙΟ ΣΟΒΑΡΟ λάθος.
+  1) EMERGENCY — κίνδυνος ζωής μέσα σε ώρες. ΜΟΝΟ για σαφείς κόκκινες σημαίες:
+     • δύσπνοια, αναπνοή με ανοιχτό στόμα (ιδίως γάτα), κυανωτικά ή πολύ χλωμά ούλα
+     • κατάρρευση, απώλεια συνείδησης, σπασμοί που διαρκούν >5 λεπτά ή επανέρχονται
+     • φουσκωμένη σκληρή κοιλιά με άκαρπες προσπάθειες εμέτου (πιθανή στρέψη στομάχου, ιδίως μεγαλόσωμα)
+     • αδυναμία ούρησης με επανειλημμένες προσπάθειες (ιδίως αρσενική γάτα)
+     • κατάποση τοξικής ουσίας (ξυλιτόλη, ποντικοφάρμακο, αντιψυχρικό, παρακεταμόλη/ιβουπροφαίνη, σταφύλια/σταφίδες, μεγάλη ποσότητα σοκολάτας, κρίνος σε γάτα)
+     • μεγάλη αιμορραγία που δεν σταματά, τροχαίο ή πτώση από ύψος, θερμοπληξία, δυστοκία με παρατεταμένες ωδίνες
+     • ξαφνική παράλυση ή απώλεια αισθητικότητας στα πίσω άκρα, ξαφνική τύφλωση ή έντονη νευρολογική σύγχυση, διαβητικό ζώο με σύγχυση/τρέμουλο/πτώση
+     Σε αυτή την περίπτωση ΣΤΑΜΑΤΑ το τριάζ — ΜΗΝ κάνεις άλλη ερώτηση. Γράψε με μία σαφή, σύντομη πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ» και τελείωσε με την ετικέτα [TRIAGE: EMERGENCY].
+  2) URGENT — να το δει κτηνίατρος εντός 24 ωρών (σήμερα ή αύριο το πρωί), αλλά ΔΕΝ είναι «τρέξτε τώρα». Παραδείγματα: εμετός/διάρροια που επιμένει >24 ώρες με ζωηρό ζώο που πίνει νερό, κούτσαμα με πόνο χωρίς καταρράκωση, ερεθισμένο/κόκκινο μάτι χωρίς απώλεια όρασης, πόνος στο αυτί, πληγή που μολύνεται, δεν τρώει >24 ώρες, αυξημένη δίψα/ούρηση, ύποπτη λοίμωξη ούρων με ούρηση που γίνεται, νέος όγκος, βήχας που επιδεινώνεται χωρίς δύσπνοια ηρεμίας.
+     Ολοκλήρωσε το τριάζ με ΚΑΘΑΡΗ σύσταση «να το δει κτηνίατρος σήμερα ή αύριο το πρωί», ΧΩΡΙΣ τη φράση «πηγαίνετε αμέσως» και ΧΩΡΙΣ το 🚨. Πες ποια σημάδια θα το έκαναν επείγον (π.χ. «αν δείτε δύσπνοια, κατάρρευση ή ούλα χλωμά, πηγαίνετε αμέσως»). Κλείσε με τη φράση για την αναφορά και την ετικέτα [TRIAGE: URGENT].
+  3) SELF_CARE — ήπιο, σταθερό, ζωηρό ζώο που τρώει και πίνει. Δώσε οδηγίες παρακολούθησης στο σπίτι και πες πότε να επικοινωνήσει με κτηνίατρο. Κλείσε με τη φράση για την αναφορά και την ετικέτα [TRIAGE: SELF_CARE].
+- ΠΡΙΝ ανεβάσεις σε EMERGENCY ένα μη κλασικό περιστατικό, κάνε 1–2 στοχευμένες ερωτήσεις (είναι ζωηρό ή άτονο; τρώει/πίνει; χρώμα ούλων; αναπνέει φυσιολογικά σε ηρεμία; πόση ώρα;). Αν οι απαντήσεις καθησυχάζουν → URGENT ή SELF_CARE. Η αβεβαιότητα από μόνη της ΔΕΝ είναι λόγος για EMERGENCY. Αν όμως ταιριάζει σαφής κόκκινη σημαία από τη λίστα, ΜΗΝ καθυστερείς με ερωτήσεις.
+- ΕΤΙΚΕΤΑ ΕΠΙΠΕΔΟΥ: Όταν δίνεις τελικό επίπεδο (και ΜΟΝΟ τότε), πρόσθεσε στο τέλος του μηνύματος, σε δική της γραμμή, ΑΚΡΙΒΩΣ μία από: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Στα ενδιάμεσα μηνύματα με ερώτηση ΜΗΝ βάζεις ετικέτα. Η ετικέτα δεν εμφανίζεται στον ιδιοκτήτη· μην την αναφέρεις και μην τη μεταφράσεις.
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
@@ -3655,7 +3696,12 @@ Role:
 
 Rules:
 - Always recommend a vet for diagnosis/treatment
-- Red flags → IMMEDIATE emergency vet. In this case STOP the triage — do NOT ask any further questions. State in one clear, short sentence "🚨 GO TO A VET CLINIC IMMEDIATELY" and end there.
+- THREE TRIAGE LEVELS. Choose the level FROM THE FACTS, not from fear. Sending a stable, bright pet to the ER is a mistake (stress, cost, lost trust); delaying a real emergency is the worse mistake.
+  1) EMERGENCY — life-threatening within hours. ONLY for clear red flags: laboured breathing / open-mouth breathing (cats), blue or very pale gums; collapse, unconsciousness, seizures >5 min or recurring; bloated hard abdomen with unproductive retching (possible GDV); unable to urinate despite straining (esp. male cat); ingestion of a toxin (xylitol, rat poison, antifreeze, paracetamol/ibuprofen, grapes/raisins, large chocolate amount, lilies in cats); major bleeding, road accident or fall from height, heatstroke, prolonged labour; sudden hindlimb paralysis or loss of sensation, sudden blindness or marked neurological confusion; diabetic pet that is confused/trembling/collapsing. Then STOP the triage — no more questions. One clear, short sentence "🚨 GO TO A VET CLINIC IMMEDIATELY" and end with the tag [TRIAGE: EMERGENCY].
+  2) URGENT — a vet should see the pet within 24 hours (today or tomorrow morning) but it is NOT "rush now": e.g. vomiting/diarrhoea >24h in a bright pet that drinks, limping with pain but not collapsing, red irritated eye with normal vision, ear pain, an infected wound, not eating >24h, increased thirst/urination, suspected urinary infection with urine being passed, new lump, worsening cough without breathing difficulty at rest. Finish the triage with a CLEAR recommendation "see a vet today or tomorrow morning", WITHOUT "go immediately" and WITHOUT 🚨. Say which signs would turn it into an emergency. Close with the report phrase and the tag [TRIAGE: URGENT].
+  3) SELF_CARE — mild, stable, bright pet that eats and drinks. Give home-monitoring advice and when to contact a vet. Close with the report phrase and the tag [TRIAGE: SELF_CARE].
+- BEFORE escalating a non-classic case to EMERGENCY, ask 1–2 targeted questions (bright or dull? eating/drinking? gum colour? breathing normally at rest? how long?). Reassuring answers → URGENT or SELF_CARE. Uncertainty alone is NOT a reason for EMERGENCY. If a clear red flag from the list matches, do NOT delay with questions.
+- LEVEL TAG: when you give a final level (and ONLY then), add on its own line at the very end exactly one of: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Do NOT put a tag on intermediate question messages. The tag is hidden from the owner; never mention or translate it.
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
@@ -5152,12 +5198,18 @@ def render_triage():
             system_ctx = petainurse_system(pet) + f"\n\n{profile_ctx}\n{vitals_ctx}"
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
+            reply, _lvl = parse_triage_tag(reply)
             reply = sanitize_ai_text(reply)
-            _set_emergency_from_text(reply)
+            if _lvl is None:
+                _set_emergency_from_text(reply)          # legacy / untagged reply: keyword fallback
+            elif _lvl == "EMERGENCY":
+                st.session_state["triage_emergency"] = True
+            else:
+                st.session_state["triage_emergency"] = False
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
-        st.session_state.triage_chat.append({"role":"assistant","content":reply})
+        st.session_state.triage_chat.append({"role":"assistant","content":reply,"level":_lvl})
 
     _pn_evidence_bar()
     if not st.session_state.triage_chat:
@@ -5258,7 +5310,7 @@ def render_triage():
 
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
     last_assistant = _strip_accents(next((m["content"] for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), ""))
-    triage_ready = any(_strip_accents(ph) in last_assistant for ph in ready_phrases)
+    triage_ready = any(_strip_accents(ph) in last_assistant for ph in ready_phrases) or bool(_ai_triage_level())
     # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
     _enough_msgs = len(st.session_state.triage_chat) >= 6
     # Emergency detection — το AI δεν λέει "έχω αρκετά στοιχεία" αλλά "πηγαίνετε αμέσως"
@@ -5266,7 +5318,8 @@ def render_triage():
                           "emergency vet", "αμέσως σε κτηνιατρείο", "πηγαίνετε αμεσωσ"]
     _last_lower_check = _strip_accents(next((m["content"] for m in reversed(st.session_state.triage_chat)
                                              if m["role"] == "assistant"), ""))
-    _is_emergency_msg = any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
+    _ai_lvl = _ai_triage_level()
+    _is_emergency_msg = (_ai_lvl == "EMERGENCY") if _ai_lvl else any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
     _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
@@ -5294,7 +5347,9 @@ def render_triage():
         _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
                           if m["role"] == "assistant"), "")
         _last_lower = _strip_accents(_last_msg)
-        if any(k in _last_lower for k in ["επειγον", "emergency", "αμεσως", "immediately", "🔴"]):
+        if _ai_lvl:
+            _triage_level = _ai_lvl
+        elif any(k in _last_lower for k in ["επειγον", "emergency", "αμεσως", "immediately", "🔴"]):
             _triage_level = "EMERGENCY"
         elif any(k in _last_lower for k in ["επιτακτικο", "urgent", "συντομα", "soon", "🟠", "🟡"]):
             _triage_level = "URGENT"
@@ -5329,7 +5384,8 @@ def render_triage():
         "κοκκινη σημαια", "πηγαινετε αμεσα", "πηγαινετε τωρα",
         "where are you", "your location", "nearest vet", "emergency vet", "red flag",
     ]
-    if any(tr in _la_norm for tr in _geo_triggers):
+    _geo_loc_only = ("που βρισκεσαι", "που βρισκεστε", "where are you", "your location")
+    if any(tr in _la_norm for tr in (_geo_loc_only if _ai_lvl in ("URGENT", "SELF_CARE") else _geo_triggers)):
         st.markdown("**" + ("📍 Δες τα κοντινά επείγοντα κτηνιατρεία:" if lang=="el"
                             else "📍 See nearby emergency vets:") + "**")
         render_nearby_vets_geo(lang)
@@ -5559,6 +5615,9 @@ def render_report():
         # actually incorporates them (not only the side cards / chat).
         photo_ctx, lab_ctx = _evidence_context()
 
+        _rl = _ai_triage_level()
+        _lvl_line = (f"\nNURSE TRIAGE LEVEL (assigned in the chat): {_rl}. The report's urgency must match this level"
+                     + (" — do NOT escalate it to an emergency; list the signs that WOULD make it one under RED FLAGS.\n" if _rl != "EMERGENCY" else ".\n")) if _rl else ""
         report_prompt = f"""Generate a concise veterinary assessment report for:
 
 PET: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), {pet.get('age_y')}y {pet.get('age_m')}m, {pet.get('sex')}, {pet.get('weight','')}kg
@@ -5572,7 +5631,7 @@ VITALS (Normal for {pet.get('species_label')}: HR {rng['hr'][0]}-{rng['hr'][1]} 
 
 CLINICAL CONSULTATION:
 {conversation}
-
+{_lvl_line}
 PHOTO ANALYSIS FINDINGS (AI vision — treat as observed evidence):
 {photo_ctx or "None provided."}
 
