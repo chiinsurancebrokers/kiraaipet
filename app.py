@@ -6206,6 +6206,7 @@ def render_plans_section(lang="el", gate=False, cta=None):
         'box-shadow:0 12px 30px rgba(35,40,190,.25);height:100%;}'
         + (_P % "pn-plan-plus") + ' a.stLinkButton, ' + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"]{background:#fff !important;border:none !important;}'
         + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"] p{color:#2328BE !important;font-weight:800 !important;}'
+        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:416px;}}'
         '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
         '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
         '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
