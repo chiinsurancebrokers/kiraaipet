@@ -1129,6 +1129,85 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
     )
 
 
+# Contracted Eurolife FFH My Happy Pet network (Attica) — kind: "h" = 24h hospital, "v" = vet clinic
+_EUROLIFE_NETWORK = [
+    ("ΠΛΑΚΕΝΤΙΑ ΑΓ. ΠΑΡΑΣΚΕΥΗ", "Αλ. Παναγούλη 31, Αγ. Παρασκευή", "h"),
+    ("ΠΛΑΚΕΝΤΙΑ ΑΛΙΜΟΣ", "Λ. Αλίμου 37, Άλιμος", "h"),
+    ("ΝΟΣΟΚΟΜΕΙΟ ΖΩΩΝ ΑΘΗΝΩΝ", "Πικέρμι", "h"),
+    ("ΚΤΗΝΙΑΤΡΙΚΟ ΚΕΝΤΡΟ ΓΕΡΑΚΑ-ΒΟΣΣΟΥ", "Ερμού 8, Γέρακας", "h"),
+    ("ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ", "Ελαιώνων 5, Παλλήνη", "v"),
+    ("ΑΓΓΕΛΑΚΗ ΕΛΕΝΗ", "Σολωνός 61, Χαλάνδρι", "v"),
+    ("ΑΡΣΕΝΙΟΥ ΔΗΜΗΤΡΙΟΣ", "Παιανία", "v"),
+    ("ΒΑΛΜΑΣ ΜΑΡΙΟΣ", "Ηράκλειο Αττικής", "v"),
+    ("ΡΟΥΜΕΛΙΩΤΗ ΚΑΛΛΙΟΠΗ", "Πολύγωνο", "v"),
+    ("ΡΙΖΙΩΤΗ ΓΑΛΑΤΕΙΑ", "Ν. Φιλαδέλφεια", "v"),
+    ("VETERNITY VET SERVICES", "Ν. Σμύρνη", "v"),
+    ("ΘHVET", "Περιστέρι", "v"),
+]
+
+
+def render_network_clinics(triage_level="SELF_CARE", lang="el"):
+    """Contracted-network clinics for the selected Eurolife programme, ordered by the triage level:
+    EMERGENCY -> 24h hospitals first (Πλακέντια Αγ. Παρασκευή first choice); otherwise Περράκη Γρηγορία first."""
+    import urllib.parse as _up
+    el = lang == "el"
+    hosp = [c for c in _EUROLIFE_NETWORK if c[2] == "h"]
+    vets = [c for c in _EUROLIFE_NETWORK if c[2] == "v"]
+    ordered = (hosp + vets) if triage_level == "EMERGENCY" else (vets + hosp)
+    ttl = ("Συμβεβλημένα κτηνιατρεία του προγράμματός σου" if el else "Contracted clinics for your programme")
+    sub = (("Επείγον: πρώτα τα 24ωρα νοσοκομεία. Κάλεσε το 210 9303811 πριν ή κατά την επίσκεψη." if el
+            else "Emergency: 24h hospitals first. Call 210 9303811 before or during the visit.")
+           if triage_level == "EMERGENCY" else
+           ("Πρώτη επιλογή το κτηνιατρείο Περράκη. Κάλεσε το 210 9303811 πριν ή κατά την επίσκεψη." if el
+            else "First choice is the Perrakis clinic. Call 210 9303811 before or during the visit."))
+    def _row(i, nm, ad, kind):
+        q = _up.quote_plus(f"{nm} {ad}")
+        badge = ("24ωρο" if el else "24h") if kind == "h" else ("Κτηνιατρείο" if el else "Clinic")
+        first = '<span class="pn-net-first">' + ("Πρώτη επιλογή" if el else "First choice") + '</span>' if i == 0 else ""
+        return (f'<a class="pn-net-row" href="https://www.google.com/maps/search/?api=1&query={q}" target="_blank" rel="noopener">'
+                f'<span class="pn-net-ic">{"🏥" if kind == "h" else "🩺"}</span><span class="pn-net-tx"><b>{nm}</b>{first}'
+                f'<small>{ad} · {badge}</small></span><span class="pn-net-go">↗</span></a>')
+    rows_all = [_row(i, *c) for i, c in enumerate(ordered)]
+    st.markdown(
+        '<style>.pn-net{background:#fff;border:1px solid #D9DEF5;border-radius:22px;padding:16px 16px 10px;margin:12px 0 6px;}'
+        '.pn-net h4{font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;margin:0 0 3px;letter-spacing:-.02em;}'
+        '.pn-net p{font-size:12.5px;color:#5B6794;margin:0 0 10px;line-height:1.45;}'
+        '.pn-net-row{display:flex;align-items:center;gap:12px;padding:10px 6px;border-top:1px solid #EEF0FB;text-decoration:none !important;color:#0B1B4B !important;}'
+        '.pn-net-ic{width:38px;height:38px;border-radius:12px;background:#E7EAFB;display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 38px;}'
+        '.pn-net-tx{flex:1;min-width:0;font-size:13.5px;line-height:1.3;}.pn-net-tx b{font-weight:700;}'
+        '.pn-net-tx small{display:block;color:#5B6794;font-size:12px;margin-top:2px;}'
+        '.pn-net-first{margin-left:8px;background:#FF6B2C;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 8px;}'
+        '.pn-net-go{color:#1237C9;font-weight:800;}</style>'
+        f'<div class="pn-net"><h4>🏥 {ttl}</h4><p>{sub}</p>{"".join(rows_all[:4])}</div>', unsafe_allow_html=True)
+    with st.expander(f"{'Όλο το δίκτυο' if el else 'Full network'} ({len(rows_all) - 4} {'ακόμη' if el else 'more'})"):
+        st.markdown('<div class="pn-net" style="border:none;padding:0;margin:0;">' + "".join(rows_all[4:]) + '</div>',
+                    unsafe_allow_html=True)
+
+
+def render_insurance_prompt(lang="el"):
+    """Shown after the assessment when no insurance programme is selected yet."""
+    el = lang == "el"
+    st.markdown(
+        '<div style="background:#E7EAFB;border:1px solid #D0D6F5;border-radius:22px;padding:16px 18px;margin:12px 0 6px;">'
+        '<div style="font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;">🛡️ '
+        + ("Είναι ασφαλισμένο το κατοικίδιό σου;" if el else "Is your pet insured?") + '</div>'
+        '<div style="font-size:13px;color:#5B6794;margin-top:4px;line-height:1.5;">'
+        + ("Επίλεξε το πρόγραμμα Eurolife My Happy Pet για να δεις αν καλύπτεται η περίπτωση, πόσο θα πληρώσεις και ποια συμβεβλημένα κτηνιατρεία είναι κοντά σου."
+           if el else "Choose your Eurolife My Happy Pet programme to see whether this is covered, what you would pay and which contracted clinics are near you.")
+        + '</div></div>', unsafe_allow_html=True)
+    _prov = {"Plus": "Eurolife FFH — My Happy Pet Plus", "Standard": "Eurolife FFH — My Happy Pet Standard"}
+    c1, c2 = st.columns(2)
+    for col, (lbl, val) in zip((c1, c2), _prov.items()):
+        with col:
+            if st.button(f"My Happy Pet {lbl}", key=f"pn_ins_pick_{lbl}", use_container_width=True,
+                         type="primary" if lbl == "Plus" else "secondary"):
+                st.session_state["pet_insurance_provider"] = val
+                if isinstance(st.session_state.get("pet"), dict):
+                    st.session_state.pet["insurance_provider"] = val
+                st.rerun()
+
+
+
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
     """Streamlit card: κάλυψη ασφαλιστηρίου + Pets’health chat μετά από triage αποτέλεσμα."""
@@ -3949,19 +4028,11 @@ def render_intake():
             "— Χωρίς ασφάλεια —",
             "Eurolife FFH — My Happy Pet Plus",
             "Eurolife FFH — My Happy Pet Standard",
-            "Interamerican — Pet Care",
-            "Generali — My Pet",
-            "AXA — Pet Protection",
-            "Άλλη ασφαλιστική",
         ],
         "en": [
             "— No insurance —",
             "Eurolife FFH — My Happy Pet Plus",
             "Eurolife FFH — My Happy Pet Standard",
-            "Interamerican — Pet Care",
-            "Generali — My Pet",
-            "AXA — Pet Protection",
-            "Other insurer",
         ],
     }
     _ins_opts = _insurance_providers.get(lang, _insurance_providers["el"])
@@ -4182,16 +4253,16 @@ def render_triage():
                                           use_container_width=True)
 
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
-    last_assistant = next((m["content"].lower() for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), "")
-    triage_ready = any(ph in last_assistant for ph in ready_phrases)
+    last_assistant = _strip_accents(next((m["content"] for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), ""))
+    triage_ready = any(_strip_accents(ph) in last_assistant for ph in ready_phrases)
     # Επεκτείνω triage_ready: επείγον μήνυμα ή αρκετές ερωτήσεις = ready
     _enough_msgs = len(st.session_state.triage_chat) >= 6
     # Emergency detection — το AI δεν λέει "έχω αρκετά στοιχεία" αλλά "πηγαίνετε αμέσως"
     _emergency_phrases = ["πηγαίνετε αμέσως", "επείγον κτηνιατρείο", "go immediately",
                           "emergency vet", "αμέσως σε κτηνιατρείο", "πηγαίνετε αμεσωσ"]
-    _last_lower_check = next((m["content"].lower() for m in reversed(st.session_state.triage_chat)
-                              if m["role"] == "assistant"), "")
-    _is_emergency_msg = any(p in _last_lower_check for p in _emergency_phrases)
+    _last_lower_check = _strip_accents(next((m["content"] for m in reversed(st.session_state.triage_chat)
+                                             if m["role"] == "assistant"), ""))
+    _is_emergency_msg = any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
     _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
@@ -4200,20 +4271,22 @@ def render_triage():
     if _provider and not _provider_ss:
         st.session_state["pet_insurance_provider"] = _provider
     _no_ins_opts  = ("— Χωρίς ασφάλεια —", "— No insurance —", "")
-    _has_provider = bool(_provider) and _provider not in _no_ins_opts
+    _has_provider = bool(_provider) and _provider not in _no_ins_opts and str(_provider).startswith("Eurolife")
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
     # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
     # Αν ΟΧΙ συνδρομή → upsell card. Αν ΝΑΙ → πλήρες coverage card.
+    if _insurance_show and not _has_provider:
+        render_insurance_prompt(lang)
     if _insurance_show and _has_provider:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
         _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
                           if m["role"] == "assistant"), "")
-        _last_lower = _last_msg.lower()
-        if any(k in _last_lower for k in ["επείγον", "emergency", "αμέσως", "immediately", "🔴"]):
+        _last_lower = _strip_accents(_last_msg)
+        if any(k in _last_lower for k in ["επειγον", "emergency", "αμεσως", "immediately", "🔴"]):
             _triage_level = "EMERGENCY"
-        elif any(k in _last_lower for k in ["επιτακτικό", "urgent", "σύντομα", "soon", "🟠", "🟡"]):
+        elif any(k in _last_lower for k in ["επιτακτικο", "urgent", "συντομα", "soon", "🟠", "🟡"]):
             _triage_level = "URGENT"
         else:
             _triage_level = "SELF_CARE"
@@ -4223,6 +4296,7 @@ def render_triage():
         _condition = _first_user[:120] if _first_user else ""
         _pet_name  = pet.get("name", "") if isinstance(pet, dict) else ""
         _species   = pet.get("species", "σκύλος") if isinstance(pet, dict) else "σκύλος"
+        render_network_clinics(_triage_level, lang)
         if has_insurance_subscription(_email):
             render_insurance_coverage_card(
                 triage_result=_triage_level,

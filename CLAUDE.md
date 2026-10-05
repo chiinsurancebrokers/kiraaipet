@@ -1,0 +1,12 @@
+# Pets’health (kiraaipet)
+
+Streamlit app (single file `app.py`) for pet parents in Greece: nurse chat → vet report, plus tools
+(vitals/breathing, photo, labs, longevity, diary, vets, insurance). Greek-first, English supported.
+
+- UI layer: `petify_ui.py` (CSS + HTML builders), `petify_art.py` (SVG scenes), `pet_longevity.py`, `petscan_component.py`.
+- Flow: landing (with sign-in at the end) → profile (4 steps) → Home → nurse chat → report. Router is at the bottom of `app.py`.
+- Insurance: only EFG Eurolife “My Happy Pet” programmes; contracted network list is `_EUROLIFE_NETWORK` in `app.py`.
+- Local preview: `streamlit run dev/harness.py --server.port 8504`, then `?t=<screen>` (add `&s=N` for intake step,
+  `&chat=1|emerg` for a seeded chat, `&ins=1` for a selected Eurolife programme). No AI keys locally.
+- Deploys: Railway project “pet ai nurse”; `web-staging` follows branch `design/petify-layout`, `web` follows `main`.
+- Brand name is “Pets’health” (typographic apostrophe, because a plain one breaks Python strings).
