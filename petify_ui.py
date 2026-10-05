@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import html as _h
 
+import petify_art as _art
+
 BLUE = "#1237C9"
 BLUE2 = "#2F55F0"
 ORANGE = "#FF6B2C"
@@ -101,8 +103,8 @@ div[data-baseweb="input"], div[data-baseweb="textarea"], div[data-baseweb="selec
 /* Feature cards side by side: equal heights */
 div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) {{ align-items:stretch !important; }}
 div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {{ height:100%; }}
-div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {{ flex:1 1 auto; }}
-div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {{ height:100%; justify-content:space-between; }}
+div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] > div[data-testid="stLayoutWrapper"] {{ flex:1 1 auto; display:flex; flex-direction:column; }}
+div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"] {{ flex:1 1 auto; justify-content:space-between; }}
 
 /* Shared Petify building blocks */
 .pn-eyebrow {{ display:inline-flex; align-items:center; width:fit-content; padding:6px 12px; border-radius:999px;
@@ -115,7 +117,41 @@ div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) [data-testid="stVe
 .pn-chip {{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; background:#fff; border:1px solid {LINE}; font-size:12px; font-weight:600; color:{INK}; }}
 .pn-chip.ok {{ color:#047857; border-color:#A7F3D0; background:#ECFDF5; }}
 .pn-chip.blue {{ color:{BLUE}; border-color:{LAV2}; background:{LAV}; }}
-@media (max-width:640px) {{ .pn-h2 {{ font-size:24px; }} }}
+@media (max-width:640px) {{ .pn-h2 {{ font-size:24px; }} .pn-resface {{ display:none; }} }}
+
+/* Illustrated cards & banners */
+.pn-art-wrap {{ border-radius:20px; overflow:hidden; aspect-ratio:400/196; margin:0 0 14px; background:{LAV}; }}
+.pn-art-wrap img, .pn-screen .pet img, .pn-mascot img {{ mix-blend-mode:multiply; }}
+.pn-banner {{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:0; border-radius:26px; overflow:hidden; margin:4px 0 18px;
+  background:{LAV}; border:1px solid {LAV2}; align-items:stretch; }}
+.pn-banner.dark {{ background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE}; border:none;
+  box-shadow:0 26px 50px -32px rgba(18,55,201,.75); }}
+.pn-banner .tx {{ padding:22px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:0; }}
+.pn-banner .org {{ font:700 10.5px/1 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:{BLUE}; }}
+.pn-banner.dark .org {{ color:#FFB48F; }}
+.pn-banner .ttl {{ font-family:var(--pn-display); font-weight:700; font-size:26px; line-height:1.12; letter-spacing:-.03em; color:{INK}; }}
+.pn-banner.dark .ttl {{ color:#fff; }}
+.pn-banner .sb {{ font-size:13.5px; line-height:1.5; color:{MUTED}; }}
+.pn-banner.dark .sb {{ color:#D5DCFF; }}
+.pn-banner .art {{ min-height:150px; }}
+@media (max-width:640px) {{
+  .pn-banner {{ grid-template-columns:1fr; }} .pn-banner .art {{ order:-1; height:132px; min-height:0; }}
+  .pn-banner .ttl {{ font-size:21px; }} .pn-banner .tx {{ padding:16px 18px 18px; }}
+}}
+.pn-pillar {{ display:flex; gap:12px; align-items:flex-start; }}
+.pn-pillar .ic {{ width:40px; height:40px; border-radius:13px; background:{LAV}; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
+.pn-snap {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:12px 0 4px; }}
+.pn-snap .it {{ background:#fff; border:1px solid {LINE}; border-radius:20px; padding:14px 16px; display:flex; gap:12px; align-items:center; }}
+.pn-snap .ic {{ width:42px; height:42px; border-radius:14px; background:{LAV}; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
+.pn-snap .k {{ font-size:11.5px; color:{MUTED}; }} .pn-snap .v {{ font:700 20px 'Sora',sans-serif; color:{INK}; letter-spacing:-.03em; line-height:1.15; }}
+.pn-snap .v small {{ font-size:11px; color:{MUTED}; font-weight:600; }}
+.pn-gallery {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:0 0 22px; }}
+.pn-gcard {{ background:#fff; border:1px solid {LINE}; border-radius:24px; overflow:hidden; display:flex; flex-direction:column; }}
+.pn-gcard .im {{ aspect-ratio:400/200; }} .pn-gcard .bd {{ padding:16px 18px 20px; }}
+.pn-gcard .n {{ font:700 11px 'Inter',sans-serif; letter-spacing:.12em; color:{ORANGE}; }}
+.pn-gcard h4 {{ font-family:var(--pn-display); font-size:18px; letter-spacing:-.02em; margin:6px 0 6px; color:{INK}; line-height:1.2; }}
+.pn-gcard p {{ margin:0; font-size:13px; line-height:1.55; color:{MUTED}; }}
+@media (max-width:820px) {{ .pn-gallery {{ grid-template-columns:1fr; }} .pn-gcard .im {{ height:150px; }} }}
 </style>
 """
 
@@ -138,8 +174,16 @@ def feature_banner_css(marker: str, dark: bool) -> str:
 HERO_CSS = f"""
 <style>
 .pn-hero-head {{ display:flex; flex-wrap:wrap; gap:14px; align-items:stretch; margin:2px 0 14px; }}
-.pn-brand-tile {{ flex:1 1 360px; background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
+.pn-brand-tile {{ flex:1 1 360px; position:relative; overflow:hidden; background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
   border-radius:26px; padding:30px 30px 28px; color:#fff; display:flex; flex-direction:column; gap:14px; box-shadow:0 30px 60px -34px rgba(18,55,201,.8); }}
+.pn-hero-art {{ position:absolute; right:0; top:0; bottom:0; width:44%; }}
+.pn-hero-art .fw {{ position:absolute; right:26px; left:0; top:50%; transform:translateY(-50%); aspect-ratio:400/230; }}
+.pn-hero-art .frame {{ position:absolute; inset:0; border-radius:22px; overflow:hidden; box-shadow:0 24px 50px -26px rgba(0,0,0,.55); }}
+.pn-hero-art .chip {{ position:absolute; background:#fff; color:{INK}; border-radius:14px; padding:8px 12px; font:700 12px 'Inter',sans-serif; box-shadow:0 14px 30px -14px rgba(0,0,0,.5); z-index:2; }}
+.pn-hero-art .chip b {{ color:{BLUE}; font:800 17px 'Sora',sans-serif; display:block; letter-spacing:-.02em; }}
+.pn-hero-art .chip.a {{ left:10px; bottom:-18px; }} .pn-hero-art .chip.b {{ right:-10px; top:-16px; background:{ORANGE}; color:#fff; }}
+.pn-hero-art .chip.b b {{ color:#fff; }}
+.pn-hero-copy {{ position:relative; z-index:1; max-width:52%; display:flex; flex-direction:column; gap:14px; }}
 .pn-logo-row {{ display:flex; align-items:center; gap:12px; }}
 .pn-logo-mark {{ width:52px; height:52px; border-radius:17px; background:{ORANGE}; display:flex; align-items:center; justify-content:center; font-size:27px;
   box-shadow:0 8px 20px -8px rgba(255,107,44,.9); transform:rotate(-6deg); }}
@@ -183,6 +227,11 @@ HERO_CSS = f"""
   .pn-grid {{ grid-template-columns:1fr; }}
   .pn-phone-tile {{ min-height:0; padding-top:22px; }}
   .pn-h1 {{ font-size:31px; }} .pn-brand-tile {{ padding:24px 22px; }}
+  .pn-hero-art {{ position:relative; width:auto; height:190px; order:-1; margin:-24px -22px 8px; }}
+  .pn-hero-art .fw {{ position:absolute; inset:0; transform:none; aspect-ratio:auto; right:0; }}
+  .pn-hero-art .frame {{ border-radius:0; box-shadow:none; }}
+  .pn-hero-art .chip {{ display:none; }} .pn-hero-art {{ height:210px; }}
+  .pn-hero-copy {{ max-width:none; }}
 }}
 </style>
 """
@@ -216,16 +265,25 @@ def hero_html(lang: str, mascot_html: str = "") -> str:
         "scan": "Σάρωση… μείνε ακίνητος" if el else "Scanning… keep still",
         "ex": "Τα νούμερα είναι ενδεικτικά." if el else "Figures shown are illustrative.",
     }
-    return HERO_CSS + f"""
+    gallery = gallery_html(lang)
+    art = _art.scene("breath", "dog")
+    c1 = "Αναπνοές ηρεμίας" if el else "Resting breaths"
+    c2 = "Ηλικία σε ανθρώπινα" if el else "Human years"
+    return (HERO_CSS + f"""
 <div class="pn-hero-head">
   <div class="pn-brand-tile">
+    <div class="pn-hero-art"><div class="fw"><div class="frame">__ART_BREATH__</div>
+      <div class="chip a"><span>__C1__</span><b>22 /min</b></div><div class="chip b"><span>__C2__</span><b>45 ↗</b></div></div></div>
+    <div class="pn-hero-copy">
     <div class="pn-logo-row"><div class="pn-logo-mark">🐾</div><div class="pn-wordmark">PetAiNurse</div></div>
     <div><span class="pn-eyebrow dark">{tx['kicker']}</span></div>
     <div class="pn-h1">{tx['h1']}</div>
     <div class="pn-lead">{tx['lead']}</div>
     <ul class="pn-trust"><li><i></i>{tx['t1']}</li><li><i></i>{tx['t2']}</li><li><i></i>{tx['t3']}</li></ul>
+    </div>
   </div>
 </div>
+{gallery}
 <div class="pn-grid">
   <div class="pn-phone-tile"><div class="pn-phone"><div class="pn-screen">
       <div class="pet">{mascot_html}</div><div class="pn-scanring"></div>
@@ -258,7 +316,7 @@ def hero_html(lang: str, mascot_html: str = "") -> str:
     </div></div>
   </div>
 </div>
-"""
+""").replace("__ART_BREATH__", art).replace("__C1__", c1).replace("__C2__", c2)
 
 
 # ── longevity result building blocks ──────────────────────────────────────────
@@ -267,11 +325,13 @@ def pillar_html(pl: dict, levels: list) -> str:
         f'<span style="flex:1;height:8px;border-radius:6px;background:{(col if i <= pl["score"] else "#E3E7F8")};"></span>'
         for i, (_k, _e, _n, col) in enumerate(levels))
     val = f'<div style="font:700 16px Sora,Inter,sans-serif;color:{INK};white-space:nowrap;">{_h.escape(pl["value"])}</div>' if pl.get("value") else ""
-    return (f'<div style="background:#fff;border:1px solid {LINE};border-radius:18px;padding:14px 16px;margin-bottom:10px;">'
+    ic = _art.pillar_icon(pl.get("id", ""), pl.get("color", BLUE))
+    return (f'<div class="pn-pillar" style="background:#fff;border:1px solid {LINE};border-radius:20px;padding:14px 16px;margin-bottom:10px;">'
+            f'<div class="ic">{ic}</div><div style="flex:1;min-width:0;">'
             f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">'
             f'<div style="font-weight:700;font-size:14.5px;color:{INK};">{_h.escape(pl["name"])}</div>{val}</div>'
             f'<div style="display:flex;gap:4px;margin:10px 0 6px;">{bars}</div>'
-            f'<div style="font-size:12.5px;font-weight:700;color:{pl["color"]};">{_h.escape(pl["label"])}</div></div>')
+            f'<div style="font-size:12.5px;font-weight:700;color:{pl["color"]};">{_h.escape(pl["label"])}</div></div></div>')
 
 
 def result_card_html(res: dict, lang: str) -> str:
@@ -287,7 +347,8 @@ def result_card_html(res: dict, lang: str) -> str:
                f'<div style="font:800 30px Sora,Inter,sans-serif;">{res["years"]} {"έτη" if el else "years"}</div>')
     return f"""
 <div style="background:radial-gradient(120% 90% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
-  border-radius:24px;padding:22px 22px 18px;margin:0 0 12px;color:#fff;box-shadow:0 26px 50px -30px rgba(18,55,201,.8);">
+  border-radius:24px;padding:22px 22px 18px;margin:0 0 12px;color:#fff;box-shadow:0 26px 50px -30px rgba(18,55,201,.8);position:relative;overflow:hidden;">
+  <div class="pn-resface" style="position:absolute;right:16px;top:14px;opacity:.95;">{_art.species_face(res.get("species","dog"), 74)}</div>
   <span class="pn-eyebrow dark">{"ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LONGEVITY CHECK"} · {name}</span>
   <div style="display:flex;align-items:flex-end;gap:16px;margin-top:14px;flex-wrap:wrap;">{ha_html}
     <div style="margin-left:auto;text-align:right;"><div style="font:800 34px Sora,Inter,sans-serif;color:#FFB48F;letter-spacing:-.03em;">{res.get("score", 0)}<small style="font-size:14px;color:#D5DCFF;">/100</small></div>
@@ -299,3 +360,45 @@ def result_card_html(res: dict, lang: str) -> str:
   </div>
   <div style="color:#B9C4FF;font-size:11.5px;margin-top:10px;">{"Εκτίμηση ευεξίας από όσα παρατηρείς — όχι διάγνωση. Το εύρος ζωής είναι τυπικό για το μέγεθος/είδος, όχι πρόβλεψη για το δικό σου ζώο." if el else "A wellness estimate from what you observe — not a diagnosis. The lifespan range is typical for the size/species, not a prediction for your animal."}</div>
 </div>"""
+
+
+# ── illustrated blocks ───────────────────────────────────────────────────────
+_BANNER_SCENE = {"🫁": ("breath", True), "🧬": ("longevity", True), "❤️": ("vitals", False),
+                 "💬": ("symptoms", False), "📋": ("report", False), "📷": ("photo", False)}
+
+
+def banner_html(icon: str, title: str, sub: str, org: str, species: str = "dog") -> str:
+    scene, dark = _BANNER_SCENE.get(icon, ("symptoms", False))
+    sp = species if species in ("dog", "cat") else "dog"
+    return (f'<div class="pn-banner{" dark" if dark else ""}"><div class="tx"><div class="org">{_h.escape(org)}</div>'
+            f'<div class="ttl">{_h.escape(title)}</div>' + (f'<div class="sb">{_h.escape(sub)}</div>' if sub else "") +
+            f'</div><div class="art">{_art.scene(scene, sp)}</div></div>')
+
+
+def feature_art_html(kind: str, species: str = "dog") -> str:
+    scene = {"assess": "symptoms", "photo": "photo", "scan": "breath", "longevity": "longevity"}.get(kind, "symptoms")
+    sp = species if species in ("dog", "cat") else "dog"
+    return f'<div class="pn-art-wrap">{_art.scene(scene, sp)}</div>'
+
+
+def snapshot_html(items: list) -> str:
+    """items: [(pillar_icon_id, label, value_html)] -> small illustrated stat tiles."""
+    cells = "".join(f'<div class="it"><div class="ic">{_art.pillar_icon(i)}</div><div><div class="k">{_h.escape(k)}</div>'
+                    f'<div class="v">{v}</div></div></div>' for i, k, v in items)
+    return f'<div class="pn-snap">{cells}</div>'
+
+
+def gallery_html(lang: str, species: str = "dog") -> str:
+    el = lang == "el"
+    cards = [
+        ("breath", "01", "Μέτρησε τις αναπνοές" if el else "Count the breaths",
+         "60 δευτερόλεπτα με την κάμερα δίπλα στο κατοικίδιο που κοιμάται." if el else "60 seconds with the camera beside your sleeping pet."),
+        ("longevity", "02", "Δες τα χρόνια του" if el else "See their years",
+         "Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας και πλάνο φροντίδας." if el else "Age in human years, a wellness score and a care plan."),
+        ("symptoms", "03", "Πες τι παρατηρείς" if el else "Tell us what you notice",
+         "Μία ερώτηση τη φορά και αναφορά για τον κτηνίατρο με παραπομπές MSD." if el else "One question at a time, then a vet report with MSD references."),
+    ]
+    sp = species if species in ("dog", "cat") else "dog"
+    return '<div class="pn-gallery">' + "".join(
+        f'<div class="pn-gcard"><div class="im">{_art.scene(k, sp)}</div><div class="bd"><div class="n">{n}</div><h4>{t}</h4><p>{b}</p></div></div>'
+        for k, n, t, b in cards) + '</div>'

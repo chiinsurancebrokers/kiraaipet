@@ -19,7 +19,8 @@ import html as _html
 import pet_longevity as _plg
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
-                       result_card_html as _pet_result_card_html)
+                       result_card_html as _pet_result_card_html, banner_html as _pn_banner,
+                       feature_art_html as _pn_feat_art, snapshot_html as _pn_snap)
 from petscan_component import petscan_component as _petscan
 
 # "Stay signed in" via a browser cookie (persists login across reloads / new tabs).
@@ -2217,6 +2218,10 @@ def render_doc_header(title_el, title_en, *, icon="📋",
         f'<div class="pan-dph-date-val">{date_str}</div></div>'
     ) if show_date else ""
     sub_html = f'<div class="pan-dph-sub">{sub}</div>' if sub else ""
+    if icon in ("🫁", "🧬", "❤️", "💬", "📋", "📷"):
+        _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
+        st.markdown(_pn_banner(icon, title, sub, org, _sp), unsafe_allow_html=True)
+        return
     if mascot_key:
         logo_inner = render_mascot(mascot_key, size=40)
     else:
@@ -7196,14 +7201,15 @@ def render_pet_nav(active):
         'border:none !important;box-shadow:none !important;font-size:12.5px !important;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button[kind="secondary"]{background:transparent !important;}'
         'div[data-testid="stElementContainer"]:has(.pn-nav-marker){display:none !important;}'
-        '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{font-size:10.5px !important;}}</style>',
+        '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{display:none !important;}'
+        '}</style>',
         unsafe_allow_html=True)
     cols = st.columns(len(items), gap="small")
     for _ci, (col, (scr, ic, lbl)) in enumerate(zip(cols, items)):
         with col:
             if _ci == 0:
                 st.markdown('<span class="pn-nav-marker"></span>', unsafe_allow_html=True)
-            if st.button(f"{ic} {lbl}", key=f"pnav_{active}_{scr}", use_container_width=True,
+            if st.button(lbl, icon=ic, key=f"pnav_{active}_{scr}", use_container_width=True,
                          type=("primary" if scr == active else "secondary")):
                 if scr != active:
                     _goto(scr)
@@ -7245,6 +7251,8 @@ def render_pet_feature_card(kind, key):
     st.markdown(_pet_feature_banner_css(mk, F["dark"]), unsafe_allow_html=True)
     tc, bc = ("#fff", "#D5DCFF") if F["dark"] else ("#0B1B4B", "#5B6794")
     with st.container(border=True):
+        _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
+        st.markdown(_pn_feat_art(kind, _sp), unsafe_allow_html=True)
         st.markdown(
             f'<div class="{mk}" style="padding:4px 4px 2px;">'
             f'<span class="pn-eyebrow {"dark" if F["dark"] else ""}">{F["eb"][i]}</span>'
@@ -7285,7 +7293,7 @@ def render_pet_home():
 <div style="background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), #1237C9;
   border-radius:26px;padding:24px 26px;color:#fff;display:flex;gap:20px;align-items:center;flex-wrap:wrap;
   box-shadow:0 30px 60px -34px rgba(18,55,201,.8);margin:0 0 6px;">
-  <div style="background:#FFDCC7;border-radius:24px;padding:10px;flex-shrink:0;">{mascot}</div>
+  <div class="pn-mascot" style="background:#FFDCC7;border-radius:24px;padding:10px;flex-shrink:0;">{mascot}</div>
   <div style="flex:1 1 260px;min-width:0;">
     <div style="font:700 11px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#FFB48F;">PETAINURSE</div>
     <div style="font-family:Sora,Inter,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:6px 0 4px;">{greet}</div>
@@ -7300,6 +7308,22 @@ def render_pet_home():
 
     def _sec(label):
         st.markdown(f'<div class="pn-sec">{label}</div>', unsafe_allow_html=True)
+
+    _S0 = st.session_state.get("longevity") or {}
+    _yrs = (ay or 0) + (am or 0) / 12.0
+    _ha = _plg.human_age(pet.get("species_key", "dog"), _yrs) if _yrs else None
+    _snap = []
+    if _ha is not None:
+        _snap.append(("bcs", "Ηλικία σε ανθρώπινα" if el else "Human age", f"{_ha}"))
+    _b = _S0.get("breath")
+    _snap.append(("srr", "Αναπνοές ηρεμίας" if el else "Resting breaths",
+                  (f"{_b['bpm']} <small>/{'λεπτό' if el else 'min'}</small>" if _b else "—")))
+    _pu = _S0.get("pulse")
+    _snap.append(("hr", "Σφυγμοί" if el else "Pulse",
+                  (f"~{_pu['bpm']} <small>bpm</small>" if _pu else "—")))
+    _wt = pet.get("weight")
+    _snap.append(("activity", "Βάρος" if el else "Weight", (f"{_wt} <small>kg</small>" if _wt else "—")))
+    st.markdown(_pn_snap(_snap), unsafe_allow_html=True)
 
     _sec("ΕΚΤΙΜΗΣΗ ΥΓΕΙΑΣ" if el else "HEALTH ASSESSMENT")
     c1, c2 = st.columns(2, gap="small", vertical_alignment="top")
