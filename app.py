@@ -20,7 +20,7 @@ import pet_longevity as _plg
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
                        result_card_html as _pet_result_card_html, banner_html as _pn_banner,
-                       feature_art_html as _pn_feat_art, snapshot_html as _pn_snap)
+                       feature_art_html as _pn_feat_art, snapshot_html as _pn_snap, BANNER_ICONS as _PN_BANNER_ICONS)
 from petscan_component import petscan_component as _petscan
 
 # "Stay signed in" via a browser cookie (persists login across reloads / new tabs).
@@ -2149,6 +2149,7 @@ def _render_disclaimer_strip(lang=None):
 # that screen via a small ✕ button. Dismissed state is kept in session_state
 # under a stable key so it stays closed during navigation.
 def _render_page_helper(screen_key, title_el, body_el, title_en=None, body_en=None):
+    return  # long "what you can do here" boxes removed — each screen now explains itself
     lang = st.session_state.lang
     flag = f"_helper_dismissed_{screen_key}"
     if st.session_state.get(flag):
@@ -2218,7 +2219,7 @@ def render_doc_header(title_el, title_en, *, icon="📋",
         f'<div class="pan-dph-date-val">{date_str}</div></div>'
     ) if show_date else ""
     sub_html = f'<div class="pan-dph-sub">{sub}</div>' if sub else ""
-    if icon in ("🫁", "🧬", "❤️", "💬", "📋", "📷"):
+    if icon in _PN_BANNER_ICONS:
         _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
         st.markdown(_pn_banner(icon, title, sub, org, _sp), unsafe_allow_html=True)
         return
@@ -2292,10 +2293,10 @@ def render_doc_header(title_el, title_en, *, icon="📋",
 
 
 def render_stepper(current):
-    steps_el = ["1 Προφίλ","2 Ζωτικές","3 Συμπτώματα","4 Αναφορά"]
-    steps_en = ["1 Profile","2 Vitals","3 Symptoms","4 Report"]
+    steps_el = ["1 Προφίλ","2 Νοσηλεύτρια","3 Αναφορά"]
+    steps_en = ["1 Profile","2 Nurse chat","3 Report"]
     steps = steps_el if st.session_state.lang=="el" else steps_en
-    order = ["intake","vitals","triage","report"]
+    order = ["intake","triage","report"]
     cur_i = order.index(current) if current in order else 0
     html = '<div class="pan-stepper">'
     for i,label in enumerate(steps):
@@ -3024,39 +3025,6 @@ def report_loading_banner_html(pet, lang="el"):
 """
 
 
-def render_lifestyle_strip(lang="el"):
-    """Three lifestyle cards (walks, vet visits, daily care) using the
-    illustrated 'life action' artwork — warmer, brand-consistent feel."""
-    if not ILLUSTRATIONS:
-        return
-    if lang == "el":
-        items = [
-            ("walking", "Καθημερινές βόλτες", "Παρακολούθησε πώς νιώθει το κατοικίδιό σου κάθε μέρα"),
-            ("vet",     "Επίσκεψη στον κτηνίατρο", "Φτάσε προετοιμασμένος, με δομημένη αναφορά"),
-            ("care",    "Φροντίδα στο σπίτι", "Καταγραφή συμπτωμάτων, φαρμάκων και ιστορικού"),
-        ]
-    else:
-        items = [
-            ("walking", "Daily walks", "Keep track of how your pet feels every day"),
-            ("vet",     "Vet visits", "Arrive prepared, with a structured assessment"),
-            ("care",    "Home care", "Track symptoms, medications and history"),
-        ]
-    cols = st.columns(3)
-    for col, (key, title, sub) in zip(cols, items):
-        b64 = ILLUSTRATIONS.get(key)
-        if not b64:
-            continue
-        with col:
-            st.markdown(
-                f'''<div style="border-radius:14px;overflow:hidden;border:1px solid #E5E7EB;background:white">
-<img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;object-fit:cover;height:130px" />
-<div style="padding:10px 12px">
-<div style="font-size:13px;font-weight:700;color:#1A1A2E">{title}</div>
-<div style="font-size:11.5px;color:#6B7280;margin-top:2px">{sub}</div>
-</div>
-</div>''',
-                unsafe_allow_html=True,
-            )
 
 
 # ── EMERGENCY VET CLINICS (Athens + major Greek cities) ───────────────────────
@@ -3758,658 +3726,12 @@ def _render_pet_health_pillars(pet, vitals, status_map, report_text, lang):
 # MARKETING / EXPLAINER COMPONENTS (pet-themed, adapted from Asklepios)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def render_travel_ad_banner(lang):
-    """Embeddable, responsive version of the 'Pet Travel Checklist' suitcase
-    poster (petainurse_travel_ad.html) for the home screen — same branding
-    and copy, but fluid-width instead of a fixed 1080x1920 story poster."""
-    if lang == "en":
-        d = dict(
-            tag_icon="☀️", tag="PETAINURSE · SUMMER ESSENTIALS",
-            h1="Heading on holiday", h1_accent="with your pet?",
-            sub_strong="4 things to pack before you leave.",
-            sub="A relaxed summer means being prepared.",
-            ttl="🧳 Pet Summer Checklist", ttl_sub="For the beach, the road, and everywhere in between",
-            items=[
-                ("01","📘","Pet passport","+ vaccination booklet & microchip", False),
-                ("02","💧","Water, bowl & shade","Hydration + a beach umbrella for them too", False),
-                ("03","💊","Medications & parasite prevention","Heat-stable storage + current med list", False),
-                ("04","🩺","PetAiNurse","AI vet nurse in your pocket — wherever you travel", True),
-            ],
-            tagline="\u201cTell us what you're noticing. Get an assessment. Anywhere.\u201d",
-            url="https://petainurse.up.railway.app/",
-            pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Free"],
-        )
-    else:
-        d = dict(
-            tag_icon="☀️", tag="PETAINURSE · SUMMER ESSENTIALS",
-            h1="Ετοιμάζεσαι για διακοπές", h1_accent="με το κατοικίδιό σου;",
-            sub_strong="4 πράγματα που πρέπει να πακετάρεις πριν φύγεις.",
-            sub="Ξέγνοιαστο καλοκαίρι σημαίνει να είσαι προετοιμασμένος.",
-            ttl="🧳 Pet Summer Checklist", ttl_sub="Για την παραλία, τον δρόμο, και παντού στο μεταξύ",
-            items=[
-                ("01","📘","Διαβατήριο κατοικιδίου","+ βιβλιάριο εμβολίων & microchip", False),
-                ("02","💧","Νερό, μπολ & σκιά","Ενυδάτωση + μια ομπρέλα παραλίας και γι' αυτόν", False),
-                ("03","💊","Φάρμακα & αντιπαρασιτικά","Φύλαξη μακριά από ζέστη + λίστα τρέχουσας αγωγής", False),
-                ("04","🩺","PetAiNurse","AI κτηνιατρικός νοσηλευτής στην τσέπη σου — όπου κι αν ταξιδέψεις", True),
-            ],
-            tagline="«Πες τι παρατηρείς. Λάβε εκτίμηση. Παντού.»",
-            url="https://petainurse.up.railway.app/",
-            pills=["🐾 MSD Vet Manual","🔒 GDPR","⚡ Δωρεάν"],
-        )
-
-    # NOTE: each item MUST be emitted with NO leading whitespace. Streamlit's
-    # markdown parser turns any line indented >=4 spaces into a <code> block,
-    # which is why the raw HTML was previously shown as text on the home screen.
-    items_html = ""
-    for num, icon, label, sub, is_hero in d["items"]:
-        cls = "pan-ta-item pan-ta-item-hero" if is_hero else "pan-ta-item"
-        items_html += (
-            f'<div class="{cls}">'
-            f'<div class="pan-ta-num">{num}</div>'
-            f'<div class="pan-ta-check">✓</div>'
-            f'<div class="pan-ta-icon">{icon}</div>'
-            f'<div class="pan-ta-text">'
-            f'<div class="pan-ta-label">{label}</div>'
-            f'<div class="pan-ta-sub">{sub}</div>'
-            f'</div></div>'
-        )
-
-    pills_html = "".join(f'<span class="pan-ta-pill">{p}</span>' for p in d["pills"])
-
-    # Inline summer beach scene — sand, sea, umbrella, palm. Perro and Gata
-    # sit under the umbrella as PNG overlays (transparent bg, so they blend in).
-    dog_png = HERO_PNGS.get("dog") or MASCOT_IMG.get("dog", "")
-    cat_png = HERO_PNGS.get("cat") or MASCOT_IMG.get("cat", "")
-    _dog_mime = "image/png" if HERO_PNGS.get("dog") else "image/jpeg"
-    _cat_mime = "image/png" if HERO_PNGS.get("cat") else "image/jpeg"
-    pets_html = ""
-    if cat_png:
-        pets_html += (f'<image href="data:{_cat_mime};base64,{cat_png}" x="260" y="120" '
-                      f'width="130" height="130" preserveAspectRatio="xMidYMid meet"/>')
-    if dog_png:
-        pets_html += (f'<image href="data:{_dog_mime};base64,{dog_png}" x="380" y="140" '
-                      f'width="120" height="120" preserveAspectRatio="xMidYMid meet"/>')
-    beach_svg = f"""
-<div class="pan-ta-beach">
-<svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block">
-  <defs>
-    <linearGradient id="ptSky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#7DD3FC"/><stop offset="100%" stop-color="#BAE6FD"/>
-    </linearGradient>
-    <linearGradient id="ptSea" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0891B2"/><stop offset="100%" stop-color="#06B6D4"/>
-    </linearGradient>
-    <linearGradient id="ptSand" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FDE68A"/><stop offset="100%" stop-color="#F59E0B"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="800" height="170" fill="url(#ptSky)"/>
-  <rect x="0" y="160" width="800" height="50" fill="url(#ptSea)"/>
-  <path d="M0,200 Q200,180 400,200 T800,200 L800,280 L0,280 Z" fill="url(#ptSand)"/>
-  <circle cx="650" cy="70" r="38" fill="#FCD34D"/>
-  <circle cx="650" cy="70" r="50" fill="#FCD34D" opacity="0.3"/>
-  <!-- Beach umbrella -->
-  <rect x="343" y="120" width="4" height="120" fill="#92400E"/>
-  <path d="M255,130 Q345,40 435,130 Z" fill="#DC2626"/>
-  <path d="M255,130 Q275,90 295,130 Z" fill="#FCA5A5"/>
-  <path d="M295,130 Q325,75 355,130 Z" fill="#FECACA"/>
-  <path d="M355,130 Q385,75 415,130 Z" fill="#FCA5A5"/>
-  <path d="M415,130 Q425,90 435,130 Z" fill="#FECACA"/>
-  <!-- Palm tree -->
-  <rect x="90" y="140" width="9" height="100" fill="#92400E"/>
-  <path d="M95,140 Q40,110 30,80 Q70,100 95,135 Z" fill="#16A34A"/>
-  <path d="M95,140 Q160,110 175,80 Q130,100 100,135 Z" fill="#15803D"/>
-  <path d="M95,140 Q50,160 30,180 Q70,150 100,140 Z" fill="#16A34A"/>
-  <!-- Beach ball -->
-  <circle cx="500" cy="230" r="14" fill="#DB2777"/>
-  <path d="M486,230 A14,14 0 0,1 514,230" fill="#FCD34D" opacity="0.8"/>
-  <!-- Pets overlay -->
-  {pets_html}
-</svg>
-</div>
-"""
-
-    st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,800;1,900&family=Inter:wght@400;500;600;700;800&display=swap');
-.pan-ta-wrap {{
-  background: linear-gradient(180deg, #DBF4FF 0%, #BAE6FD 35%, #FEF3C7 90%, #FDE68A 100%);
-  border-radius: 24px; padding: 32px 28px;
-  margin: 12px 0 24px; font-family: 'Inter', system-ui, sans-serif;
-  position: relative; overflow: hidden;
-}}
-.pan-ta-wrap::before {{
-  content: ""; position: absolute; top: 14px; right: 20px;
-  width: 70px; height: 70px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, #FCD34D 0%, #F59E0B 70%, transparent 71%);
-  box-shadow: 0 0 60px rgba(252, 211, 77, 0.55);
-}}
-.pan-ta-wrap::after {{
-  content: ""; position: absolute; bottom: 0; left: 0; right: 0;
-  height: 22%; background: linear-gradient(180deg, transparent, #FDE68A 30%, #FBBF24 100%);
-  border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
-  z-index: 0;
-}}
-.pan-ta-wrap > * {{ position: relative; z-index: 1; }}
-.pan-ta-tag {{
-  display: inline-flex; align-items: center; gap: 8px;
-  background: white; border-radius: 999px; padding: 8px 18px;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
-  color: #0891B2; box-shadow: 0 3px 10px rgba(0,0,0,0.06);
-  margin-bottom: 18px;
-}}
-.pan-ta-h1 {{
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 34px; font-weight: 800; line-height: 1.05;
-  color: #1A1A2E; letter-spacing: -1px; margin-bottom: 10px;
-}}
-.pan-ta-h1 .accent {{ display: block; color: #0891B2; font-style: italic; }}
-.pan-ta-sub {{
-  font-size: 14px; color: #4B5563; line-height: 1.55; margin-bottom: 22px; max-width: 460px;
-}}
-.pan-ta-sub strong {{ color: #1A1A2E; font-weight: 700; }}
-.pan-ta-suitcase {{
-  background: white; border: 2px solid #1A1A2E; border-radius: 20px;
-  padding: 22px 22px 18px; max-width: 640px; margin: 0 auto;
-  box-shadow: 0 14px 36px rgba(0,0,0,0.10);
-}}
-.pan-ta-ttl {{ text-align: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 2px dashed #D1D5DB; }}
-.pan-ta-ttl .t {{ font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #1A1A2E; margin-bottom: 4px; }}
-.pan-ta-ttl .s {{ font-size: 12.5px; color: #6B7280; font-weight: 500; }}
-.pan-ta-item {{
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 14px; background: #F9FAFB; border: 2px solid #E5E7EB;
-  border-radius: 14px; margin-bottom: 10px;
-}}
-.pan-ta-item-hero {{
-  background: linear-gradient(135deg, #E0F2FE 0%, #FEF3C7 100%);
-  border: 2px solid #0891B2; box-shadow: 0 6px 16px rgba(8,145,178,0.18);
-}}
-.pan-ta-num {{
-  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
-  font-size: 22px; color: rgba(0,0,0,0.13); width: 30px; text-align: center; flex-shrink: 0;
-}}
-.pan-ta-item-hero .pan-ta-num {{ color: rgba(8,145,178,0.35); }}
-.pan-ta-check {{
-  width: 28px; height: 28px; border: 2px solid #1A1A2E; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 900; color: #1A1A2E; background: white; flex-shrink: 0;
-}}
-.pan-ta-item-hero .pan-ta-check {{ background: #0891B2; border-color: #0891B2; color: white; }}
-.pan-ta-icon {{ font-size: 28px; flex-shrink: 0; }}
-.pan-ta-text {{ flex: 1; min-width: 0; }}
-.pan-ta-label {{ font-size: 14.5px; font-weight: 800; color: #1A1A2E; line-height: 1.2; }}
-.pan-ta-item-hero .pan-ta-label {{ color: #075985; }}
-.pan-ta-sub-line {{ font-size: 12px; color: #6B7280; font-weight: 500; }}
-.pan-ta-item .pan-ta-sub {{ font-size: 12px; color: #6B7280; font-weight: 500; margin: 0; max-width: none; }}
-.pan-ta-item-hero .pan-ta-sub {{ color: #0E7490; font-weight: 600; }}
-.pan-ta-footer {{ text-align: center; margin-top: 16px; padding-top: 14px; border-top: 2px dashed #D1D5DB; }}
-.pan-ta-tagline {{ font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 15px; color: #1A1A2E; margin-bottom: 8px; }}
-.pan-ta-url {{ font-size: 14px; font-weight: 800; color: #0891B2; word-break: break-all; }}
-.pan-ta-url a {{ color: #0891B2; text-decoration: none; }}
-.pan-ta-url a:hover {{ text-decoration: underline; }}
-.pan-ta-url .arrow {{ color: #DB2777; margin-right: 6px; }}
-.pan-ta-pills {{
-  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
-  margin-top: 18px;
-}}
-.pan-ta-pill {{
-  background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #4B5563;
-}}
-.pan-ta-beach {{
-  border-radius: 18px; overflow: hidden; max-width: 640px; margin: 0 auto 16px;
-  box-shadow: 0 8px 22px rgba(0,0,0,0.10); aspect-ratio: 800 / 280; line-height: 0;
-}}
-@media (max-width: 640px) {{
-  .pan-ta-wrap {{ padding: 22px 16px; border-radius: 18px; }}
-  .pan-ta-h1 {{ font-size: 26px; }}
-  .pan-ta-suitcase {{ padding: 16px 14px 14px; }}
-}}
-</style>
-<div class="pan-ta-wrap">
-<div class="pan-ta-tag">{d['tag_icon']} {d['tag']}</div>
-<div class="pan-ta-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span></div>
-<div class="pan-ta-sub"><strong>{d['sub_strong']}</strong><br>{d['sub']}</div>
-{beach_svg}
-<div class="pan-ta-suitcase">
-<div class="pan-ta-ttl"><div class="t">{d['ttl']}</div><div class="s">{d['ttl_sub']}</div></div>
-{items_html}
-<div class="pan-ta-footer">
-<div class="pan-ta-tagline">{d['tagline']}</div>
-<div class="pan-ta-url"><span class="arrow">→</span><a href="{d['url']}" target="_blank" rel="noopener">{d['url']}</a></div>
-</div>
-</div>
-<div class="pan-ta-pills">{pills_html}</div>
-</div>
-""", unsafe_allow_html=True)
 
 
-def render_ad_banner(lang):
-    """Editorial-style value-prop banner for the home/login screen.
-    Pet-themed (green/teal), honest claims only — no diagnostic promises."""
-    if lang == "en":
-        d = {
-            "pill_l":"PETAINURSE · SUMMER PET CARE", "pill_r":"🔒 GDPR · Encrypted",
-            "h_l":"Summer days.", "h_m":"Smart prep.", "h_r":"Happy pets.",
-            "sub":"Heatstroke, ticks, travel stress, foreign bodies — summer brings its own risks. Describe what's going on, get a structured pre-visit summary with veterinary references, and arrive at the clinic prepared. Always complements — never replaces — your vet.",
-            "s1_lbl":"SUMMER RISK", "s1_text":"\"Panting heavily after a walk, won't settle, gums look red…\"",
-            "s2_lbl":"VITALS",
-            "s2_v1":"HR", "s2_v1v":"110 bpm",
-            "s2_v2":"Temp", "s2_v2v":"39.4°C",
-            "s3_lbl":"PRE-VISIT SUMMARY",
-            "s3_l1":"Structured assessment",
-            "s3_l2":"MSD Vet Manual references",
-            "s3_l3":"Heatstroke & toxicity warnings",
-            "s3_l4":"GPT-4o second opinion",
-            "t1":"🇬🇷 Greek", "t2":"🔒 GDPR",
-            "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Free",
-            "vetnote":"🩺 For pet owners — designed to make every vet visit faster and more informed, not to replace one. Always see your veterinarian for diagnosis and treatment.",
-        }
-    else:
-        d = {
-            "pill_l":"PETAINURSE · ΦΡΟΝΤΙΔΑ ΓΙΑ ΤΟ ΚΑΛΟΚΑΙΡΙ", "pill_r":"🔒 GDPR · Κρυπτογράφηση",
-            "h_l":"Καλοκαίρι.", "h_m":"Έτοιμη πρόληψη.", "h_r":"Ήρεμο κατοικίδιο.",
-            "sub":"Θερμοπληξία, τσιμπούρια, άγχος ταξιδιού, ξένα σώματα — το καλοκαίρι έχει τους δικούς του κινδύνους. Περίγραψε τι παρατηρείς και λάβε δομημένη σύνοψη με κτηνιατρικές αναφορές, ώστε να φτάσεις στο ιατρείο πιο προετοιμασμένος. Συμπληρώνει — δεν αντικαθιστά — τον κτηνίατρό σου.",
-            "s1_lbl":"ΚΑΛΟΚΑΙΡΙΝΟΣ ΚΙΝΔΥΝΟΣ", "s1_text":"«Λαχανιάζει έντονα μετά τη βόλτα, δεν ηρεμεί, τα ούλα φαίνονται κόκκινα…»",
-            "s2_lbl":"ΖΩΤΙΚΑ",
-            "s2_v1":"HR", "s2_v1v":"110 bpm",
-            "s2_v2":"Θερμ.", "s2_v2v":"39.4°C",
-            "s3_lbl":"ΣΥΝΟΨΗ ΠΡΙΝ ΤΟ ΙΑΤΡΕΙΟ",
-            "s3_l1":"Δομημένη εκτίμηση",
-            "s3_l2":"Αναφορές MSD Vet Manual",
-            "s3_l3":"Προειδοποιήσεις θερμοπληξίας & τοξικότητας",
-            "s3_l4":"Δεύτερη γνώμη GPT-4o",
-            "t1":"🇬🇷 Ελληνικά", "t2":"🔒 GDPR",
-            "t3":"📋 MSD Vet Manual", "t4":"🤖 Claude + GPT-4o", "t5":"⚡ Δωρεάν",
-            "vetnote":"🩺 Για ιδιοκτήτες κατοικιδίων — σχεδιασμένο ώστε κάθε επίσκεψη στον κτηνίατρο να γίνεται πιο γρήγορη και ενημερωμένη, όχι για να την αντικαταστήσει. Για διάγνωση και θεραπεία, πάντα ο κτηνίατρός σας.",
-        }
-    css = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700&display=swap');
-.pan-ad-hero {
-  background: linear-gradient(180deg, #F0FDF4 0%, #ECFDF5 100%);
-  border-radius: 28px; padding: 60px 40px 36px;
-  margin: 12px 0 28px; text-align: center;
-  font-family: 'Inter', system-ui, sans-serif;
-  border: 1px solid rgba(5, 150, 105, 0.08);
-}
-.pan-ad-pill {
-  display: inline-flex; align-items: center; gap: 12px;
-  background: white; border: 1px solid #E5E7EB;
-  border-radius: 999px; padding: 8px 18px;
-  font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em;
-  color: #059669; margin-bottom: 24px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-}
-.pan-ad-pill .sep { color: #D1D5DB; font-weight: 400; }
-.pan-ad-pill .gdpr { color: #10B981; letter-spacing: 0.04em; }
-.pan-ad-title {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 60px; font-weight: 700; line-height: 1.02;
-  letter-spacing: -2px; color: #1A1A2E; margin: 0 0 4px;
-}
-.pan-ad-title .word { display: inline-block; }
-.pan-ad-title .accent {
-  color: #0EA5E9; font-style: italic; font-weight: 900;
-  letter-spacing: -2.5px;
-}
-.pan-ad-sub {
-  font-size: 16.5px; color: #4B5563;
-  max-width: 580px; margin: 22px auto 38px;
-  line-height: 1.6; font-weight: 400;
-}
-.pan-ad-flow {
-  display: flex; align-items: stretch; justify-content: center;
-  gap: 14px; margin: 36px 0 38px; flex-wrap: wrap;
-}
-.pan-ad-card {
-  background: white; border: 1px solid #ECEEF3;
-  border-radius: 18px; padding: 18px 16px 18px;
-  width: 210px; max-width: 230px; min-height: 130px;
-  box-shadow: 0 3px 10px rgba(26, 26, 46, 0.05);
-  display: flex; flex-direction: column;
-  text-align: left;
-}
-.pan-ad-card-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
-  color: #9CA3AF; text-transform: uppercase; margin-bottom: 10px;
-  display: flex; align-items: center; gap: 6px;
-}
-.pan-ad-card-label .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-}
-.pan-ad-card-1 .pan-ad-card-label .dot { background: #F59E0B; }
-.pan-ad-card-2 .pan-ad-card-label .dot { background: #DC2626; }
-.pan-ad-card-3 .pan-ad-card-label .dot { background: #0EA5E9; }
-.pan-ad-bubble {
-  background: #FFFBEB; border-radius: 14px 14px 14px 4px;
-  padding: 11px 13px; font-size: 13px;
-  color: #1A1A2E; line-height: 1.45; font-style: italic;
-  font-weight: 500;
-}
-.pan-ad-vitals { display: flex; flex-direction: column; gap: 8px; }
-.pan-ad-vital-row {
-  display: flex; align-items: center; justify-content: space-between;
-  background: #FAFBFC; border-radius: 9px;
-  padding: 8px 11px; font-size: 12.5px;
-}
-.pan-ad-vital-row .lbl { color: #6B7280; font-weight: 600; letter-spacing: 0.04em; }
-.pan-ad-vital-row .val { color: #1A1A2E; font-weight: 700; font-variant-numeric: tabular-nums; }
-.pan-ad-report { display: flex; flex-direction: column; gap: 7px; }
-.pan-ad-report-line {
-  display: flex; align-items: center; gap: 9px;
-  font-size: 13px; color: #1A1A2E; font-weight: 500;
-}
-.pan-ad-report-line .check {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: #ECFDF5; color: #059669;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; flex-shrink: 0;
-}
-.pan-ad-arrow {
-  display: flex; align-items: center;
-  font-size: 22px; color: #0EA5E9; font-weight: 700; opacity: 0.5;
-}
-.pan-ad-trust {
-  display: flex; justify-content: center; align-items: center;
-  gap: 10px; flex-wrap: wrap; font-size: 12.5px;
-  color: #6B7280; font-weight: 500;
-  padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.05);
-  margin-top: 20px;
-}
-.pan-ad-trust .item { white-space: nowrap; }
-.pan-ad-trust .sep-dot {
-  color: #D1D5DB; font-weight: 400; font-size: 14px;
-  line-height: 1;
-}
-.pan-ad-vetnote {
-  font-size: 12px; color: #6B7280; line-height: 1.5;
-  max-width: 540px; margin: 16px auto 0;
-  padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.05);
-}
-@media (max-width: 640px) {
-  .pan-ad-hero { padding: 36px 22px 28px; border-radius: 22px; }
-  .pan-ad-title { font-size: 36px; letter-spacing: -1.2px; }
-  .pan-ad-title .accent { letter-spacing: -1.5px; }
-  .pan-ad-sub { font-size: 14.5px; margin: 18px auto 28px; }
-  .pan-ad-arrow { display: none; }
-  .pan-ad-card { width: 100%; max-width: 340px; padding: 14px; min-height: auto; }
-  .pan-ad-flow { gap: 10px; margin: 24px 0 28px; }
-  .pan-ad-trust { gap: 6px; font-size: 11.5px; }
-  .pan-ad-pill { font-size: 10.5px; padding: 7px 14px; }
-}
-</style>
-"""
-    body = f"""
-<div class="pan-ad-hero">
-  <div class="pan-ad-pill">✦ {d["pill_l"]} <span class="sep">|</span> <span class="gdpr">{d["pill_r"]}</span></div>
-  <h1 class="pan-ad-title">
-    <span class="word">{d["h_l"]}</span>
-    <span class="word">{d["h_m"]}</span><br>
-    <span class="word accent">{d["h_r"]}</span>
-  </h1>
-  <p class="pan-ad-sub">{d["sub"]}</p>
-  <div class="pan-ad-flow">
-    <div class="pan-ad-card pan-ad-card-1">
-      <div class="pan-ad-card-label"><span class="dot"></span>{d["s1_lbl"]}</div>
-      <div class="pan-ad-bubble">{d["s1_text"]}</div>
-    </div>
-    <div class="pan-ad-arrow">→</div>
-    <div class="pan-ad-card pan-ad-card-2">
-      <div class="pan-ad-card-label"><span class="dot"></span>{d["s2_lbl"]}</div>
-      <div class="pan-ad-vitals">
-        <div class="pan-ad-vital-row"><span class="lbl">❤️ {d["s2_v1"]}</span><span class="val">{d["s2_v1v"]}</span></div>
-        <div class="pan-ad-vital-row"><span class="lbl">🌡️ {d["s2_v2"]}</span><span class="val">{d["s2_v2v"]}</span></div>
-      </div>
-    </div>
-    <div class="pan-ad-arrow">→</div>
-    <div class="pan-ad-card pan-ad-card-3">
-      <div class="pan-ad-card-label"><span class="dot"></span>{d["s3_lbl"]}</div>
-      <div class="pan-ad-report">
-        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l1"]}</div>
-        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l2"]}</div>
-        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l3"]}</div>
-        <div class="pan-ad-report-line"><span class="check">✓</span>{d["s3_l4"]}</div>
-      </div>
-    </div>
-  </div>
-  <div class="pan-ad-trust">
-    <span class="item">{d["t1"]}</span><span class="sep-dot">·</span>
-    <span class="item">{d["t2"]}</span><span class="sep-dot">·</span>
-    <span class="item">{d["t3"]}</span><span class="sep-dot">·</span>
-    <span class="item">{d["t4"]}</span><span class="sep-dot">·</span>
-    <span class="item">{d["t5"]}</span>
-  </div>
-  <div class="pan-ad-vetnote">{d["vetnote"]}</div>
-</div>
-"""
-    st.markdown(css + body, unsafe_allow_html=True)
 
 
-def render_explainer_video(lang):
-    """Horizontal scrollable 'how it works' cards — pet-themed walkthrough."""
-    el = (lang == "el")
-    if el:
-        steps = [
-            ("01", "🐾", "#ECFDF5", "PETAINURSE",
-             "Ο ψηφιακός νοσηλευτής του κατοικίδιού σου",
-             "Αξιολόγηση συμπτωμάτων με τεχνητή νοημοσύνη — γρήγορα, στα Ελληνικά."),
-            ("02", "✉️", "#EEF6FF", "ΣΥΝΔΕΣΗ",
-             "Σύνδεση με email",
-             "Email + κωδικός μίας χρήσης. Χωρίς password, χωρίς πολύπλοκη εγγραφή."),
-            ("03", "🐶", "#FFF7ED", "ΠΡΟΦΙΛ",
-             "Συμπλήρωσε το προφίλ του κατοικίδιου",
-             "Είδος, φυλή, ηλικία, βάρος, παθήσεις, αλλεργίες, φάρμακα."),
-            ("04", "💬", "#F0EEFE", "ΣΥΜΠΤΩΜΑΤΑ",
-             "Περίγραψε τι παρατηρείς",
-             "Η PetAiNurse κάνει στοχευμένες ερωτήσεις — μία κάθε φορά. Μπορείς και με φωνή."),
-            ("05", "❤️", "#FEF2F2", "ΖΩΤΙΚΑ",
-             "Μέτρηση ζωτικών ενδείξεων",
-             "Καρδιακός ρυθμός, αναπνοή, θερμοκρασία, SpO2 — με φυσιολογικά εύρη ανά είδος."),
-            ("06", "📷", "#F0FDFA", "ΦΩΤΟ & ΕΞΕΤΑΣΕΙΣ",
-             "Φωτογραφία ή εργαστηριακή εξέταση",
-             "Σάρωση ματιών/δέρματος/ούλων ή ανέβασμα PDF αιματολογικών αποτελεσμάτων."),
-            ("07", "📋", "#FDF4FF", "ΑΝΑΦΟΡΑ",
-             "Δομημένη κτηνιατρική αναφορά",
-             "Με αναφορές MSD Vet Manual, προειδοποιήσεις τοξικότητας και προφίλ υγείας. PDF για τον κτηνίατρο."),
-        ]
-        header = "Πώς λειτουργεί"
-        hint   = "← σύρε για περισσότερα →"
-    else:
-        steps = [
-            ("01", "🐾", "#ECFDF5", "PETAINURSE",
-             "Your pet's digital nurse",
-             "AI-powered symptom assessment — fast, in your language."),
-            ("02", "✉️", "#EEF6FF", "SIGN-IN",
-             "Sign in with email",
-             "Email + one-time code. No password, no complex registration."),
-            ("03", "🐶", "#FFF7ED", "PROFILE",
-             "Fill in your pet's profile",
-             "Species, breed, age, weight, conditions, allergies, medications."),
-            ("04", "💬", "#F0EEFE", "SYMPTOMS",
-             "Describe what you're noticing",
-             "PetAiNurse asks targeted questions — one at a time. You can also use voice."),
-            ("05", "❤️", "#FEF2F2", "VITALS",
-             "Measure vital signs",
-             "Heart rate, breathing, temperature, SpO2 — with species-specific normal ranges."),
-            ("06", "📷", "#F0FDFA", "PHOTO & LABS",
-             "Photo or lab results",
-             "Scan eyes/skin/gums or upload a PDF of blood test results."),
-            ("07", "📋", "#FDF4FF", "REPORT",
-             "Structured veterinary report",
-             "With MSD Vet Manual references, toxicity warnings and a health profile. PDF for your vet."),
-        ]
-        header = "How it works"
-        hint   = "← swipe for more →"
-    cards = "".join(
-        f"""<div class="pan-exp-card" style="background:{tint};">
-              <div class="pan-exp-num">{num}</div>
-              <div class="pan-exp-icon">{icon}</div>
-              <div class="pan-exp-label">{label}</div>
-              <div class="pan-exp-title">{title}</div>
-              <div class="pan-exp-sub">{sub}</div>
-            </div>"""
-        for (num, icon, tint, label, title, sub) in steps
-    )
-    st.markdown(
-        f"""
-<style>
-.pan-exp-section {{
-  margin: 32px 0 16px;
-}}
-.pan-exp-header {{
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin: 0 4px 12px;
-  font-family: 'Inter', system-ui, sans-serif;
-}}
-.pan-exp-header .ttl {{
-  font-size: 18px; font-weight: 700; color: #1A1A2E;
-  letter-spacing: -0.01em;
-}}
-.pan-exp-header .hint {{
-  font-size: 11px; color: #9CA3AF; font-weight: 500;
-  letter-spacing: 0.02em;
-}}
-.pan-exp-scroll {{
-  display: flex; gap: 12px;
-  overflow-x: auto; overflow-y: hidden;
-  padding: 4px 4px 18px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #CBD5E1 transparent;
-}}
-.pan-exp-scroll::-webkit-scrollbar {{ height: 6px; }}
-.pan-exp-scroll::-webkit-scrollbar-thumb {{
-  background: #CBD5E1; border-radius: 3px;
-}}
-.pan-exp-scroll::-webkit-scrollbar-track {{ background: transparent; }}
-.pan-exp-card {{
-  flex: 0 0 250px; max-width: 250px;
-  border-radius: 18px; padding: 22px 20px;
-  scroll-snap-align: start;
-  border: 1px solid rgba(0,0,0,0.04);
-  text-align: left;
-  font-family: 'Inter', system-ui, sans-serif;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}}
-.pan-exp-num {{
-  font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
-  color: rgba(0,0,0,0.28); margin-bottom: 12px;
-}}
-.pan-exp-icon {{
-  font-size: 30px; line-height: 1; margin-bottom: 10px;
-}}
-.pan-exp-label {{
-  font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
-  color: #9CA3AF; text-transform: uppercase; margin-bottom: 6px;
-}}
-.pan-exp-title {{
-  font-size: 15px; font-weight: 700; color: #1A1A2E;
-  line-height: 1.35; margin-bottom: 8px;
-}}
-.pan-exp-sub {{
-  font-size: 12.5px; color: #4B5563; line-height: 1.55;
-}}
-@media (max-width: 640px) {{
-  .pan-exp-card {{ flex: 0 0 220px; padding: 18px 16px; }}
-  .pan-exp-icon {{ font-size: 26px; }}
-  .pan-exp-title {{ font-size: 14px; }}
-  .pan-exp-sub {{ font-size: 12px; }}
-}}
-</style>
-<div class="pan-exp-section">
-  <div class="pan-exp-header"><span class="ttl">{header}</span><span class="hint">{hint}</span></div>
-  <div class="pan-exp-scroll">{cards}</div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
 
 
-def render_home():
-    lang = st.session_state.lang
-
-    c1,c2 = st.columns([6,1])
-    with c2:
-        if st.button("🇬🇧 EN" if lang=="el" else "🇬🇷 ΕΛ"):
-            st.session_state.lang = "en" if lang=="el" else "el"; st.rerun()
-
-    # Brand character intro — the 4 superheroes (Perro, Gata, Gaz, Ave) inside
-    # the green hero band, with a one-time intro line + dismiss button.
-    # (Previously duplicated in a separate band above this one — merged here.)
-    _intro_html = ""
-    if not st.session_state.get("_mascot_peek_dismissed"):
-        intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
-                 "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
-                 if lang == "el" else
-                 "We are the PetAiNurse hero squad: "
-                 "<strong>Perro, Gata, Gaz and Ave</strong> — here to look after your pets.")
-        _intro_html = f'<div class="pet-hero-intro">{intro}</div>'
-
-    st.markdown(f'''<div class="pet-hero">
-        {render_hero_group(size=110, show_names=True)}
-        {_intro_html}
-        <h1>{t("title")}</h1>
-        <p>{t("subtitle")}</p>
-        <div class="pet-tagline">{t("tagline")}</div>
-    </div>''', unsafe_allow_html=True)
-
-    if not st.session_state.get("_mascot_peek_dismissed"):
-        cc1, cc2 = st.columns([5, 1])
-        with cc2:
-            if st.button(("Κατάλαβα ✕" if lang == "el" else "Got it ✕"),
-                         key="mascot_peek_close", use_container_width=True):
-                st.session_state["_mascot_peek_dismissed"] = True
-                st.rerun()
-
-    _render_disclaimer_strip()
-
-    _render_page_helper(
-        "home",
-        "Καλωσήρθες στο PetAiNurse",
-        "Εδώ ξεκινάει η εκτίμηση του κατοικιδίου σου. Πάτησε **«Ξεκίνα εκτίμηση & αναφορά»** για να αρχίσει η διαδικασία (προφίλ → ζωτικά → συμπτώματα → αναφορά για τον κτηνίατρο). Υποστηρίζονται **🐕 σκύλοι, 🐈 γάτες, 🐇 κουνέλια, 🐦 πουλιά και άλλα κατοικίδια**.",
-        title_en="Welcome to PetAiNurse",
-        body_en="This is where the assessment of your pet begins. Tap **“Start assessment & report”** to begin (profile → vitals → symptoms → vet-ready report). Supports **🐕 dogs, 🐈 cats, 🐇 rabbits, 🐦 birds and other pets**.",
-    )
-
-    render_lifestyle_strip(lang)
-
-    col1,col2,col3 = st.columns([1,2,1])
-    with col2:
-        if st.button(t("start"), type="primary", use_container_width=True):
-            st.session_state.screen="intake"; st.rerun()
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    _hc1, _hc2, _hc3, _hc4 = st.columns(4)
-    _home_cards = [
-        ("📋", "MSD Veterinary Manual",
-         "Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής."
-         if lang=="el" else "Every report is backed by the MSD Vet Manual — the gold standard in vet medicine."),
-        ("⚠️", "Τοξικότητα & Ασφάλεια" if lang=="el" else "Toxicity & Safety",
-         "Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες."
-         if lang=="el" else "Automatic detection of toxic substances — especially critical for cats."),
-        ("👥", "Για Pet Sitters" if lang=="el" else "For Pet Sitters",
-         "Φροντίζεις κατοικίδιο άλλου; Φτιάξε γρήγορη αναφορά για τον ιδιοκτήτη ή τον κτηνίατρο."
-         if lang=="el" else "Caring for someone else\'s pet? Create a quick report for the owner or vet."),
-        ("🇬🇷", "pet.gov.gr",
-         "Σύνδεσμοι προς τις επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς."
-         if lang=="el" else "Links to the official services of the National Pet Registry."),
-    ]
-    for _col, (_ic, _ti, _de) in zip([_hc1,_hc2,_hc3,_hc4], _home_cards):
-        with _col:
-            st.markdown(
-                f'<div class="card" style="height:100%"><div style="font-size:28px">{_ic}</div>'
-                f'<h3 style="margin-top:10px;font-size:14px">{_ti}</h3>'
-                f'<p style="font-size:12px;color:var(--text-secondary);margin-top:4px">{_de}</p></div>',
-                unsafe_allow_html=True
-            )
-
-    # "How it works" walkthrough
-    render_explainer_video(lang)
-
-    _emergency_banner()
 
 
 
@@ -4456,7 +3778,6 @@ def render_intake():
         hdr["title_el"], hdr["title_en"], icon=hdr["icon"],
         sub_el=hdr["sub_el"], sub_en=hdr["sub_en"],
     )
-    _render_disclaimer_strip()
     _render_page_helper(
         "intake",
         "Σχετικά με αυτό το βήμα",
@@ -4701,294 +4022,6 @@ def render_intake():
             st.rerun()
 
 
-def render_vitals():
-    render_stepper("vitals")
-    pet  = st.session_state.pet
-    lang = st.session_state.lang
-    sp   = pet.get("species_key","dog")
-    rng  = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
-    nm = pet.get("name","")
-    render_doc_header(
-        "Πώς είναι οι ζωτικές ενδείξεις;", "How are the vital signs?",
-        icon="❤️",
-        sub_el=(f"Μέτρησε ή σάρωσε για {nm}" if nm else "Χειροκίνητη μέτρηση ή σάρωση φωτογραφίας"),
-        sub_en=(f"Measure or scan for {nm}" if nm else "Manual entry or photo scan"),
-        mascot_key=mascot_for_pet(pet),
-    )
-    _render_disclaimer_strip()
-    _render_page_helper(
-        "vitals",
-        "Τι μπορείς να κάνεις εδώ",
-        "Έχεις **δύο επιλογές**: είτε να ανεβάσεις **φωτογραφία** (μάτι, δέρμα, αυτί, ούλα, σώμα, πατούσες) για ανάλυση από την AI, είτε να καταχωρήσεις **ζωτικές ενδείξεις** (καρδιακός ρυθμός, αναπνοή, θερμοκρασία, SpO2). Αν δεν θέλεις κάποιο από αυτά, πάτησε **«Παράλειψη»**.",
-        title_en="What you can do here",
-        body_en="Two options: upload a **photo** (eye, skin, ear, gums, body, paws) for AI analysis, or enter **vital signs** (heart rate, breathing, temp, SpO2). Don't want either? Tap **“Skip”**.",
-    )
-
-    hr_range = rng["hr"]; br_range = rng["br"]; temp_range = rng["temp"]
-    st.caption(f"{'Φυσιολογικά για' if lang=='el' else 'Normal for'} {pet.get('species_label','')}: "
-               f"HR {hr_range[0]}–{hr_range[1]} bpm · BR {br_range[0]}–{br_range[1]}/min · "
-               f"Temp {temp_range[0]}–{temp_range[1]}°C")
-
-    # ── Tabs: Photo Scan | Vitals | Skip ──────────────────────────────────────
-    tab_scan, tab_vitals = st.tabs([
-        "📷 " + ("Σάρωση Φωτογραφίας" if lang=="el" else "Photo Scan"),
-        "📋 " + ("Ζωτικές Ενδείξεις"  if lang=="el" else "Enter Vitals"),
-    ])
-
-    with tab_scan:
-        rf_key = _secret("ROBOFLOW_API_KEY","")
-        st.markdown(f"### {'Ανάλυση Φωτογραφίας' if lang=='el' else 'Photo Health Analysis'}")
-        st.caption("Florence-2 (Microsoft) + Claude Vision · " +
-                   ("Ανεβάστε φωτογραφία του ματιού, δέρματος, αυτιού, ούλων ή σώματος"
-                    if lang=="el" else "Upload photo of eye, skin, ear, gums or body"))
-
-        SCAN_OPTS = {
-            "dog": {
-                "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
-                       ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες"),
-                       ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
-                "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
-                       ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐶 Paws"),
-                       ("vomit","🤢 Vomit"),("stool","💩 Stool")],
-            },
-            "cat": {
-                "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
-                       ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
-                       ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες"),
-                       ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
-                "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
-                       ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
-                       ("body","🐾 Body"),("paw","🐱 Paws"),
-                       ("vomit","🤢 Vomit"),("stool","💩 Stool")],
-            },
-            "rabbit": {
-                "el": [("eye","👁️ Μάτια"),("skin","🔬 Τρίχωμα/Δέρμα"),
-                       ("ear","👂 Αυτιά"),("mouth","🦷 Δόντια/Στόμα"),
-                       ("body","🐰 Γενική Εμφάνιση"),("paw","🐾 Πατούσες")],
-                "en": [("eye","👁️ Eyes"),("skin","🔬 Fur/Skin"),
-                       ("ear","👂 Ears"),("mouth","🦷 Teeth/Mouth"),
-                       ("body","🐰 Body"),("paw","🐾 Paws")],
-            },
-            "bird": {
-                "el": [("eye","👁️ Μάτια"),("skin","🪶 Φτέρωμα/Δέρμα"),
-                       ("mouth","🦷 Ράμφος/Στόμα"),
-                       ("body","🐦 Γενική Εμφάνιση"),("paw","🐾 Πόδια/Νύχια")],
-                "en": [("eye","👁️ Eyes"),("skin","🪶 Feathers/Skin"),
-                       ("mouth","🦷 Beak/Mouth"),
-                       ("body","🐦 Body"),("paw","🐾 Feet/Claws")],
-            },
-            "reptile": {
-                "el": [("eye","👁️ Μάτια"),("skin","🐍 Δέρμα/Λέπια"),
-                       ("mouth","🦷 Στόμα"),
-                       ("body","🦎 Γενική Εμφάνιση"),("paw","🐾 Άκρα/Νύχια")],
-                "en": [("eye","👁️ Eyes"),("skin","🐍 Skin/Scales"),
-                       ("mouth","🦷 Mouth"),
-                       ("body","🦎 Body"),("paw","🐾 Limbs/Claws")],
-            },
-        }
-        opts = SCAN_OPTS.get(sp, SCAN_OPTS["dog"])[lang]
-        scan_labels = [o[1] for o in opts]
-        scan_keys   = [o[0] for o in opts]
-        sel_idx = st.radio(
-            ("Τύπος σάρωσης" if lang=="el" else "Scan type"),
-            scan_labels, horizontal=True, key="scan_type_radio",
-            label_visibility="collapsed")
-        selected_scan = scan_keys[scan_labels.index(sel_idx)] if sel_idx in scan_labels else "eye"
-
-        uploaded = st.file_uploader(
-            ("Φωτογραφία" if lang=="el" else "Upload photo"),
-            type=["jpg","jpeg","png","webp","heic","heif"], key="pet_photo_upload"
-        )
-
-        if uploaded:
-            col_img, col_info = st.columns([1,1])
-            with col_img:
-                st.image(uploaded, width="stretch")
-            with col_info:
-                st.markdown(f"**{pet.get('name','')}** {pet.get('species_label','')}")
-                st.markdown(f"Scan: **{sel_idx}**")
-
-            img_bytes = uploaded.read()
-            fname_lower = uploaded.name.lower()
-
-            # Convert HEIC/HEIF (iPhone default format) to JPEG
-            if fname_lower.endswith((".heic",".heif")):
-                if HEIC_OK:
-                    try:
-                        img_bytes, img_type = convert_heic(img_bytes, uploaded.name)
-                        st.caption("✅ HEIC → JPEG " + ("μετατράπηκε αυτόματα" if lang=="el" else "converted automatically"))
-                    except Exception as e:
-                        st.error(f"HEIC conversion failed: {e}")
-                        st.stop()
-                else:
-                    st.error("⚠️ HEIC photos need pillow-heif. Add it to requirements.txt" if lang=="en"
-                             else "⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif στο requirements.txt")
-                    st.stop()
-            else:
-                img_type = "image/jpeg"
-                if fname_lower.endswith(".png"):  img_type = "image/png"
-                if fname_lower.endswith(".webp"): img_type = "image/webp"
-
-            img_b64 = _b64.b64encode(img_bytes).decode()
-
-            if st.button("🔍 " + ("Ανάλυση" if lang=="el" else "Analyse"),
-                         type="primary", use_container_width=True, key="analyse_photo"):
-                if not _rate_limit_gate("photo_scan"):
-                    st.stop()
-                with st.spinner("Florence-2 + Claude..." if lang=="el" else "Florence-2 + Claude analysing..."):
-                    # Step 1: Florence-2 visual description
-                    f2_desc = ""
-                    if rf_key:
-                        f2_result = florence2_analyze(img_b64, selected_scan, rf_key)
-                        if f2_result.get("ok"):
-                            f2_desc = f2_result.get("description","")
-
-                    # Step 2: Claude Vision clinical interpretation
-                    context_note = (f"\n\nFLORENCE-2 DESCRIPTION: {f2_desc}" if f2_desc else "")
-                    _sp_for_vision = pet.get("species_label", "")
-                    system_prompt = ((f"Είσαι κτηνιατρικός αναλυτής φωτογραφιών εξειδικευμένος σε {_sp_for_vision}. "
-                                      "Δίνεις δομημένη, ακριβή ανάλυση προσαρμοσμένη στην ανατομία/φυσιολογία αυτού του είδους "
-                                      "(π.χ. για ερπετά: κατακρατημένο δέρμα από αλλαγή, mouth rot/stomatitis, "
-                                      "ενδείξεις Μεταβολικής Οστικής Νόσου — όχι κριτήρια θηλαστικών όπως ούλα/τρίχωμα όπου δεν εφαρμόζονται).")
-                                     if lang=="el" else
-                                     (f"You are a veterinary photo analyst specialised in {_sp_for_vision}. "
-                                      "Give structured, accurate analysis appropriate to this species' anatomy/physiology "
-                                      "(e.g. for reptiles: retained shed, mouth rot/stomatitis, signs of Metabolic Bone "
-                                      "Disease — not mammal-specific criteria like gums/fur where they don't apply)."))
-                    # If the owner has chosen an AI-output language different from
-                    # the UI language, append the override + clinical terminology
-                    # block so the photo analysis lands in their language with the
-                    # right veterinary terms (alopecia vs colloquial «mudar» etc.).
-                    system_prompt += output_language_directive()
-                    el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** | **PITHANES AITIES** | **SISTASI**"
-                    en_suffix = "\n\nProvide: **FINDINGS** | **ASSESSMENT** (Normal/Monitor/Urgent) | **POSSIBLE CAUSES** | **RECOMMENDATION**"
-                    clinical_prompt = (SCAN_PROMPTS.get(selected_scan, SCAN_PROMPTS["skin"]) + context_note + (el_suffix if lang=="el" else en_suffix))
-                    analysis = claude_vision_pet(img_b64, img_type, clinical_prompt, system_prompt)
-
-                # Show Florence-2 raw description
-                if f2_desc:
-                    st.markdown(f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:10px 14px;margin-bottom:10px"><div style="font-size:11px;color:#6B7280;margin-bottom:4px">🔬 Florence-2 visual description</div><div style="font-size:13px">{f2_desc}</div></div>', unsafe_allow_html=True)
-
-                # Show Claude clinical analysis
-                st.markdown(f'<div class="card">', unsafe_allow_html=True)
-                st.markdown(analysis)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                # Explainer: tell the user what this means and what to do next,
-                # so the screen doesn't feel like a dead end after analysing.
-                st.info(
-                    "ℹ️ **Τι σημαίνει αυτό:** Η ανάλυση βασίζεται μόνο στα ορατά "
-                    "χαρακτηριστικά της φωτογραφίας και **δεν** είναι διάγνωση.\n\n"
-                    "**Επόμενο βήμα:** Πάτησε «Συνέχεια στην Εκτίμηση Συμπτωμάτων» — "
-                    "το εύρημα θα ενσωματωθεί αυτόματα στη συζήτηση και στην τελική "
-                    "αναφορά για τον κτηνίατρο."
-                    if lang=="el" else
-                    "ℹ️ **What this means:** The analysis is based only on visible "
-                    "features in the photo and is **not** a diagnosis.\n\n"
-                    "**Next step:** Tap “Continue to Symptom Assessment” — the finding "
-                    "is automatically added to the conversation and to the final vet report."
-                )
-
-                # Store findings in session state → feed to triage
-                st.session_state["photo_scan_findings"] = {
-                    "scan_type": selected_scan,
-                    "scan_label": sel_idx,
-                    "florence_desc": f2_desc,
-                    "clinical_analysis": analysis,
-                }
-                # Also keep a running list of all photo analyses so they can
-                # be shown as evidence cards in the final report (mirrors
-                # the Asklepios "photo findings" card).
-                st.session_state.setdefault("photo_findings", []).append({
-                    "scan_label": sel_idx,
-                    "analysis": analysis,
-                })
-
-                # Button to continue to triage with findings
-                if st.button("➤ " + ("Συνέχεια στην Εκτίμηση Συμπτωμάτων →" if lang=="el"
-                                     else "Continue to Symptom Assessment →"),
-                             type="primary", use_container_width=True, key="photo_to_triage"):
-                    # Auto-inject photo findings into triage chat
-                    finding_msg = (f"Αποτελεσμα σαρωσης φωτογραφιας ({sel_idx}):\n\n{analysis}" if lang=="el"
-                                   else f"Photo scan result ({sel_idx}):\n\n{analysis}")
-                    st.session_state.triage_chat = [{"role":"user","content":finding_msg}]
-                    st.session_state.screen = "triage"
-                    st.rerun()
-
-    with tab_vitals:
-        v = st.session_state.vitals
-        _el_v = (lang == "el")
-        with st.expander("🫁 " + ("Μέτρησε αναπνοές/σφυγμούς με την κάμερα ή με το χέρι" if _el_v
-                                  else "Measure breathing / pulse with the camera or by hand"), expanded=False):
-            st.caption("Οι αναπνοές στον ύπνο είναι ο πιο χρήσιμος δείκτης στο σπίτι." if _el_v
-                       else "Sleeping breathing rate is the most useful home measurement.")
-            _S_lg = _lg_state()
-            _pw = petscan_widget("breath", key=f"vit_breath_{st.session_state.get('_vit_b_n', 0)}", duration=60)
-            if _pw and _pw.get("kind") == "breath" and _pw.get("at") != (_S_lg.get("breath") or {}).get("at"):
-                _S_lg["breath"] = _pw; _S_lg["result"] = None
-                _vv = dict(st.session_state.vitals or {}); _vv["br"] = int(_pw["bpm"]); st.session_state.vitals = _vv
-                st.session_state["_vit_b_n"] = st.session_state.get("_vit_b_n", 0) + 1
-                st.rerun()
-            _hw = petscan_widget("hr", key=f"vit_hr_{st.session_state.get('_vit_h_n', 0)}")
-            if _hw and _hw.get("kind") == "hr" and _hw.get("at") != (_S_lg.get("pulse") or {}).get("at"):
-                _S_lg["pulse"] = _hw; _S_lg["result"] = None
-                _vv = dict(st.session_state.vitals or {}); _vv["hr"] = int(_hw["bpm"]); st.session_state.vitals = _vv
-                st.session_state["_vit_h_n"] = st.session_state.get("_vit_h_n", 0) + 1
-                st.rerun()
-            if (_S_lg.get("breath") or _S_lg.get("pulse")):
-                st.success("✓ " + (" · ".join(filter(None, [
-                    (f"αναπνοές {_S_lg['breath']['bpm']}/λεπτό" if _el_v else f"breaths {_S_lg['breath']['bpm']}/min") if _S_lg.get("breath") else "",
-                    (f"σφυγμοί ~{_S_lg['pulse']['bpm']}" if _el_v else f"pulse ~{_S_lg['pulse']['bpm']}") if _S_lg.get("pulse") else ""]))))
-        c1,c2,c3 = st.columns(3)
-        with c1:
-            hr   = st.number_input(t("hr"),  min_value=0, max_value=500, value=(int(v.get("hr")) if v.get("hr") else None), placeholder=str(int((hr_range[0]+hr_range[1])//2)))
-            temp = st.number_input(t("temp"),min_value=0.0,max_value=45.0,value=(float(v.get("temp")) if v.get("temp") else None), placeholder=str(temp_range[0]), format="%.1f")
-        with c2:
-            br   = st.number_input(t("br"),  min_value=0, max_value=100, value=(int(v.get("br")) if v.get("br") else None), placeholder=str(int((br_range[0]+br_range[1])//2)))
-            spo2 = st.number_input(t("spo2"),min_value=0, max_value=100, value=(int(v.get("spo2")) if v.get("spo2") else None), placeholder="98")
-        with c3:
-            wt   = st.number_input(t("weight_v"),min_value=0.0,max_value=200.0,
-                                    value=(float(pet.get("weight")) if pet.get("weight") else None), placeholder="5.0", format="%.1f")
-
-    col_b,col_a,col_s = st.columns([1,2,1])
-    with col_b:
-        if st.button(t("back")):
-            st.session_state.intake_step = 3
-            st.session_state.intake_draft = dict(st.session_state.pet)
-            st.session_state.med_inputs = []  # re-derive from pet.meds_raw
-            st.session_state.screen="intake"; st.rerun()
-    with col_a:
-        if st.button(t("analyse_vitals"), type="primary", use_container_width=True):
-            vd={}
-            if hr:   vd["hr"]   = hr
-            if br:   vd["br"]   = br
-            if temp: vd["temp"] = temp
-            if spo2: vd["spo2"] = spo2
-            if wt:   vd["weight"] = wt
-            st.session_state.vitals = vd
-            classify_pet_vitals(vd, sp)
-            if vd:
-                with st.spinner("Ανάλυση..." if lang=="el" else "Analysing..."):
-                    vtext = "\n".join(f"- {k}: {val}" for k,val in vd.items())
-                    prompt = (f"Κατοικίδιο: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), "
-                              f"{pet.get('age_y')}y, {wt}kg\n\nΖωτικές:\n{vtext}\n\n"
-                              f"Ερμήνευσε με βάση το φυσιολογικό εύρος για {pet.get('species_label')}. "
-                              f"Φυσ. εύρος: HR {hr_range[0]}-{hr_range[1]}, BR {br_range[0]}-{br_range[1]}, "
-                              f"Temp {temp_range[0]}-{temp_range[1]}°C. Σημείωσε ό,τι χρήζει προσοχής.")
-                    st.session_state.vitals_analysis = claude(
-                        [{"role":"user","content":prompt}], system=petainurse_system(pet), max_tokens=3000)
-            st.session_state.screen="triage"; st.rerun()
-    with col_s:
-        if st.button(t("skip_vitals")): st.session_state.vitals={}; st.session_state.screen="triage"; st.rerun()
-    st.caption(
-        "💡 Αν δεν θέλεις ανάλυση φωτογραφίας ή ζωτικών, πάτησε **Παράλειψη** για να προχωρήσεις."
-        if lang=="el" else
-        "💡 If you don't want a photo or vitals analysis, press **Skip** to move on."
-    )
-
-
 def render_vitals_summary():
     v = st.session_state.vitals
     if not v: return
@@ -5056,121 +4089,15 @@ def render_triage():
                 reply = reply.rstrip() + " ..."
         st.session_state.triage_chat.append({"role":"assistant","content":reply})
 
-    _render_page_helper(
-        "triage",
-        "Πώς λειτουργεί η εκτίμηση συμπτωμάτων",
-        "Η PetAiNurse κάνει **μία ερώτηση κάθε φορά** για να καταλάβει τι συμβαίνει — απάντησε με δικά σου λόγια ή με φωνή 🎙️. "
-        "Παρακάτω θα βρεις: **🔎 Συχνές παθήσεις** για το είδος του κατοικίδιου σου (καθαρά ενημερωτικά, όχι διάγνωση), "
-        "**📅 Ημερολόγιο συμπτωμάτων** για καταγραφή στο χρόνο, **🧪 Εργαστηριακές εξετάσεις** για ανέβασμα αποτελεσμάτων, "
-        "και **γρήγορες επιλογές** συμπτωμάτων που μπορείς να επιλέξεις με ένα κλικ — όλα ενσωματώνονται αυτόματα στην εκτίμηση. "
-        "Μπορείς επίσης να ανεβάσεις **φωτογραφία**. Όταν συγκεντρωθούν αρκετά στοιχεία, ενεργοποιείται το «Δημιουργία Κτηνιατρικής Αναφοράς».",
-        title_en="How the symptom assessment works",
-        body_en="PetAiNurse asks **one question at a time** to understand what's going on — answer in your own words or by voice 🎙️. "
-                "Below you'll find: **🔎 Common conditions** for your pet's species (informational only, not a diagnosis), "
-                "**📅 Symptom log** for tracking over time, **🧪 Lab results** for uploading test results, "
-                "and **quick-select symptoms** you can tap with one click — everything is automatically folded into the assessment. "
-                "You can also upload a **photo**. Once there's enough information, the “Generate Veterinary Report” button unlocks.",
-    )
-
-    # Common conditions for this pet's species — same heads-up shown during
-    # intake, surfaced again here since this is where symptoms are discussed.
-    _render_common_conditions(pet.get("species_label",""), lang)
-
-    # Symptom tracker (browser-only, localStorage)
-    _render_pet_symptom_tracker(lang)
-
-    # ── Lab analysis (PDF/image of vet lab results) ───────────────────────────
-    _lab_title = "🧪 Εργαστηριακές Εξετάσεις Κατοικίδιου" if lang=="el" else "🧪 Pet Lab Results"
-    with st.expander(_lab_title, expanded=False):
-        st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
-                   else "PDF or photo of blood/urine test results, etc.")
-        lab_files = st.file_uploader(
-            ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
-            type=["pdf","jpg","jpeg","png","webp","heic","heif"],
-            key="pet_lab_upload",
-            accept_multiple_files=True,
-            help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
-                  if lang=="el" else
-                  "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
-        )
-        if lab_files:
-            # Show a list of what's queued before the user commits to analysis
-            st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
-                        else f"📎 {len(lab_files)} files queued: ")
-                       + ", ".join(f.name for f in lab_files))
-
-            if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
-                                  if lang=="el" else
-                                  (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
-                         type="primary", use_container_width=True, key="analyse_lab"):
-                if not _rate_limit_gate("lab_scan"):
-                    st.stop()
-
-                # Names already analysed — skip them so re-clicking doesn't double-process
-                _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
-                _to_run = [f for f in lab_files if f.name not in _already]
-
-                if not _to_run:
-                    st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
-                                     else "All files have already been analysed."))
-                else:
-                    _added = 0
-                    _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
-                    with st.status(_status_msg, expanded=True) as _stat:
-                        for idx, lab_file in enumerate(_to_run, 1):
-                            _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
-                            file_bytes = lab_file.read()
-                            fname_lower = lab_file.name.lower()
-                            mime_type = "application/pdf"
-                            if fname_lower.endswith((".heic",".heif")):
-                                if HEIC_OK:
-                                    try:
-                                        file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
-                                    except Exception as e:
-                                        st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
-                                        continue
-                                else:
-                                    st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
-                                             else "⚠️ HEIC photos need pillow-heif.")
-                                    continue
-                            elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
-                            elif fname_lower.endswith(".png"):  mime_type = "image/png"
-                            elif fname_lower.endswith(".webp"): mime_type = "image/webp"
-                            elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
-
-                            if not file_bytes:
-                                continue
-
-                            try:
-                                analysis = claude_analyze_pet_lab(
-                                    file_bytes, mime_type, pet,
-                                    st.session_state.triage_chat, lang, lab_file.name)
-                            except Exception as e:
-                                st.error(f"⚠️ {lab_file.name}: {e}")
-                                continue
-
-                            st.markdown(f"#### 📄 {lab_file.name}")
-                            st.markdown(analysis)
-                            st.session_state.lab_findings.append({
-                                "file_name": lab_file.name, "analysis": analysis,
-                            })
-                            finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
-                                           if lang=="el" else
-                                           f"Lab result ({lab_file.name}):\n\n{analysis}")
-                            st.session_state.triage_chat.append({"role":"user","content":finding_msg})
-                            _added += 1
-
-                        _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
-                                  else f"✅ Completed {_added}/{len(_to_run)} files")
-                        _stat.update(label=_final, state="complete", expanded=False)
-
-                    if _added:
-                        st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
-                                            if lang=="el" else
-                                            f"Added {_added} lab result(s) to the assessment."))
-        if st.session_state.lab_findings:
-            st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
-                       + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
+    _pn_evidence_bar()
+    if not st.session_state.triage_chat:
+        with st.chat_message("assistant", avatar=_hero_avatar(pet)):
+            st.markdown(
+                (f"Γεια σου! Είμαι η **PetAiNurse**. Τι παρατήρησες στον/στην **{nm}**; "
+                 "Διάλεξε από τα γρήγορα συμπτώματα παρακάτω ή γράψε με δικά σου λόγια — θα σε ρωτώ **μία ερώτηση τη φορά**."
+                 if lang=="el" else
+                 f"Hi! I'm **PetAiNurse**. What have you noticed about **{nm}**? "
+                 "Pick from the quick symptoms below or write it in your own words — I'll ask **one question at a time**."))
 
     # Species-specific symptom chips
     CHIPS = {
@@ -5205,32 +4132,21 @@ def render_triage():
     _base = chips[:-1] if _other else chips
     chips = _base + [c for c in _cc_titles if c not in _base] + ([_other] if _other else [])
 
-    st.caption("Γρήγορη επιλογή:" if lang=="el" else "Quick select:")
-    _CHIP_ROW = 8
-    for row_start in range(0, len(chips), _CHIP_ROW):
-        row = chips[row_start:row_start+_CHIP_ROW]
-        cols = st.columns(_CHIP_ROW)
-        for ci, chip in enumerate(row):
-            with cols[ci]:
-                sel = chip in st.session_state.symptom_chips
-                if st.button(("✓ " if sel else "")+chip, key=f"chip_{row_start+ci}", use_container_width=True):
-                    if chip in st.session_state.symptom_chips: st.session_state.symptom_chips.remove(chip)
-                    else: st.session_state.symptom_chips.append(chip)
-                    st.rerun()
-
-    if st.session_state.symptom_chips:
-        st.caption(
-            ("Επιλέξες: " if lang=="el" else "Selected: ")
-            + ", ".join(st.session_state.symptom_chips)
-            + (". Πάτησε «Αποστολή επιλεγμένων» για να τα στείλεις, ή γράψε από κάτω περισσότερες λεπτομέρειες (π.χ. πότε ξεκίνησαν, πόσο συχνά συμβαίνουν)."
-               if lang=="el" else
-               ". Tap “Send selected” to send them, or type more details below (e.g. when it started, how often it happens).")
-        )
-        if st.button("➤ "+("Αποστολή επιλεγμένων" if lang=="el" else "Send selected"), type="primary"):
-            msg = ("Κύρια συμπτώματα: " if lang=="el" else "Main symptoms: ")+", ".join(st.session_state.symptom_chips)
-            st.session_state.symptom_chips = []
-            _send_to_petainurse(msg)
-            st.rerun()
+    with st.expander(("⚡ Γρήγορη επιλογή συμπτωμάτων" if lang=="el" else "⚡ Quick symptom picker"),
+                     expanded=not st.session_state.triage_chat):
+        _pn_pill = st.session_state.get("_pill_n", 0)
+        _picked = st.pills("symptoms", chips, selection_mode="multi",
+                           key=f"symptom_pills_{_pn_pill}", label_visibility="collapsed")
+        st.session_state.symptom_chips = list(_picked or [])
+        if st.session_state.symptom_chips:
+            if st.button("➤ " + ("Αποστολή επιλεγμένων" if lang=="el" else "Send selected"),
+                         type="primary", use_container_width=True, key="pn_send_chips"):
+                msg = (("Κύρια συμπτώματα: " if lang=="el" else "Main symptoms: ")
+                       + ", ".join(st.session_state.symptom_chips))
+                st.session_state.symptom_chips = []
+                st.session_state["_pill_n"] = _pn_pill + 1
+                _send_to_petainurse(msg)
+                st.rerun()
 
     # Toxicity check on symptom text
     all_symptoms = " ".join(st.session_state.symptom_chips)
@@ -5361,31 +4277,24 @@ def render_triage():
         _send_to_petainurse(user_input)
         st.rerun()
 
-    col_b,col_r = st.columns([1,2])
-    with col_b:
-        if st.button(t("back")): st.session_state.screen="vitals"; st.rerun()
-    with col_r:
-        # AI output language — lets a Bulgarian/Romanian/Spanish/etc. owner
-        # request the report (and chat going forward) in their native language,
-        # even while the UI stays in Greek or English.
+    # ── Create the vet report ────────────────────────────────────────────────
+    _n_msgs = len(st.session_state.triage_chat)
+    enabled = triage_ready or _n_msgs >= 6
+    st.markdown('<div class="pn-sec">' + ("ΤΕΛΟΣ: ΑΝΑΦΟΡΑ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ" if lang=="el" else "FINAL STEP: THE VET REPORT") + '</div>',
+                unsafe_allow_html=True)
+    with st.container(border=True):
+        st.progress(min(1.0, _n_msgs / 6.0))
+        st.caption(
+            ("✅ Έχω αρκετά στοιχεία — η αναφορά είναι έτοιμη." if lang=="el" else "✅ I have enough information — the report is ready.")
+            if enabled else
+            ("💬 Απάντησε σε μερικές ακόμα ερωτήσεις και η αναφορά ξεκλειδώνει αυτόματα." if lang=="el"
+             else "💬 Answer a few more questions and the report unlocks automatically."))
         render_output_language_picker(lang, key_suffix="triage")
-        enabled = triage_ready or len(st.session_state.triage_chat) >= 6
-        _chat_count = len(st.session_state.triage_chat)
-        if enabled:
-            pass  # button is ready
-        if st.button(t("generate_report"), type="primary", use_container_width=True, disabled=not enabled):
-            st.session_state.screen="report"; st.rerun()
-    if not enabled:
-        _msgs_remaining = max(0, 6 - len(st.session_state.triage_chat))
-        if _msgs_remaining > 0:
-            st.caption(
-                f"💬 {'Απάντησε σε ακόμα μερικές ερωτήσεις — η PetAiNurse θα ξεκλειδώσει την αναφορά αυτόματα.' if lang=='el' else 'Answer a few more questions — PetAiNurse will unlock the report automatically.'}"
-            )
-        else:
-            st.caption(
-                "💬 " + ("Συνέχισε τη συνομιλία — η PetAiNurse θα πει πότε είναι έτοιμη." if lang=="el"
-                         else "Continue the chat — PetAiNurse will say when she's ready.")
-            )
+        if st.button(t("generate_report"), type="primary", use_container_width=True,
+                     disabled=not enabled, key="pn_gen_report"):
+            st.session_state.screen = "report"; st.rerun()
+    with st.expander(("ℹ️ Συχνές παθήσεις για το είδος του" if lang=="el" else "ℹ️ Common conditions for this species"), expanded=False):
+        _render_common_conditions(pet.get("species_label",""), lang)
 
 
 def _evidence_context():
@@ -5838,9 +4747,13 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     c1,c2,c3,c4 = st.columns(4)
     with c1:
         if st.button("← "+("Νέα Εκτίμηση" if lang=="el" else "New Assessment"), use_container_width=True):
-            _hero_seen = st.session_state.get("_hero_seen", False)
+            _keep = {k: st.session_state.get(k) for k in ("pet","lang","auth_user","output_lang","longevity")}
             for k,v in defaults.items(): st.session_state[k]=v
-            st.session_state["_hero_seen"] = _hero_seen
+            for k,v in _keep.items():
+                if v is not None: st.session_state[k]=v
+            st.session_state["_hero_seen"] = True
+            st.session_state["_welcome_seen"] = True
+            st.session_state.screen = "dashboard"
             st.rerun()
     with c2:
         st.download_button("📄 TXT", data=st.session_state.report,
@@ -6126,46 +5039,6 @@ def render_category_page(slug):
             st.query_params.clear(); st.rerun()
 
 
-def render_welcome_screen():
-    """Welcome / intro page shown ONCE before the marketing hero. It surfaces
-    the (now correctly-rendered) Pet Travel Checklist 'ad' as a standalone
-    splash, then a single CTA continues to the hero. Set via _welcome_seen."""
-    lang = st.session_state.lang
-
-    c1, c2, c3 = st.columns([1, 5, 1])
-    with c1:
-        # Back: if hero was already seen, send user back to hero; otherwise
-        # this is effectively the first screen — just disable.
-        if st.session_state.get("_hero_seen"):
-            if st.button("← " + ("Πίσω" if lang=="el" else "Back"), key="welcome_back"):
-                st.session_state["_welcome_seen"] = True
-                st.session_state["_hero_seen"] = False
-                st.rerun()
-        else:
-            st.markdown("&nbsp;", unsafe_allow_html=True)
-    with c2:
-        st.markdown(
-            '<div style="font-size:19px;font-weight:800;color:#1A1A2E;'
-            'font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;'
-            'justify-content:center;gap:8px;padding-top:6px">🐾 PetAiNurse</div>',
-            unsafe_allow_html=True)
-    with c3:
-        if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key="welcome_lang"):
-            st.session_state.lang = "en" if lang == "el" else "el"; st.rerun()
-
-    # The ad — rendered natively (no longer raw HTML text)
-    render_travel_ad_banner(lang)
-
-    cta = "Συνέχεια →" if lang == "el" else "Continue →"
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button(cta, type="primary", use_container_width=True, key="welcome_continue"):
-            st.session_state["_welcome_seen"] = True
-            st.rerun()
-        skip = "Παράλειψη" if lang == "el" else "Skip"
-        if st.button(skip, use_container_width=True, key="welcome_skip"):
-            st.session_state["_welcome_seen"] = True
-            st.rerun()
 
 
 
@@ -6342,415 +5215,6 @@ no PDF hunting, no hold music. We hope ours is a little more cooperative
 than the original. 🔴
 ''')
 
-def render_hero_screen():
-    """Full marketing 'hero' landing screen, shown once before the login
-    form (or before 'home' when auth is disabled). Mirrors the standalone
-    PetAiNurse marketing site layout: top bar with CTA, big headline with
-    mascots + floating feature cards, 'how it works' steps, and audience
-    cards — all using the existing illustrated Perro/Gato mascots."""
-    lang = st.session_state.lang
-
-    if lang == "el":
-        d = dict(
-            kicker="AI κτηνιατρική αξιολόγηση",
-            h1="Πες τι παρατηρείς.", h1_accent="",
-            h1_end="στο κατοικίδιό σου.",
-            sub="Δομημένη σύνοψη με κτηνιατρικές αναφορές — σε λίγα λεπτά, πριν ή αντί για το ιατρείο.",
-            cta_primary="Ξεκίνα αξιολόγηση",
-            cta_secondary="📄 Δημιούργησε αναφορά για τον κτηνίατρο",
-            disclaimer="Το PetAiNurse δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο. Σε επείγουσες καταστάσεις επικοινώνησε άμεσα με επαγγελματία υγείας ζώων.",
-            card1="Αξιολόγηση συμπτωμάτων",
-            card2="Κτηνιατρική αναφορά για τον γιατρό",
-            card3="Κάλυψη ασφαλιστηρίου με AI",
-            steps_title="Πώς λειτουργεί",
-            steps=[
-                ("1","","Προφίλ κατοικιδίου","Είδος, ηλικία, παθήσεις, φάρμακα"),
-                ("2","","Ζωτικά","Καρδιακός ρυθμός, αναπνοή, θερμοκρασία"),
-                ("3","","Αξιολόγηση συμπτωμάτων","Συνομιλία AI — μία ερώτηση τη φορά"),
-                ("4","","Κτηνιατρική αναφορά","PDF με διαφορικές διαγνώσεις και MSD αναφορές"),
-                ("5","","Κτηνίατρος","Η τελική αξιολόγηση γίνεται πάντα από επαγγελματία"),
-            ],
-            audience_title="Για όλους όσοι φροντίζουν ζώα",
-            aud1_t="Για Pet Parents", aud1_d="Κατανόησε καλύτερα τα συμπτώματα του κατοικίδιου σου και επικοινώνησε πιο αποτελεσματικά με τον κτηνίατρο.",
-            aud2_t="Για Pet Sitters", aud2_d="Κατέγραψε με ακρίβεια παρατηρήσεις κατά τη φροντίδα ενός ζώου και ενημέρωσε υπεύθυνα τον κηδεμόνα ή τον κτηνίατρο.",
-            aud3_t="Για Κτηνιάτρους", aud3_d="Ένα επιπρόσθετο εργαλείο συλλογής οργανωμένου ιστορικού και προετοιμασίας της επίσκεψης.",
-            more_label="Μάθε περισσότερα →",
-            cta_band_t="Καλύτερη συνομιλία με τον κτηνίατρο.",
-            cta_band_s="Δομημένη σύνοψη με κτηνιατρικές αναφορές, σε λίγα λεπτά.",
-            cta_band_btn="Ξεκίνα αξιολόγηση",
-            nav_start="Ξεκίνα τώρα",
-        )
-    else:
-        d = dict(
-            kicker="AI veterinary assessment",
-            h1="Tell us what you're noticing.", h1_accent="",
-            h1_end="in your pet.",
-            sub="A structured summary with veterinary references — in minutes, before or instead of the clinic.",
-            cta_primary="Start assessment",
-            cta_secondary="📄 Create a report for your vet",
-            disclaimer="PetAiNurse does not provide veterinary diagnosis and does not replace your vet. In emergencies, contact an animal health professional immediately.",
-            card1="Logging symptoms and behaviour",
-            card2="Identifying possible factors",
-            card3="A report for your vet with organized information",
-            steps_title="How it works",
-            steps=[
-                ("1","","Pet profile","Species, age, conditions, medications"),
-                ("2","","Vitals","Heart rate, breathing, temperature"),
-                ("3","","Symptom assessment","AI chat — one question at a time"),
-                ("4","","Veterinary report","PDF with differential diagnoses and MSD references"),
-                ("5","","Vet","Final assessment is always made by a professional"),
-            ],
-            audience_title="For everyone who cares for animals",
-            aud1_t="For Pet Parents", aud1_d="Better understand your pet's symptoms and communicate more effectively with your vet.",
-            aud2_t="For Pet Sitters", aud2_d="Accurately log observations while caring for an animal and responsibly inform the owner or vet.",
-            aud3_t="For Vets", aud3_d="An additional tool for collecting organized history and preparing for the visit.",
-            more_label="Learn more →",
-            cta_band_t="Start now and care with confidence.",
-            cta_band_s="A better conversation with your vet starts here.",
-            cta_band_btn="Start assessment",
-            nav_start="Get started",
-        )
-
-    css = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-.pan-hr-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 0 18px; font-family: 'Inter', system-ui, sans-serif;
-}
-.pan-hr-logo { font-size: 19px; font-weight: 800; color: #1A1A2E; display: flex; align-items: center; gap: 8px; }
-.pan-hr-hero {
-  background: var(--surface-1, #F7F6F3);
-  border-radius: 16px; padding: 32px 28px; margin-bottom: 24px;
-  font-family: 'Inter', system-ui, sans-serif; position: relative; overflow: hidden;
-  border: 0.5px solid var(--border, #E5E7EB);
-}
-.pan-hr-kicker {
-  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: #1D9E75;
-  margin-bottom: 12px; text-transform: uppercase;
-}
-.pan-hr-h1 {
-  font-size: 30px; font-weight: 500; line-height: 1.2; color: var(--text-primary, #1A1A2E);
-  letter-spacing: -0.5px; margin-bottom: 12px; max-width: 480px;
-}
-.pan-hr-h1 .accent { color: #1D9E75; }
-.pan-hr-sub {
-  font-size: 14px; color: var(--text-secondary, #4B5563); max-width: 440px; line-height: 1.6;
-  margin-bottom: 20px;
-}
-.pan-hr-mascots {
-  display: flex; justify-content: center; align-items: flex-end; gap: 8px;
-  position: relative; padding: 20px 0 8px;
-}
-.pan-hr-mascots > div {
-  background: white; border-radius: 20px; padding: 10px 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-}
-.pan-hr-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
-.pan-hr-card {
-  background: var(--surface-2, white); border: 0.5px solid var(--border, #E5E7EB);
-  border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 500; color: var(--text-primary, #1A1A2E);
-}
-.pan-hr-card .ic {
-  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; font-size: 14px;
-}
-.pan-hr-card.c1 .ic { background: #ECFDF5; }
-.pan-hr-card.c2 .ic { background: #EEF2FF; }
-.pan-hr-card.c3 .ic { background: #ECFDF5; }
-.pan-hr-card .check {
-  margin-left: auto; width: 18px; height: 18px; border-radius: 50%;
-  background: #059669; color: white; font-size: 11px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.pan-hr-disclaimer {
-  background: white; border: 1px solid #E5E7EB; border-radius: 12px;
-  padding: 12px 16px; font-size: 12px; color: #6B7280; line-height: 1.5;
-  margin-top: 22px; display: flex; gap: 10px; align-items: flex-start;
-}
-.pan-hr-steps { margin: 8px 0 30px; font-family: 'Inter', system-ui, sans-serif; }
-.pan-hr-steps-title {
-  text-align: center; font-size: 22px; font-weight: 800; color: #1A1A2E;
-  margin-bottom: 24px;
-}
-.pan-hr-steps-row {
-  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px;
-}
-.pan-hr-step {
-  flex: 1 1 160px; min-width: 140px; text-align: center;
-}
-.pan-hr-step-num {
-  width: 24px; height: 24px; border-radius: 50%; background: #1D9E75; color: white;
-  display: flex; align-items: center; justify-content: center; font-weight: 500;
-  font-size: 11px; margin: 0 auto 8px;
-}
-.pan-hr-step-icon { font-size: 18px; margin-bottom: 6px; color: #1D9E75; }
-.pan-hr-step-title { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
-.pan-hr-step-sub { font-size: 12px; color: #6B7280; line-height: 1.4; }
-.pan-hr-aud-title {
-  text-align: center; font-size: 22px; font-weight: 800; color: #1A1A2E;
-  margin: 8px 0 20px; font-family: 'Inter', system-ui, sans-serif;
-}
-.pan-hr-aud-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
-.pan-hr-aud-card {
-  flex: 1 1 220px; background: var(--surface-2, white);
-  border: 0.5px solid var(--border, #E5E7EB); border-radius: 12px;
-  padding: 16px; font-family: 'Inter', system-ui, sans-serif;
-}
-.pan-hr-aud-icon {
-  width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center;
-  justify-content: center; font-size: 18px; margin-bottom: 12px;
-}
-.pan-hr-aud-card.a1 .pan-hr-aud-icon { background: #ECFDF5; }
-.pan-hr-aud-card.a2 .pan-hr-aud-icon { background: #EEF2FF; }
-.pan-hr-aud-card.a3 .pan-hr-aud-icon { background: #FEF2F2; }
-.pan-hr-aud-card h4 { font-size: 14px; font-weight: 500; color: var(--text-primary, #1A1A2E); margin-bottom: 5px; }
-.pan-hr-aud-card p { font-size: 12.5px; color: #6B7280; line-height: 1.55; margin-bottom: 10px; }
-.pan-hr-aud-card .more { font-size: 12.5px; font-weight: 700; color: #059669; }
-a.pan-hr-aud-card { text-decoration: none; color: inherit; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
-a.pan-hr-aud-card:hover { border-color: #5DCAA5; }
-@media (max-width: 640px) {
-  .pan-hr-hero { padding: 26px 18px; border-radius: 20px; }
-  .pan-hr-h1 { font-size: 28px; }
-  .pan-hr-steps-row { gap: 10px; }
-  .pan-hr-step { min-width: 120px; }
-}
-</style>
-"""
-
-    body_top = f"""
-<div class="pan-hr-hero">
-  <div class="pan-hr-kicker">✦ {d['kicker']}</div>
-  <div class="pan-hr-h1">{d['h1']} <span class="accent">{d['h1_accent']}</span> {d['h1_end']}</div>
-  <div class="pan-hr-sub">{d['sub']}</div>
-"""
-    # Legacy hero CSS is still needed by the audience / feature sections below
-    st.markdown(css, unsafe_allow_html=True)
-
-    # Petify-style hero: brand tile, phone-scan visual, flow panel, example page card
-    _mascot_sp = (st.session_state.get("pet") or {}).get("species_key") or "dog"
-    st.markdown(_petify_hero_html(lang, render_mascot(_mascot_sp if _mascot_sp in ("dog", "cat") else "dog", size=120)),
-                unsafe_allow_html=True)
-
-    # CTA (real Streamlit button so it can route the app)
-    col_l, col_c, col_r = st.columns([1, 2.4, 1])
-    with col_c:
-        cta1 = st.button(d["cta_primary"], type="primary", use_container_width=True, key="hero_cta_primary")
-    cta2 = False
-    st.markdown(f'<div class="disclaimer" style="margin-top:14px;">ℹ️ {d["disclaimer"]}</div>', unsafe_allow_html=True)
-
-    # "How it works" — detailed 7-step walkthrough (merged in from the old
-    # 'home' screen, which duplicated most of this hero screen's content).
-    render_explainer_video(lang)
-
-    # Audience cards
-    st.markdown(f"""
-<div class="pan-hr-aud-title">{d['audience_title']}</div>
-<div class="pan-hr-aud-row">
-  <a href="?page=pet-parents" target="_self" class="pan-hr-aud-card a1">
-    <div class="pan-hr-aud-icon">🐶</div>
-    <h4>{d['aud1_t']}</h4><p>{d['aud1_d']}</p>
-    <div class="more">{d['more_label']}</div>
-  </a>
-  <a href="?page=pet-sitters" target="_self" class="pan-hr-aud-card a2">
-    <div class="pan-hr-aud-icon">🧑‍🤝‍🧑</div>
-    <h4>{d['aud2_t']}</h4><p>{d['aud2_d']}</p>
-    <div class="more">{d['more_label']}</div>
-  </a>
-  <a href="?page=ktiniatroys" target="_self" class="pan-hr-aud-card a3">
-    <div class="pan-hr-aud-icon">🩺</div>
-    <h4>{d['aud3_t']}</h4><p>{d['aud3_d']}</p>
-    <div class="more">{d['more_label']}</div>
-  </a>
-</div>
-""", unsafe_allow_html=True)
-
-    # Trust / feature cards + lifestyle strip — merged in from the old 'home'
-    # screen, which duplicated most of this hero screen's content.
-    _f2_title = "Τοξικότητα & Ασφάλεια" if lang=="el" else "Toxicity & Safety"
-    _f2_body  = ("Αυτόματη ανίχνευση τοξικών ουσιών — ιδιαίτερα κρίσιμο για γάτες."
-                 if lang=="el" else
-                 "Automatic detection of toxic substances — especially critical for cats.")
-    _f3_title = "24/7 Διαθεσιμότητα" if lang=="el" else "Available 24/7"
-    _f3_body  = ("Άμεση πρόσβαση σε αξιολόγηση συμπτωμάτων και καθοδήγηση οποιαδήποτε ώρα, ημέρα ή νύχτα."
-                  if lang=="el" else
-                  "Instant access to symptom assessment and guidance any time, day or night.")
-    _f4_body  = get_insurance_text(lang)
-    if lang == "el":
-        _chips_html = (
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Σοκολάτα</span>'
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Κρεμμύδι</span>'
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Παρακεταμόλη</span>'
-        )
-    else:
-        _chips_html = (
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🍫 Chocolate</span>'
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">🧅 Onion</span>'
-            '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">💊 Paracetamol</span>'
-        )
-    f1,f2,f3,f4 = st.columns(4)
-    with f1:
-        st.markdown(f'<div class="card"><div style="font-size:32px">📋</div><h3 style="margin-top:12px">MSD Veterinary Manual</h3><p style="font-size:13px;color:#6B7280">{"Κάθε αναφορά υποστηρίζεται από το MSD Vet Manual — χρυσό πρότυπο κτηνιατρικής." if lang=="el" else "Every report is backed by the MSD Vet Manual — the gold standard in veterinary medicine."}</p></div>', unsafe_allow_html=True)
-    with f2:
-        st.markdown(f'''<div class="card"><div style="font-size:32px">⚠️</div><h3 style="margin-top:12px">{_f2_title}</h3>
-            <p style="font-size:13px;color:#6B7280">{_f2_body}</p>
-            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">{_chips_html}</div></div>''', unsafe_allow_html=True)
-    with f3:
-        st.markdown(f'<div class="card"><div style="font-size:32px">🕐</div><h3 style="margin-top:12px">{_f3_title}</h3><p style="font-size:13px;color:#6B7280">{_f3_body}</p></div>', unsafe_allow_html=True)
-    with f4:
-        _govgr_links = PETGOV_LINKS_EL if lang=="el" else PETGOV_LINKS_EN
-        _govgr_chips = "".join(
-            f'<a href="{url}" target="_blank" style="background:#F0FDF4;border:1px solid #A7F3D0;'
-            f'border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:600;color:#059669;'
-            f'text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin:2px">'
-            f'{icon} {label}</a>'
-            for icon, label, url in _govgr_links
-        )
-        st.markdown(
-            f'<div class="card" style="height:100%">'
-            f'<div style="font-size:32px">🇬🇷</div>'
-            f'<h3 style="margin-top:12px">pet.gov.gr</h3>'
-            f'<p style="font-size:13px;color:#6B7280">{_f4_body}</p>'
-            f'<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px">{_govgr_chips}</div>'
-            f'</div>', unsafe_allow_html=True)
-
-    render_lifestyle_strip(lang)
-
-    # ── Insurance Feature + Pricing Section ───────────────────────────────────
-    _ins_title  = "🐾 Νέο: Κάλυψη Ασφαλιστηρίου με AI" if lang=="el" else "🐾 New: AI Insurance Coverage"
-    _ins_sub    = ("Σύνδεσε το ασφαλιστήριο κατοικιδίου σου και δες αμέσως τι καλύπτεται, πόσο θα πληρώσεις και σε ποια κλινική να πας — μετά από κάθε αξιολόγηση συμπτωμάτων." if lang=="el"
-                   else "Connect your pet insurance and instantly see what's covered, how much you'll pay, and which clinic to visit — after every symptom assessment.")
-    _hal_feat   = ("💬 Ρώτησε τον HAL για οποιαδήποτε ερώτηση συμβολαίου" if lang=="el"
-                   else "💬 Ask HAL any question about your policy")
-    _net_feat   = ("🏥 Κατεύθυνση στη σωστή κλινική του δικτύου" if lang=="el"
-                   else "🏥 Directed to the right network clinic")
-    _cost_feat  = ("💰 Ακριβές κόστος συμμετοχής ανά περίπτωση" if lang=="el"
-                   else "💰 Exact co-payment per case")
-    _unlim_feat = ("♾️ Απεριόριστες ερωτήσεις — καλύπτει και προϋπάρχουσες παθήσεις" if lang=="el"
-                   else "♾️ Unlimited queries — covers pre-existing conditions too")
-    _mo_label   = "μήνα" if lang=="el" else "month"
-    _yr_label   = "έτος" if lang=="el" else "year"
-    _save_label = "Εξοικονόμησε 10€" if lang=="el" else "Save €10"
-    _free_label = "Δωρεάν αξιολόγηση" if lang=="el" else "Free assessment"
-    _ins_label  = "Insurance Coverage + HAL" if lang=="el" else "Insurance Coverage + HAL"
-    _mo_btn     = "Ξεκίνα Μηνιαία →" if lang=="el" else "Start Monthly →"
-    _yr_btn     = "Ξεκίνα Ετήσια →" if lang=="el" else "Start Yearly →"
-    _inc_label  = "Περιλαμβάνει:" if lang=="el" else "Includes:"
-
-    # Stripe Checkout URLs — αντικατάστησε με τα πραγματικά URLs μόλις φτιάξεις Checkout
-    _stripe_monthly = os.environ.get("STRIPE_CHECKOUT_MONTHLY", "#")
-    _stripe_yearly  = os.environ.get("STRIPE_CHECKOUT_YEARLY",  "#")
-
-    st.markdown(f"""
-<div style="font-family:'Inter',system-ui,sans-serif;margin:32px 0 28px">
-
-  <!-- Insurance Feature Banner -->
-  <div style="background:linear-gradient(135deg,#ECFDF5,#EEF2FF);border:1.5px solid #A7F3D0;
-              border-radius:20px;padding:24px 24px 20px;margin-bottom:24px;position:relative">
-    <span style="position:absolute;top:16px;right:16px;background:#059669;color:white;
-                 font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;
-                 letter-spacing:.06em">ΝΕΟ</span>
-    <div style="font-size:18px;font-weight:800;color:#1A1A2E;margin-bottom:8px">{_ins_title}</div>
-    <div style="font-size:13px;color:#4B5563;line-height:1.6;margin-bottom:14px">{_ins_sub}</div>
-    <div style="display:flex;flex-direction:column;gap:7px">
-      <div style="font-size:13px;color:#1A1A2E">✅ {_hal_feat}</div>
-      <div style="font-size:13px;color:#1A1A2E">✅ {_net_feat}</div>
-      <div style="font-size:13px;color:#1A1A2E">✅ {_cost_feat}</div>
-      <div style="font-size:13px;color:#1A1A2E">✅ {_unlim_feat}</div>
-    </div>
-  </div>
-
-</div>
-""", unsafe_allow_html=True)
-
-    # ── Insurance Promo Block ─────────────────────────────────────────────────────
-    render_insurance_promo(lang)
-
-    # Pricing cards — rendered as separate st.columns to avoid HTML escaping issues
-    st.markdown(f"<div style='font-family:Inter,system-ui,sans-serif'>", unsafe_allow_html=True)
-    _pc_free, _pc_mo, _pc_yr = st.columns(3)
-
-    _features_free = ["✅ Αξιολόγηση συμπτωμάτων", "✅ Κτηνιατρική Αναφορά", "✅ MSD References",
-                      "✅ Photo Analysis", "❌ Insurance Coverage", "❌ HAL Chat"]
-    _features_paid = ["✅ Αξιολόγηση συμπτωμάτων", "✅ Κτηνιατρική Αναφορά", "✅ MSD References",
-                      "✅ Photo Analysis", "✅ Insurance Coverage", "✅ HAL Chat"]
-
-    with _pc_free:
-        st.markdown(
-            "<div style='background:white;border:1.5px solid #E5E7EB;border-radius:16px;"
-            "padding:20px 18px;height:100%'>"
-            "<div style='font-size:11px;font-weight:700;color:#6B7280;margin-bottom:8px'>FREE</div>"
-            "<div style='font-size:28px;font-weight:800;color:#1A1A2E'>0€</div>"
-            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_free_label}</div>"
-            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
-            + "<br>".join(_features_free) + "</div></div>",
-            unsafe_allow_html=True
-        )
-
-    with _pc_mo:
-        st.markdown(
-            "<div style='background:white;border:1.5px solid #A7F3D0;border-radius:16px;"
-            "padding:20px 18px;height:100%'>"
-            "<div style='font-size:11px;font-weight:700;color:#059669;margin-bottom:8px'>INSURANCE</div>"
-            "<div style='display:flex;align-items:baseline;gap:4px'>"
-            "<span style='font-size:28px;font-weight:800;color:#1A1A2E'>4.99€</span>"
-            f"<span style='font-size:12px;color:#6B7280'>/{_mo_label}</span></div>"
-            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_ins_label}</div>"
-            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
-            + "<br>".join(_features_paid) + "</div></div>",
-            unsafe_allow_html=True
-        )
-
-    with _pc_yr:
-        st.markdown(
-            "<div style='background:linear-gradient(135deg,#ECFDF5,#F0FDF4);"
-            "border:2px solid #059669;border-radius:16px;padding:20px 18px;"
-            "height:100%;position:relative'>"
-            f"<div style='background:#059669;color:white;font-size:10px;font-weight:700;"
-            f"padding:3px 12px;border-radius:99px;display:inline-block;margin-bottom:8px'>"
-            f"{_save_label}</div>"
-            "<div style='font-size:11px;font-weight:700;color:#059669;margin-bottom:6px'>INSURANCE ANNUAL</div>"
-            "<div style='display:flex;align-items:baseline;gap:4px'>"
-            "<span style='font-size:28px;font-weight:800;color:#1A1A2E'>49.99€</span>"
-            f"<span style='font-size:12px;color:#6B7280'>/{_yr_label}</span></div>"
-            f"<div style='font-size:12px;color:#6B7280;margin-bottom:14px'>{_ins_label}</div>"
-            "<div style='font-size:12px;color:#4B5563;line-height:1.9'>"
-            + "<br>".join(_features_paid) + "</div></div>",
-            unsafe_allow_html=True
-        )
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<div style='margin-bottom:20px'></div>", unsafe_allow_html=True)
-
-    # Pricing CTA buttons
-    _pc1, _pc2, _pc3 = st.columns(3)
-    with _pc2:
-        if st.button(_mo_btn, key="hero_pricing_monthly", use_container_width=True):
-            if _stripe_monthly != "#":
-                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_monthly}">',
-                            unsafe_allow_html=True)
-    with _pc3:
-        if st.button(_yr_btn, type="primary", key="hero_pricing_yearly", use_container_width=True):
-            if _stripe_yearly != "#":
-                st.markdown(f'<meta http-equiv="refresh" content="0;url={_stripe_yearly}">',
-                            unsafe_allow_html=True)
-
-    # Bottom CTA band
-    st.markdown(f"""
-<div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border-radius:20px;
-            padding:24px 28px;text-align:center;font-family:'Inter',system-ui,sans-serif;
-            margin-bottom:20px">
-  <div style="font-size:18px;font-weight:800;color:#1A1A2E;margin-bottom:6px">{d['cta_band_t']}</div>
-  <div style="font-size:13px;color:#6B7280">{d['cta_band_s']}</div>
-</div>
-""", unsafe_allow_html=True)
-    cta3 = st.button(d["cta_band_btn"], type="primary", use_container_width=True, key="hero_cta_band")
-
-    if cta1 or cta2 or cta3:
-        st.session_state["_hero_seen"] = True
-        if not auth_enabled() or is_logged_in():
-            st.session_state.screen = "intake"
-        st.rerun()
 
 
 def render_login_hero(lang):
@@ -6844,9 +5308,7 @@ def render_login_screen():
 # auto-reruns 3x through those screens before the user can interact, which
 # looks like an infinite loop. Only perform the wait once we're actually past
 # those screens (i.e. about to show the login gate or an authenticated screen).
-_past_marketing_screens = (
-    st.session_state.get("_welcome_seen") and st.session_state.get("_hero_seen")
-)
+_past_marketing_screens = True   # welcome + hero pages were removed
 
 if _STX_OK and auth_enabled():
     if "CM" not in st.session_state:
@@ -7184,89 +5646,151 @@ def _goto(screen):
 
 
 def render_pet_nav(active):
-    """Compact top menu on every screen once a pet profile exists."""
+    """Compact top menu once a pet profile exists: Home · Nurse · Report · language."""
     if not (st.session_state.get("pet") or {}).get("name"):
         return
     el = st.session_state.lang == "el"
-    items = [("dashboard", "🏠", "Αρχική" if el else "Home"),
-             ("vitals", "❤️", "Ζωτικά" if el else "Vitals"),
-             ("triage", "💬", "Συμπτώματα" if el else "Symptoms"),
-             ("scan", "🫁", "Αναπνοή" if el else "Breathing"),
-             ("longevity", "🧬", "Μακροζωία" if el else "Longevity")]
+    has_chat = bool(st.session_state.get("triage_chat"))
+    items = [("dashboard", "🏠", "Αρχική" if el else "Home", True),
+             ("triage", "💬", "Ρώτα" if el else "Ask", True),
+             ("report", "📋", "Αναφορά" if el else "Report", has_chat)]
     st.markdown(
         '<style>div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker){flex-wrap:nowrap !important;gap:6px !important;'
         'background:#fff;border:1px solid #D9DEF5;border-radius:999px;padding:5px;margin:0 0 14px;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]{min-width:0 !important;}'
+        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]:last-child{flex:0 0 64px !important;width:64px !important;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button{min-height:38px !important;padding:0 4px !important;'
         'border:none !important;box-shadow:none !important;font-size:12.5px !important;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button[kind="secondary"]{background:transparent !important;}'
         'div[data-testid="stElementContainer"]:has(.pn-nav-marker){display:none !important;}'
-        '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{display:none !important;}'
-        '}</style>',
+        '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{font-size:11px !important;}}</style>',
         unsafe_allow_html=True)
-    cols = st.columns(len(items), gap="small")
-    for _ci, (col, (scr, ic, lbl)) in enumerate(zip(cols, items)):
+    cols = st.columns(len(items) + 1, gap="small")
+    for _ci, (col, (scr, ic, lbl, ok)) in enumerate(zip(cols, items)):
         with col:
             if _ci == 0:
                 st.markdown('<span class="pn-nav-marker"></span>', unsafe_allow_html=True)
-            if st.button(lbl, icon=ic, key=f"pnav_{active}_{scr}", use_container_width=True,
+            if st.button(lbl, icon=ic, key=f"pnav_{active or 'x'}_{scr}", use_container_width=True, disabled=not ok,
                          type=("primary" if scr == active else "secondary")):
                 if scr != active:
                     _goto(scr)
+    with cols[-1]:
+        if st.button("EN" if el else "ΕΛ", key=f"pnav_{active or 'x'}_lang", use_container_width=True):
+            st.session_state.lang = "en" if el else "el"
+            st.rerun()
 
 
-_PET_FEATURES = {
-    "assess": {"screen": "vitals", "dark": False,
-               "eb": ("ΕΚΤΙΜΗΣΗ ΥΓΕΙΑΣ", "HEALTH ASSESSMENT"),
-               "title": ("💬 Τι παρατηρείς στο κατοικίδιό σου;", "💬 What are you noticing in your pet?"),
-               "body": ("Ζωτικά, φωτογραφίες και συμπτώματα — μία ερώτηση τη φορά — και στο τέλος αναφορά για τον κτηνίατρο με παραπομπές MSD.",
-                        "Vitals, photos and symptoms — one question at a time — then a vet-ready report with MSD references."),
-               "cta": ("Ξεκίνα εκτίμηση →", "Start assessment →")},
-    "photo": {"screen": "vitals", "dark": False,
-              "eb": ("ΦΩΤΟΓΡΑΦΙΑ", "PHOTO"),
-              "title": ("📷 Μάτια, δέρμα, αυτιά, ούλα", "📷 Eyes, skin, ears, gums"),
-              "body": ("Ανέβασε μια φωτογραφία και η AI την περιγράφει και σημειώνει ό,τι αξίζει έλεγχο.",
-                       "Upload a photo and the AI describes it and flags anything worth checking."),
-              "cta": ("Σάρωση φωτογραφίας →", "Scan a photo →")},
-    "scan": {"screen": "scan", "dark": True,
-             "eb": ("ΝΕΟ · ΑΝΑΠΝΟΕΣ ΣΤΟΝ ΥΠΝΟ", "NEW · SLEEPING BREATHS"),
-             "title": ("🫁 Μέτρησε τις αναπνοές με την κάμερα", "🫁 Count breaths with the camera"),
-             "body": ("60 δευτερόλεπτα με το κινητό δίπλα στο κατοικίδιο που κοιμάται. Είναι ο πιο χρήσιμος δείκτης καρδιάς που παρακολουθείς στο σπίτι.",
-                      "60 seconds with your phone beside your sleeping pet. The most useful heart check you can do at home."),
-             "cta": ("Ξεκίνα τη σάρωση →", "Start the scan →")},
-    "longevity": {"screen": "longevity", "dark": True,
-                  "eb": ("ΝΕΟ · ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ", "NEW · LONGEVITY CHECK"),
-                  "title": ("🧬 Πόσο χρονών είναι πραγματικά σε ανθρώπινα;", "🧬 How old are they in human years?"),
-                  "body": ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, βάρος, δόντια, δραστηριότητα και πλάνο για περισσότερα χρόνια μαζί.",
-                           "Age in human years, a wellness score, weight, teeth, activity and a plan for more years together."),
-                  "cta": ("Ξεκίνα τον έλεγχο →", "Start the check →")},
-}
+_PET_TOOLS = [
+    # key, screen, scene-kind, (eyebrow el/en), (title el/en), (body el/en), (cta el/en)
+    ("vitals", "vitals", ("ΖΩΤΙΚΑ", "VITALS"), ("Ζωτικά & αναπνοές", "Vitals & breathing"),
+     ("Μέτρηση αναπνοών με την κάμερα, σφυγμοί, θερμοκρασία.", "Camera breathing count, pulse and temperature."),
+     ("Άνοιγμα", "Open")),
+    ("photo", "photo", ("ΦΩΤΟΓΡΑΦΙΑ", "PHOTO"), ("Μάτια, δέρμα, αυτιά, ούλα", "Eyes, skin, ears, gums"),
+     ("Ανέβασε φωτογραφία και η AI την περιγράφει.", "Upload a photo and the AI describes it."),
+     ("Άνοιγμα", "Open")),
+    ("labs", "labs", ("ΕΞΕΤΑΣΕΙΣ", "LAB RESULTS"), ("Εργαστηριακές εξετάσεις", "Lab results"),
+     ("PDF ή φωτογραφία αιματολογικών — ερμηνεία σε απλά λόγια.", "PDF or photo of blood tests — explained in plain words."),
+     ("Άνοιγμα", "Open")),
+    ("longevity", "longevity", ("ΜΑΚΡΟΖΩΙΑ", "LONGEVITY"), ("Έλεγχος μακροζωίας", "Longevity check"),
+     ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας και πλάνο.", "Age in human years, a wellness score and a plan."),
+     ("Άνοιγμα", "Open")),
+    ("diary", "diary", ("ΗΜΕΡΟΛΟΓΙΟ", "DIARY"), ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
+     ("Κατάγραψε τι συμβαίνει μέρα με τη μέρα.", "Log what happens, day by day."),
+     ("Άνοιγμα", "Open")),
+    ("vets", "vets", ("ΚΤΗΝΙΑΤΡΟΙ", "VETS"), ("Κτηνίατρος κοντά σου", "Find a vet"),
+     ("Κοντινά και επείγοντα κτηνιατρεία στο χάρτη.", "Nearby and emergency clinics on the map."),
+     ("Άνοιγμα", "Open")),
+]
+_TOOL_ART = {"vitals": "breath", "photo": "photo", "labs": "labs", "longevity": "longevity", "diary": "diary",
+             "vets": "vets", "insurance": "shield", "nurse": "nurse"}
 
 
-def render_pet_feature_card(kind, key):
-    F = _PET_FEATURES[kind]
+def _tool_status(kind):
+    """Small 'attached' chip text so people see how tools feed the nurse."""
+    el = st.session_state.get("lang", "el") == "el"
+    S = st.session_state.get("longevity") or {}
+    if kind == "vitals":
+        b, pu = S.get("breath"), S.get("pulse")
+        parts = []
+        if b: parts.append(f"{b['bpm']}/min")
+        if pu: parts.append(f"~{pu['bpm']} bpm")
+        if not parts and st.session_state.get("vitals"): parts.append("✓")
+        return " · ".join(parts)
+    if kind == "photo":
+        n = len(st.session_state.get("photo_findings") or [])
+        return (f"{n} " + ("φωτογραφίες" if el else "photo(s)")) if n else ""
+    if kind == "labs":
+        n = len(st.session_state.get("lab_findings") or [])
+        return (f"{n} " + ("αρχεία" if el else "file(s)")) if n else ""
+    if kind == "longevity":
+        r = S.get("result")
+        return f"{r.get('score', 0)}/100" if r else ""
+    return ""
+
+
+def render_pet_tool_card(key, screen, eb, title, body, cta, where):
     el = st.session_state.get("lang", "el") == "el"
     i = 0 if el else 1
-    mk = f"pn-feat-{kind}-{key}"
-    st.markdown(_pet_feature_banner_css(mk, F["dark"]), unsafe_allow_html=True)
-    tc, bc = ("#fff", "#D5DCFF") if F["dark"] else ("#0B1B4B", "#5B6794")
+    mk = f"pn-feat-{key}-{where}"
+    st.markdown(_pet_feature_banner_css(mk, False), unsafe_allow_html=True)
+    _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
+    chip = _tool_status(key)
     with st.container(border=True):
-        _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
-        st.markdown(_pn_feat_art(kind, _sp), unsafe_allow_html=True)
+        st.markdown(_pn_feat_art(_TOOL_ART[key], _sp, compact=True), unsafe_allow_html=True)
         st.markdown(
-            f'<div class="{mk}" style="padding:4px 4px 2px;">'
-            f'<span class="pn-eyebrow {"dark" if F["dark"] else ""}">{F["eb"][i]}</span>'
-            f'<div style="font-family:Sora,Inter,sans-serif;color:{tc};font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:12px 0 6px;">{F["title"][i]}</div>'
-            f'<div style="color:{bc};font-size:13.5px;line-height:1.6;margin-bottom:10px;">{F["body"][i]}</div></div>',
+            f'<div class="{mk}" style="padding:2px 4px 0;">'
+            f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="pn-eyebrow">{eb[i]}</span>'
+            + (f'<span class="pn-chip ok">✓ {chip}</span>' if chip else "") + '</div>'
+            f'<div style="font-family:Sora,Inter,sans-serif;color:#0B1B4B;font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:10px 0 4px;">{title[i]}</div>'
+            f'<div style="color:#5B6794;font-size:13px;line-height:1.55;margin-bottom:8px;">{body[i]}</div></div>',
             unsafe_allow_html=True)
-        if st.button(F["cta"][i], key=f"pnfeat_{kind}_{key}", use_container_width=True,
-                     type=("secondary" if F["dark"] else "primary")):
-            _need = not (st.session_state.get("pet") or {}).get("name")
-            _goto("intake" if _need else F["screen"])
+        if st.button(cta[i] + " →", key=f"pntool_{key}_{where}", use_container_width=True):
+            _goto(screen)
+
+
+def render_pet_nurse_card():
+    """The main event: ask PetAiNurse. Shows the three-step plot and the way in."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    pet = st.session_state.pet or {}
+    nm = _html.escape(str(pet.get("name", "")))
+    _sp = pet.get("species_key", "dog")
+    has_chat = bool(st.session_state.get("triage_chat"))
+    mk = "pn-feat-nurse-home"
+    st.markdown(_pet_feature_banner_css(mk, True), unsafe_allow_html=True)
+    st.markdown('<style>div[data-testid="stVerticalBlock"]:has(.pn-feat-nurse-home) div[data-testid="stElementContainer"].st-key-pn_emerg button{background:rgba(255,255,255,.14) !important;border:1px solid rgba(255,255,255,.45) !important;}'
+                '.pn-nurse{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:center;}'
+                '.pn-nurse .art{border-radius:20px;overflow:hidden;aspect-ratio:400/220;}'
+                '.pn-steps{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px;}'
+                '.pn-step{flex:1 1 150px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:10px 12px;color:#fff;font-size:12.5px;line-height:1.4;}'
+                '.pn-step b{display:block;font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#FFB48F;margin-bottom:2px;}'
+                '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;}.pn-nurse .art{order:-1;}}</style>', unsafe_allow_html=True)
+    steps = ([("ΒΗΜΑ 1", "Πες τι παρατηρείς"), ("ΒΗΜΑ 2", "Η νοσηλεύτρια ρωτά ανά μία ερώτηση"), ("ΒΗΜΑ 3", "Παίρνεις αναφορά για τον κτηνίατρο")]
+             if el else [("STEP 1", "Tell us what you notice"), ("STEP 2", "The nurse asks one question at a time"), ("STEP 3", "Get a vet-ready report")])
+    steps_html = "".join(f'<div class="pn-step"><b>{a}</b>{b}</div>' for a, b in steps)
+    with st.container(border=True):
+        st.markdown(
+            f'<div class="{mk}"><div class="pn-nurse"><div>'
+            f'<span class="pn-eyebrow dark">{"ΑΙ ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>'
+            f'<div style="font-family:Sora,Inter,sans-serif;color:#fff;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:12px 0 8px;">'
+            f'{("Ρώτα την PetAiNurse για τον/την " if el else "Ask PetAiNurse about ")}{nm}</div>'
+            f'<div style="color:#D5DCFF;font-size:14.5px;line-height:1.6;">'
+            f'{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD — σε λίγα λεπτά, πριν ή αντί για το ιατρείο." if el else "A structured symptom assessment with MSD references — in minutes, before or instead of a vet visit."}</div>'
+            f'</div><div class="art">{_pn_feat_art("nurse", _sp, raw=True)}</div></div>'
+            f'<div class="pn-steps">{steps_html}</div></div>', unsafe_allow_html=True)
+        c1, c2 = st.columns([2, 1], gap="small")
+        with c1:
+            if st.button((("Συνέχεια της συζήτησης →" if has_chat else "Ξεκίνα με τη νοσηλεύτρια →") if el
+                          else ("Continue the chat →" if has_chat else "Start with the nurse →")),
+                         key="pn_nurse_go", use_container_width=True):
+                _goto("triage")
+        with c2:
+            if st.button(("🚨 Επείγον;" if el else "🚨 Emergency?"), key="pn_emerg", use_container_width=True):
+                _goto("vets")
 
 
 def render_pet_home():
-    """Hub shown after the profile: pet card + feature cards (HAL-style home)."""
+    """Home: the nurse first, every other feature as its own card."""
     lang = st.session_state.lang
     el = lang == "el"
     pet = st.session_state.pet or {}
@@ -7285,20 +5809,15 @@ def render_pet_home():
         chips.append((f"{ay} έτ." if el else f"{ay} y") + (f" {am} μ." if (am and el) else (f" {am} m" if am else "")))
     if pet.get("weight"):
         chips.append(f"{pet['weight']} kg")
-    chips_html = "".join(f'<span class="pn-eyebrow dark" style="text-transform:none;letter-spacing:.02em;font-size:12px;">{c}</span>' for c in chips)
-    mascot = render_mascot(mascot_for_pet(pet) or "dog", size=92)
-    greet = (f"Γεια σου, {nm}!" if el else f"Hi, {nm}!")
-    sub = ("Τι θα κάνουμε σήμερα για την υγεία και τα χρόνια του;" if el else "What shall we do today for their health and longevity?")
+    chips_html = "".join(f'<span class="pn-chip">{c}</span>' for c in chips)
+    mascot = render_mascot(mascot_for_pet(pet) or "dog", size=64)
     st.markdown(f"""
-<div style="background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), #1237C9;
-  border-radius:26px;padding:24px 26px;color:#fff;display:flex;gap:20px;align-items:center;flex-wrap:wrap;
-  box-shadow:0 30px 60px -34px rgba(18,55,201,.8);margin:0 0 6px;">
-  <div class="pn-mascot" style="background:#FFDCC7;border-radius:24px;padding:10px;flex-shrink:0;">{mascot}</div>
-  <div style="flex:1 1 260px;min-width:0;">
-    <div style="font:700 11px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#FFB48F;">PETAINURSE</div>
-    <div style="font-family:Sora,Inter,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:6px 0 4px;">{greet}</div>
-    <div style="color:#D5DCFF;font-size:14px;line-height:1.5;margin-bottom:12px;">{sub}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;">{chips_html}</div>
+<div style="display:flex;gap:14px;align-items:center;margin:2px 2px 14px;flex-wrap:wrap;">
+  <div class="pn-mascot" style="background:#FFDCC7;border-radius:20px;padding:6px;flex-shrink:0;">{mascot}</div>
+  <div style="flex:1 1 220px;min-width:0;">
+    <div style="font-family:Sora,Inter,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.03em;color:#0B1B4B;line-height:1.15;">
+      {("Γεια σου, " + nm + "!") if el else ("Hi, " + nm + "!")}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">{chips_html}</div>
   </div>
 </div>""", unsafe_allow_html=True)
     if st.button(("✏️ Αλλαγή προφίλ" if el else "✏️ Edit profile"), key="pnhome_edit"):
@@ -7306,41 +5825,26 @@ def render_pet_home():
         st.session_state.intake_step = 0
         _goto("intake")
 
-    def _sec(label):
-        st.markdown(f'<div class="pn-sec">{label}</div>', unsafe_allow_html=True)
+    render_pet_nurse_card()
 
-    _S0 = st.session_state.get("longevity") or {}
-    _yrs = (ay or 0) + (am or 0) / 12.0
-    _ha = _plg.human_age(pet.get("species_key", "dog"), _yrs) if _yrs else None
-    _snap = []
-    if _ha is not None:
-        _snap.append(("bcs", "Ηλικία σε ανθρώπινα" if el else "Human age", f"{_ha}"))
-    _b = _S0.get("breath")
-    _snap.append(("srr", "Αναπνοές ηρεμίας" if el else "Resting breaths",
-                  (f"{_b['bpm']} <small>/{'λεπτό' if el else 'min'}</small>" if _b else "—")))
-    _pu = _S0.get("pulse")
-    _snap.append(("hr", "Σφυγμοί" if el else "Pulse",
-                  (f"~{_pu['bpm']} <small>bpm</small>" if _pu else "—")))
-    _wt = pet.get("weight")
-    _snap.append(("activity", "Βάρος" if el else "Weight", (f"{_wt} <small>kg</small>" if _wt else "—")))
-    st.markdown(_pn_snap(_snap), unsafe_allow_html=True)
+    st.markdown('<div class="pn-sec">' + ("ΕΡΓΑΛΕΙΑ — ΚΑΘΕΝΑ ΛΕΙΤΟΥΡΓΕΙ ΜΟΝΟ ΤΟΥ ΚΑΙ ΤΡΟΦΟΔΟΤΕΙ ΤΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el
+                                          else "TOOLS — EACH WORKS ON ITS OWN AND FEEDS THE NURSE") + '</div>', unsafe_allow_html=True)
+    for r in range(0, len(_PET_TOOLS), 2):
+        cols = st.columns(2, gap="small", vertical_alignment="top")
+        for col, tool in zip(cols, _PET_TOOLS[r:r + 2]):
+            with col:
+                key, screen, eb, title, body, cta = tool
+                render_pet_tool_card(key, screen, eb, title, body, cta, "home")
 
-    _sec("ΕΚΤΙΜΗΣΗ ΥΓΕΙΑΣ" if el else "HEALTH ASSESSMENT")
-    c1, c2 = st.columns(2, gap="small", vertical_alignment="top")
-    with c1:
-        render_pet_feature_card("assess", "home")
-    with c2:
-        render_pet_feature_card("photo", "home")
-    _sec("ΝΕΕΣ ΥΠΗΡΕΣΙΕΣ" if el else "NEW SERVICES")
-    c3, c4 = st.columns(2, gap="small", vertical_alignment="top")
-    with c3:
-        render_pet_feature_card("scan", "home")
-    with c4:
-        render_pet_feature_card("longevity", "home")
+    st.markdown('<div class="pn-sec">' + ("ΑΣΦΑΛΙΣΗ" if el else "INSURANCE") + '</div>', unsafe_allow_html=True)
+    render_pet_tool_card("insurance", "insurance", ("ΑΣΦΑΛΙΣΗ", "INSURANCE"),
+                         ("Ασφάλιση κατοικιδίου", "Pet insurance"),
+                         ("Κάλυψη εξόδων κτηνιάτρου με έλεγχο κάλυψης από AI.", "Vet-cost cover with an AI coverage check."),
+                         ("Άνοιγμα", "Open"), "home")
 
     S = st.session_state.get("longevity") or {}
     if S.get("result"):
-        _sec("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK")
+        st.markdown('<div class="pn-sec">' + ("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK") + '</div>', unsafe_allow_html=True)
         render_pet_longevity_result(S["result"], lang, compact=True)
     _render_disclaimer_strip()
     _emergency_banner()
@@ -7372,13 +5876,9 @@ def render_pet_scan():
     if not pet.get("name"):
         st.session_state.screen = "intake"
         st.rerun()
-    render_pet_nav("scan")
     S = _lg_state()
-    nm = pet.get("name", "")
-    render_doc_header(
-        "Αναπνοές & σφυγμοί", "Breathing & pulse", icon="🫁",
-        sub_el=f"Μέτρηση ηρεμίας για {nm}", sub_en=f"Resting measurement for {nm}",
-        mascot_key=mascot_for_pet(pet))
+    _tool_screen("🫁", "Ζωτικά & αναπνοές", "Vitals & breathing",
+                 "Μέτρηση ηρεμίας για {nm}", "Resting measurement for {nm}")
     st.markdown(
         '<div style="font-size:13.5px;color:#5B6794;line-height:1.55;margin:-4px 2px 14px;">' + (
             "Οι <b>αναπνοές στον ύπνο</b> είναι ο πιο χρήσιμος δείκτης καρδιάς στο σπίτι: πάνω από <b>30 το λεπτό</b> σε ηρεμία αξίζει έλεγχο. "
@@ -7430,15 +5930,50 @@ def render_pet_scan():
                 _vv = dict(st.session_state.vitals or {}); _vv["hr"] = int(v["bpm"]); st.session_state.vitals = _vv
                 st.rerun()
 
-    if S.get("breath") or S.get("pulse"):
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button(("💬 Συνέχεια στην εκτίμηση" if el else "💬 Continue to assessment"), type="primary", use_container_width=True, key="pnscan_go_triage"):
-                _goto("vitals")
-        with c2:
-            if st.button(("🧬 Έλεγχος μακροζωίας" if el else "🧬 Longevity check"), use_container_width=True, key="pnscan_go_lg"):
-                _goto("longevity")
+    # 03 — other measurements by hand
+    _step(3, "Άλλες μετρήσεις (προαιρετικό)" if el else "Other measures (optional)")
+    sp = pet.get("species_key", "dog")
+    rng = VITAL_RANGES.get(sp, VITAL_RANGES["dog"])
+    hr_range, br_range, temp_range = rng["hr"], rng["br"], rng["temp"]
+    st.caption(f"{'Φυσιολογικά για' if el else 'Normal for'} {pet.get('species_label','')}: "
+               f"HR {hr_range[0]}–{hr_range[1]} bpm · BR {br_range[0]}–{br_range[1]}/min · Temp {temp_range[0]}–{temp_range[1]}°C")
+    v = st.session_state.vitals or {}
+    _vk = f"{v.get('hr')}_{v.get('br')}"
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        hr = st.number_input(t("hr"), min_value=0, max_value=500, value=(int(v["hr"]) if v.get("hr") else None),
+                             placeholder=str(int((hr_range[0]+hr_range[1])//2)), key=f"pnv_hr_{_vk}")
+        temp = st.number_input(t("temp"), min_value=0.0, max_value=45.0, value=(float(v["temp"]) if v.get("temp") else None),
+                               placeholder=str(temp_range[0]), format="%.1f", key="pnv_temp")
+    with c2:
+        br = st.number_input(t("br"), min_value=0, max_value=100, value=(int(v["br"]) if v.get("br") else None),
+                             placeholder=str(int((br_range[0]+br_range[1])//2)), key=f"pnv_br_{_vk}")
+        spo2 = st.number_input(t("spo2"), min_value=0, max_value=100, value=(int(v["spo2"]) if v.get("spo2") else None),
+                               placeholder="98", key="pnv_spo2")
+    with c3:
+        wt = st.number_input(t("weight_v"), min_value=0.0, max_value=200.0,
+                             value=(float(pet["weight"]) if pet.get("weight") else None), placeholder="5.0", format="%.1f", key="pnv_wt")
+    if st.button(("✓ Αποθήκευση & ανάλυση" if el else "✓ Save & analyse"), type="primary", use_container_width=True, key="pnv_save"):
+        vd = dict(st.session_state.vitals or {})
+        for k_, val in (("hr", hr), ("br", br), ("temp", temp), ("spo2", spo2), ("weight", wt)):
+            if val:
+                vd[k_] = val
+        st.session_state.vitals = vd
+        classify_pet_vitals(vd, sp)
+        if vd:
+            with st.spinner("Ανάλυση..." if el else "Analysing..."):
+                vtext = "\n".join(f"- {k}: {val}" for k, val in vd.items())
+                prompt = (f"Κατοικίδιο: {pet.get('name')}, {pet.get('species_label')} ({pet.get('breed')}), "
+                          f"{pet.get('age_y')}y, {wt}kg\n\nΖωτικές:\n{vtext}\n\n"
+                          f"Ερμήνευσε με βάση το φυσιολογικό εύρος για {pet.get('species_label')}. "
+                          f"Φυσ. εύρος: HR {hr_range[0]}-{hr_range[1]}, BR {br_range[0]}-{br_range[1]}, "
+                          f"Temp {temp_range[0]}-{temp_range[1]}°C. Σημείωσε ό,τι χρήζει προσοχής.")
+                st.session_state.vitals_analysis = claude(
+                    [{"role": "user", "content": prompt}], system=petainurse_system(pet), max_tokens=3000)
+        st.rerun()
+    render_vitals_summary()
     _render_disclaimer_strip()
+    _tool_footer()
 
 
 def render_pet_longevity():
@@ -7553,11 +6088,375 @@ def render_pet_longevity():
         c1, c2 = st.columns(2)
         with c1:
             if st.button(("💬 Συνέχεια στην εκτίμηση" if el else "💬 Continue to assessment"), use_container_width=True, key="pnlg_to_assess"):
-                _goto("vitals")
+                _goto("triage")
         with c2:
             if st.button(("↺ Νέος έλεγχος" if el else "↺ New check"), use_container_width=True, key="pnlg_new"):
                 st.session_state.pop("longevity", None); st.rerun()
     _render_disclaimer_strip()
+
+
+
+# ── NURSE-FIRST STRUCTURE ─────────────────────────────────────────────────────
+# Plot: Profile -> PetAiNurse chat -> Vet report.  Everything else is a separate
+# tool with its own screen; tools feed evidence into the nurse chat and report.
+def _need_pet():
+    if not (st.session_state.get("pet") or {}).get("name"):
+        st.session_state.screen = "intake"
+        st.rerun()
+
+
+def _tool_screen(icon, title_el, title_en, sub_el, sub_en):
+    """Top of every tool screen: nav + illustrated banner."""
+    _need_pet()
+    render_pet_nav("")
+    nm = (st.session_state.pet or {}).get("name", "")
+    render_doc_header(title_el, title_en, icon=icon,
+                      sub_el=sub_el.format(nm=nm), sub_en=sub_en.format(nm=nm))
+
+
+def _tool_footer(chat_cta=True):
+    lang = st.session_state.lang
+    el = lang == "el"
+    c1, c2 = st.columns(2)
+    with c1:
+        if chat_cta and st.button(("💬 Πίσω στη νοσηλεύτρια" if el else "💬 Back to the nurse"),
+                                  type="primary", use_container_width=True, key="pn_tf_chat"):
+            _goto("triage")
+    with c2:
+        if st.button(("🏠 Αρχική" if el else "🏠 Home"), use_container_width=True, key="pn_tf_home"):
+            _goto("dashboard")
+
+
+def _pn_evidence_bar():
+    """In the nurse chat: shows which evidence is attached and links to the tools."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    v = st.session_state.vitals or {}
+    n_photo = len(st.session_state.get("photo_findings") or [])
+    n_lab = len(st.session_state.get("lab_findings") or [])
+    st.markdown('<div class="pn-sec" style="margin-top:6px;">' + ("ΠΡΟΣΘΕΣΕ ΣΤΟΙΧΕΙΑ (ΠΡΟΑΙΡΕΤΙΚΑ)" if el else "ADD EVIDENCE (OPTIONAL)") + '</div>',
+                unsafe_allow_html=True)
+    cols = st.columns(3, gap="small")
+    items = [("vitals", "🫁", "Ζωτικά" if el else "Vitals", bool(v)),
+             ("photo", "📷", "Φωτογραφία" if el else "Photo", n_photo > 0),
+             ("labs", "🧪", "Εξετάσεις" if el else "Lab results", n_lab > 0)]
+    for col, (scr, ic, lbl, done) in zip(cols, items):
+        with col:
+            if st.button(f"{ic} {lbl}" + (" ✓" if done else " +"), key=f"pn_ev_{scr}", use_container_width=True,
+                         type=("primary" if done else "secondary")):
+                _goto(scr)
+
+
+def render_pet_photo():
+    _tool_screen("📷", "Έλεγχος με φωτογραφία", "Photo check",
+                 "Μάτια, δέρμα, αυτιά, ούλα — η AI περιγράφει όσα βλέπει για {nm}",
+                 "Eyes, skin, ears, gums — the AI describes what it sees for {nm}")
+    pet = st.session_state.pet or {}
+    lang = st.session_state.lang
+    sp = pet.get("species_key", "dog")
+    st.warning("⚠️ " + ("Δεν είναι διάγνωση — περιγράφει μόνο τα ορατά χαρακτηριστικά." if lang == "el"
+                        else "Not a diagnosis — it only describes what is visible."))
+    rf_key = _secret("ROBOFLOW_API_KEY","")
+    st.caption("Florence-2 (Microsoft) + Claude Vision · " +
+               ("Ανεβάστε φωτογραφία του ματιού, δέρματος, αυτιού, ούλων ή σώματος"
+                if lang=="el" else "Upload photo of eye, skin, ear, gums or body"))
+
+    SCAN_OPTS = {
+        "dog": {
+            "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
+                   ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
+                   ("body","🐾 Γενική Εμφάνιση"),("paw","🐶 Πατούσες"),
+                   ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
+            "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
+                   ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
+                   ("body","🐾 Body"),("paw","🐶 Paws"),
+                   ("vomit","🤢 Vomit"),("stool","💩 Stool")],
+        },
+        "cat": {
+            "el": [("eye","👁️ Μάτια"),("skin","🔬 Δέρμα/Τρίχωμα"),
+                   ("ear","👂 Αυτιά"),("mouth","🦷 Στόμα/Ούλα"),
+                   ("body","🐾 Γενική Εμφάνιση"),("paw","🐱 Πατούσες"),
+                   ("vomit","🤢 Εμετός"),("stool","💩 Κόπρανα")],
+            "en": [("eye","👁️ Eyes"),("skin","🔬 Skin/Coat"),
+                   ("ear","👂 Ears"),("mouth","🦷 Mouth/Gums"),
+                   ("body","🐾 Body"),("paw","🐱 Paws"),
+                   ("vomit","🤢 Vomit"),("stool","💩 Stool")],
+        },
+        "rabbit": {
+            "el": [("eye","👁️ Μάτια"),("skin","🔬 Τρίχωμα/Δέρμα"),
+                   ("ear","👂 Αυτιά"),("mouth","🦷 Δόντια/Στόμα"),
+                   ("body","🐰 Γενική Εμφάνιση"),("paw","🐾 Πατούσες")],
+            "en": [("eye","👁️ Eyes"),("skin","🔬 Fur/Skin"),
+                   ("ear","👂 Ears"),("mouth","🦷 Teeth/Mouth"),
+                   ("body","🐰 Body"),("paw","🐾 Paws")],
+        },
+        "bird": {
+            "el": [("eye","👁️ Μάτια"),("skin","🪶 Φτέρωμα/Δέρμα"),
+                   ("mouth","🦷 Ράμφος/Στόμα"),
+                   ("body","🐦 Γενική Εμφάνιση"),("paw","🐾 Πόδια/Νύχια")],
+            "en": [("eye","👁️ Eyes"),("skin","🪶 Feathers/Skin"),
+                   ("mouth","🦷 Beak/Mouth"),
+                   ("body","🐦 Body"),("paw","🐾 Feet/Claws")],
+        },
+        "reptile": {
+            "el": [("eye","👁️ Μάτια"),("skin","🐍 Δέρμα/Λέπια"),
+                   ("mouth","🦷 Στόμα"),
+                   ("body","🦎 Γενική Εμφάνιση"),("paw","🐾 Άκρα/Νύχια")],
+            "en": [("eye","👁️ Eyes"),("skin","🐍 Skin/Scales"),
+                   ("mouth","🦷 Mouth"),
+                   ("body","🦎 Body"),("paw","🐾 Limbs/Claws")],
+        },
+    }
+    opts = SCAN_OPTS.get(sp, SCAN_OPTS["dog"])[lang]
+    scan_labels = [o[1] for o in opts]
+    scan_keys   = [o[0] for o in opts]
+    sel_idx = st.radio(
+        ("Τύπος σάρωσης" if lang=="el" else "Scan type"),
+        scan_labels, horizontal=True, key="scan_type_radio",
+        label_visibility="collapsed")
+    selected_scan = scan_keys[scan_labels.index(sel_idx)] if sel_idx in scan_labels else "eye"
+
+    uploaded = st.file_uploader(
+        ("Φωτογραφία" if lang=="el" else "Upload photo"),
+        type=["jpg","jpeg","png","webp","heic","heif"], key="pet_photo_upload"
+    )
+
+    if uploaded:
+        col_img, col_info = st.columns([1,1])
+        with col_img:
+            st.image(uploaded, width="stretch")
+        with col_info:
+            st.markdown(f"**{pet.get('name','')}** {pet.get('species_label','')}")
+            st.markdown(f"Scan: **{sel_idx}**")
+
+        img_bytes = uploaded.read()
+        fname_lower = uploaded.name.lower()
+
+        # Convert HEIC/HEIF (iPhone default format) to JPEG
+        if fname_lower.endswith((".heic",".heif")):
+            if HEIC_OK:
+                try:
+                    img_bytes, img_type = convert_heic(img_bytes, uploaded.name)
+                    st.caption("✅ HEIC → JPEG " + ("μετατράπηκε αυτόματα" if lang=="el" else "converted automatically"))
+                except Exception as e:
+                    st.error(f"HEIC conversion failed: {e}")
+                    st.stop()
+            else:
+                st.error("⚠️ HEIC photos need pillow-heif. Add it to requirements.txt" if lang=="en"
+                         else "⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif στο requirements.txt")
+                st.stop()
+        else:
+            img_type = "image/jpeg"
+            if fname_lower.endswith(".png"):  img_type = "image/png"
+            if fname_lower.endswith(".webp"): img_type = "image/webp"
+
+        img_b64 = _b64.b64encode(img_bytes).decode()
+
+        if st.button("🔍 " + ("Ανάλυση" if lang=="el" else "Analyse"),
+                     type="primary", use_container_width=True, key="analyse_photo"):
+            if not _rate_limit_gate("photo_scan"):
+                st.stop()
+            with st.spinner("Florence-2 + Claude..." if lang=="el" else "Florence-2 + Claude analysing..."):
+                # Step 1: Florence-2 visual description
+                f2_desc = ""
+                if rf_key:
+                    f2_result = florence2_analyze(img_b64, selected_scan, rf_key)
+                    if f2_result.get("ok"):
+                        f2_desc = f2_result.get("description","")
+
+                # Step 2: Claude Vision clinical interpretation
+                context_note = (f"\n\nFLORENCE-2 DESCRIPTION: {f2_desc}" if f2_desc else "")
+                _sp_for_vision = pet.get("species_label", "")
+                system_prompt = ((f"Είσαι κτηνιατρικός αναλυτής φωτογραφιών εξειδικευμένος σε {_sp_for_vision}. "
+                                  "Δίνεις δομημένη, ακριβή ανάλυση προσαρμοσμένη στην ανατομία/φυσιολογία αυτού του είδους "
+                                  "(π.χ. για ερπετά: κατακρατημένο δέρμα από αλλαγή, mouth rot/stomatitis, "
+                                  "ενδείξεις Μεταβολικής Οστικής Νόσου — όχι κριτήρια θηλαστικών όπως ούλα/τρίχωμα όπου δεν εφαρμόζονται).")
+                                 if lang=="el" else
+                                 (f"You are a veterinary photo analyst specialised in {_sp_for_vision}. "
+                                  "Give structured, accurate analysis appropriate to this species' anatomy/physiology "
+                                  "(e.g. for reptiles: retained shed, mouth rot/stomatitis, signs of Metabolic Bone "
+                                  "Disease — not mammal-specific criteria like gums/fur where they don't apply)."))
+                # If the owner has chosen an AI-output language different from
+                # the UI language, append the override + clinical terminology
+                # block so the photo analysis lands in their language with the
+                # right veterinary terms (alopecia vs colloquial «mudar» etc.).
+                system_prompt += output_language_directive()
+                el_suffix = "\n\nDose: **EURIMATA** | **AXIOLOGISI** | **PITHANES AITIES** | **SISTASI**"
+                en_suffix = "\n\nProvide: **FINDINGS** | **ASSESSMENT** (Normal/Monitor/Urgent) | **POSSIBLE CAUSES** | **RECOMMENDATION**"
+                clinical_prompt = (SCAN_PROMPTS.get(selected_scan, SCAN_PROMPTS["skin"]) + context_note + (el_suffix if lang=="el" else en_suffix))
+                analysis = claude_vision_pet(img_b64, img_type, clinical_prompt, system_prompt)
+
+            # Show Florence-2 raw description
+            if f2_desc:
+                st.markdown(f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:10px 14px;margin-bottom:10px"><div style="font-size:11px;color:#6B7280;margin-bottom:4px">🔬 Florence-2 visual description</div><div style="font-size:13px">{f2_desc}</div></div>', unsafe_allow_html=True)
+
+            # Show Claude clinical analysis
+            st.markdown(f'<div class="card">', unsafe_allow_html=True)
+            st.markdown(analysis)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # Explainer: tell the user what this means and what to do next,
+            # so the screen doesn't feel like a dead end after analysing.
+            st.info(
+                "ℹ️ **Τι σημαίνει αυτό:** Η ανάλυση βασίζεται μόνο στα ορατά "
+                "χαρακτηριστικά της φωτογραφίας και **δεν** είναι διάγνωση.\n\n"
+                "**Επόμενο βήμα:** Πάτησε «Συνέχεια στην Εκτίμηση Συμπτωμάτων» — "
+                "το εύρημα θα ενσωματωθεί αυτόματα στη συζήτηση και στην τελική "
+                "αναφορά για τον κτηνίατρο."
+                if lang=="el" else
+                "ℹ️ **What this means:** The analysis is based only on visible "
+                "features in the photo and is **not** a diagnosis.\n\n"
+                "**Next step:** Tap “Continue to Symptom Assessment” — the finding "
+                "is automatically added to the conversation and to the final vet report."
+            )
+
+            # Store findings in session state → feed to triage
+            st.session_state["photo_scan_findings"] = {
+                "scan_type": selected_scan,
+                "scan_label": sel_idx,
+                "florence_desc": f2_desc,
+                "clinical_analysis": analysis,
+            }
+            # Also keep a running list of all photo analyses so they can
+            # be shown as evidence cards in the final report (mirrors
+            # the Asklepios "photo findings" card).
+            st.session_state.setdefault("photo_findings", []).append({
+                "scan_label": sel_idx,
+                "analysis": analysis,
+            })
+
+            # Button to continue to triage with findings
+            if st.button("➤ " + ("Στείλε το εύρημα στη νοσηλεύτρια →" if lang=="el"
+                                 else "Send this finding to the nurse →"),
+                         type="primary", use_container_width=True, key="photo_to_triage"):
+                # Auto-inject photo findings into triage chat
+                finding_msg = (f"Αποτελεσμα σαρωσης φωτογραφιας ({sel_idx}):\n\n{analysis}" if lang=="el"
+                               else f"Photo scan result ({sel_idx}):\n\n{analysis}")
+                st.session_state.triage_chat.append({"role":"user","content":finding_msg})
+                st.session_state.screen = "triage"
+                st.rerun()
+
+    _tool_footer()
+
+
+def render_pet_labs():
+    _tool_screen("🧪", "Εργαστηριακές εξετάσεις", "Lab results",
+                 "Ανέβασε εξετάσεις αίματος/ούρων για {nm} — εντάσσονται στην εκτίμηση",
+                 "Upload blood/urine results for {nm} — they join the assessment")
+    pet = st.session_state.pet or {}
+    lang = st.session_state.lang
+    st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
+               else "PDF or photo of blood/urine test results, etc.")
+    lab_files = st.file_uploader(
+        ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
+        type=["pdf","jpg","jpeg","png","webp","heic","heif"],
+        key="pet_lab_upload",
+        accept_multiple_files=True,
+        help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
+              if lang=="el" else
+              "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
+    )
+    if lab_files:
+        # Show a list of what's queued before the user commits to analysis
+        st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
+                    else f"📎 {len(lab_files)} files queued: ")
+                   + ", ".join(f.name for f in lab_files))
+
+        if st.button("🔍 " + ((f"Ανάλυση {len(lab_files)} Εξετάσεων" if len(lab_files) > 1 else "Ανάλυση Εξέτασης")
+                              if lang=="el" else
+                              (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
+                     type="primary", use_container_width=True, key="analyse_lab"):
+            if not _rate_limit_gate("lab_scan"):
+                st.stop()
+
+            # Names already analysed — skip them so re-clicking doesn't double-process
+            _already = {lf.get("file_name","") for lf in st.session_state.lab_findings}
+            _to_run = [f for f in lab_files if f.name not in _already]
+
+            if not _to_run:
+                st.info("ℹ️ " + ("Όλα τα αρχεία έχουν ήδη αναλυθεί." if lang=="el"
+                                 else "All files have already been analysed."))
+            else:
+                _added = 0
+                _status_msg = ("Ανάλυση εξετάσεων…" if lang=="el" else "Analysing lab results…")
+                with st.status(_status_msg, expanded=True) as _stat:
+                    for idx, lab_file in enumerate(_to_run, 1):
+                        _stat.update(label=(f"📄 ({idx}/{len(_to_run)}) {lab_file.name}"))
+                        file_bytes = lab_file.read()
+                        fname_lower = lab_file.name.lower()
+                        mime_type = "application/pdf"
+                        if fname_lower.endswith((".heic",".heif")):
+                            if HEIC_OK:
+                                try:
+                                    file_bytes, mime_type = convert_heic(file_bytes, lab_file.name)
+                                except Exception as e:
+                                    st.error(f"HEIC conversion failed for {lab_file.name}: {e}")
+                                    continue
+                            else:
+                                st.error("⚠️ Οι φωτογραφίες HEIC χρειάζονται pillow-heif." if lang=="el"
+                                         else "⚠️ HEIC photos need pillow-heif.")
+                                continue
+                        elif fname_lower.endswith((".jpg",".jpeg")): mime_type = "image/jpeg"
+                        elif fname_lower.endswith(".png"):  mime_type = "image/png"
+                        elif fname_lower.endswith(".webp"): mime_type = "image/webp"
+                        elif not fname_lower.endswith(".pdf"): mime_type = "image/jpeg"
+
+                        if not file_bytes:
+                            continue
+
+                        try:
+                            analysis = claude_analyze_pet_lab(
+                                file_bytes, mime_type, pet,
+                                st.session_state.triage_chat, lang, lab_file.name)
+                        except Exception as e:
+                            st.error(f"⚠️ {lab_file.name}: {e}")
+                            continue
+
+                        st.markdown(f"#### 📄 {lab_file.name}")
+                        st.markdown(analysis)
+                        st.session_state.lab_findings.append({
+                            "file_name": lab_file.name, "analysis": analysis,
+                        })
+                        finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
+                                       if lang=="el" else
+                                       f"Lab result ({lab_file.name}):\n\n{analysis}")
+                        st.session_state.triage_chat.append({"role":"user","content":finding_msg})
+                        _added += 1
+
+                    _final = (f"✅ Ολοκληρώθηκαν {_added}/{len(_to_run)} εξετάσεις" if lang=="el"
+                              else f"✅ Completed {_added}/{len(_to_run)} files")
+                    _stat.update(label=_final, state="complete", expanded=False)
+
+                if _added:
+                    st.success("✅ " + (f"Προστέθηκαν {_added} εξετάσεις στην εκτίμηση."
+                                        if lang=="el" else
+                                        f"Added {_added} lab result(s) to the assessment."))
+    if st.session_state.lab_findings:
+        st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
+                   + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
+
+    _tool_footer()
+
+
+def render_pet_diary():
+    _tool_screen("📅", "Ημερολόγιο συμπτωμάτων", "Symptom diary",
+                 "Κατάγραψε τι συμβαίνει στο χρόνο για {nm}", "Track what happens over time for {nm}")
+    _render_pet_symptom_tracker(st.session_state.lang)
+    _tool_footer()
+
+
+def render_pet_vets():
+    _tool_screen("📍", "Κτηνίατρος κοντά σου", "Find a vet",
+                 "Κοντινά και επείγοντα κτηνιατρεία για {nm}", "Nearby and emergency clinics for {nm}")
+    render_emergency_vets(st.session_state.lang)
+    _tool_footer(chat_cta=False)
+
+
+def render_pet_insurance():
+    _tool_screen("🛡️", "Ασφάλιση κατοικιδίου", "Pet insurance",
+                 "Κάλυψη εξόδων κτηνιάτρου για {nm}", "Cover vet costs for {nm}")
+    render_insurance_promo(st.session_state.lang)
+    _tool_footer(chat_cta=False)
 
 
 # ── ROUTER ────────────────────────────────────────────────────────────────────
@@ -7574,45 +6473,34 @@ if _page_param in CATEGORY_SLUGS:
     render_category_page(_page_param)
     st.stop()
 
-if (not st.session_state.get("_welcome_seen")
-        and not st.session_state.get("_hero_seen")
-        and st.session_state.screen == "home"):
-    render_welcome_screen()
-    st.stop()
-
-if not st.session_state.get("_hero_seen") and st.session_state.screen == "home":
-    _hl = st.session_state.lang
-    c1, c2 = st.columns([6,1])
-    with c1:
-        st.markdown(
-            f'<div style="font-size:19px;font-weight:800;color:#1A1A2E;'
-            f'font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;gap:8px;padding-top:6px">'
-            f'🐾 PetAiNurse</div>', unsafe_allow_html=True)
-    with c2:
-        if st.button("🇬🇧 EN" if _hl=="el" else "🇬🇷 ΕΛ", key="hero_lang"):
-            st.session_state.lang = "en" if _hl=="el" else "el"; st.rerun()
-    render_hero_screen()
-    st.stop()
-
 if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
 
 screen = st.session_state.screen
+_has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home":
-    # The standalone 'home' screen was merged into the hero screen (which is
-    # always shown first via _hero_seen gating above). Reaching screen=="home"
-    # here means the user is past the hero/login and ready to start —
-    # go straight into the intake flow.
-    st.session_state.screen = "intake"
+    st.session_state.screen = "dashboard" if _has_pet else "intake"
     st.rerun()
-elif screen=="intake": render_intake()
-elif screen=="dashboard": render_pet_home()
-elif screen=="scan": render_pet_scan()
-elif screen=="longevity": render_pet_longevity()
-elif screen=="vitals": render_pet_nav("vitals"); render_vitals()
-elif screen=="triage": render_pet_nav("triage"); render_triage()
-elif screen=="report": render_pet_nav("triage"); render_report()
+elif screen == "intake":
+    _top1, _top2 = st.columns([6, 1])
+    with _top1:
+        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetAiNurse</div>',
+                    unsafe_allow_html=True)
+    with _top2:
+        if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
+            st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
+    render_intake()
+elif screen == "dashboard": render_pet_home()
+elif screen in ("vitals", "scan"): render_pet_scan()
+elif screen == "photo": render_pet_photo()
+elif screen == "labs": render_pet_labs()
+elif screen == "longevity": render_pet_longevity()
+elif screen == "diary": render_pet_diary()
+elif screen == "vets": render_pet_vets()
+elif screen == "insurance": render_pet_insurance()
+elif screen == "triage": render_pet_nav("triage"); render_triage()
+elif screen == "report": render_pet_nav("report"); render_report()
 else: render_intake()
 
 # Persist login cookie on a clean render pass after successful login

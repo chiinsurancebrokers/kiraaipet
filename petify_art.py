@@ -156,6 +156,52 @@ def scene(kind: str, species: str = "dog") -> str:
                 + f'<g transform="translate(236 168)"><circle r="24" fill="{ORANGE}"/>{_paw(0, 2, .8, "#fff")}</g></g>'
                 + _sparkle(70, 50, 1.1, BLUE) + _sparkle(336, 70, .9, ORANGE))
         return _svg("0 0 400 220", body, "pn-art-report", "report")
+    if kind == "nurse":
+        pet = (head or _dog_head)(142, 124, 1.2)
+        body = (_bg(BLUE2, "#0E2A9E", "gn")
+                + '<circle cx="340" cy="30" r="84" fill="#fff" opacity=".07"/><circle cx="24" cy="206" r="64" fill="#fff" opacity=".06"/>'
+                + f'<path d="M70 216c8 -38 40 -50 72 -50s64 12 72 50z" fill="#fff"/>'
+                + f'<path d="M104 168c-6 34 8 48 24 48M180 168c6 34 -8 48 -24 48" stroke="{INK}" stroke-width="5" fill="none" stroke-linecap="round"/>'
+                + f'<circle cx="142" cy="206" r="9" fill="{ORANGE}" stroke="{INK}" stroke-width="3"/>'
+                + pet
+                + f'<g transform="translate(236 34)"><rect width="140" height="86" rx="24" fill="#fff"/><path d="M34 86l-12 26l38 -26z" fill="#fff"/>'
+                  f'<rect x="22" y="22" width="96" height="10" rx="5" fill="{LAV2}"/><rect x="22" y="42" width="70" height="10" rx="5" fill="{LAV2}"/>'
+                  f'<rect x="22" y="62" width="40" height="10" rx="5" fill="{ORANGE}"/></g>'
+                + f'<g transform="translate(300 150)"><circle r="30" fill="{ORANGE}"/><rect x="-5" y="-17" width="10" height="34" rx="3" fill="#fff"/><rect x="-17" y="-5" width="34" height="10" rx="3" fill="#fff"/></g>'
+                + _sparkle(40, 44, 1.2, "#fff") + _sparkle(372, 130, .9, ORANGE))
+        return _svg("0 0 400 220", body, "pn-art-nurse", "AI vet nurse")
+    if kind == "labs":
+        tube = lambda x, c: (f'<g transform="translate({x} 40)"><rect width="34" height="120" rx="17" fill="#fff" stroke="{INK}" stroke-width="3"/>'
+                             f'<rect x="3" y="58" width="28" height="59" rx="14" fill="{c}"/><rect x="-4" y="-6" width="42" height="14" rx="7" fill="{BLUE}"/></g>')
+        body = (_bg(LAV, LAV2, "gla") + _blobs() + tube(100, ORANGE) + tube(150, BLUE2) + tube(200, "#7BD3A5")
+                + f'<g transform="translate(262 46)"><rect width="104" height="130" rx="16" fill="#fff"/>'
+                  f'<path d="M16 100l18 -22l16 12l22 -34" stroke="{BLUE}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+                  f'<rect x="16" y="20" width="60" height="8" rx="4" fill="{LAV2}"/><rect x="16" y="36" width="40" height="8" rx="4" fill="{LAV2}"/></g>'
+                + _sparkle(60, 188, 1.0, BLUE) + _sparkle(380, 36, .9, ORANGE))
+        return _svg("0 0 400 220", body, "pn-art-labs", "lab results")
+    if kind == "diary":
+        days = "".join(f'<rect x="{18 + (i%5)*34}" y="{62 + (i//5)*30}" width="26" height="22" rx="7" fill="{(ORANGE if i in (3, 8) else LAV)}"/>' for i in range(15))
+        body = (_bg("#FFF1E8", PEACH, "gd") + _blobs("#fff", .5)
+                + f'<g transform="translate(110 28)"><rect width="190" height="164" rx="22" fill="#fff"/><rect width="190" height="40" rx="22" fill="{BLUE}"/>'
+                  f'<rect y="24" width="190" height="16" fill="{BLUE}"/>{days}'
+                  f'<circle cx="40" cy="20" r="6" fill="#fff"/><circle cx="150" cy="20" r="6" fill="#fff"/></g>'
+                + _paw(332, 160, 1.2, BLUE) + _sparkle(62, 54, 1.2, ORANGE))
+        return _svg("0 0 400 220", body, "pn-art-diary", "symptom diary")
+    if kind == "vets":
+        body = (_bg("#E3F0FF", "#BFD7FF", "gm") + _blobs()
+                + f'<path d="M0 150q80 -50 160 -10t160 -40t80 20v100H0z" fill="#fff" opacity=".55"/>'
+                + f'<path d="M-10 120l120 -50l110 40l190 -70" stroke="#fff" stroke-width="14" fill="none" stroke-linecap="round"/>'
+                + f'<path d="M-10 120l120 -50l110 40l190 -70" stroke="{LAV2}" stroke-width="3" fill="none" stroke-dasharray="10 10"/>'
+                + f'<g transform="translate(200 54)"><path d="M0 0c-34 0 -52 26 -52 52c0 36 52 80 52 80s52 -44 52 -80c0 -26 -18 -52 -52 -52z" fill="{ORANGE}"/>'
+                  f'<circle cy="50" r="26" fill="#fff"/><rect x="-5" y="34" width="10" height="32" rx="3" fill="{ORANGE}"/><rect x="-16" y="45" width="32" height="10" rx="3" fill="{ORANGE}"/></g>'
+                + f'<ellipse cx="200" cy="196" rx="44" ry="9" fill="{INK}" opacity=".15"/>' + _sparkle(70, 50, 1.1, BLUE) + _sparkle(350, 160, 1.0, ORANGE))
+        return _svg("0 0 400 220", body, "pn-art-vets", "find a vet")
+    if kind == "shield":
+        body = (_bg(LAV, LAV2, "gsh") + _blobs()
+                + f'<path d="M200 28l92 34v62c0 40 -38 70 -92 90c-54 -20 -92 -50 -92 -90V62z" fill="{BLUE}"/>'
+                + f'<path d="M200 46l74 28v50c0 30 -30 54 -74 72c-44 -18 -74 -42 -74 -72V74z" fill="{BLUE2}"/>'
+                + _paw(200, 112, 1.9, "#fff") + _heart(262, 52, .9) + _sparkle(98, 50, 1.2, ORANGE) + _sparkle(318, 166, 1.0, BLUE))
+        return _svg("0 0 400 220", body, "pn-art-shield", "insurance")
     if kind == "emergency":
         body = (_bg("#FFE3E3", "#FFC7C7", "ge") + _blobs()
                 + f'<circle cx="200" cy="110" r="68" fill="#fff"/><rect x="188" y="66" width="24" height="88" rx="8" fill="#DC2626"/><rect x="156" y="98" width="88" height="24" rx="8" fill="#DC2626"/>')

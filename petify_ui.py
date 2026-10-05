@@ -121,6 +121,7 @@ div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid=
 
 /* Illustrated cards & banners */
 .pn-art-wrap {{ border-radius:20px; overflow:hidden; aspect-ratio:400/196; margin:0 0 14px; background:{LAV}; }}
+.pn-art-wrap.sm {{ aspect-ratio:400/160; margin-bottom:12px; }}
 .pn-art-wrap img, .pn-screen .pet img, .pn-mascot img {{ mix-blend-mode:multiply; }}
 .pn-banner {{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:0; border-radius:26px; overflow:hidden; margin:4px 0 18px;
   background:{LAV}; border:1px solid {LAV2}; align-items:stretch; }}
@@ -364,7 +365,10 @@ def result_card_html(res: dict, lang: str) -> str:
 
 # ── illustrated blocks ───────────────────────────────────────────────────────
 _BANNER_SCENE = {"🫁": ("breath", True), "🧬": ("longevity", True), "❤️": ("vitals", False),
-                 "💬": ("symptoms", False), "📋": ("report", False), "📷": ("photo", False)}
+                 "💬": ("symptoms", False), "📋": ("report", False), "📷": ("photo", False),
+                 "📍": ("vets", False), "🧪": ("labs", False), "📅": ("diary", False),
+                 "🛡️": ("shield", False), "🩺": ("nurse", True)}
+BANNER_ICONS = tuple(_BANNER_SCENE.keys())
 
 
 def banner_html(icon: str, title: str, sub: str, org: str, species: str = "dog") -> str:
@@ -375,10 +379,13 @@ def banner_html(icon: str, title: str, sub: str, org: str, species: str = "dog")
             f'</div><div class="art">{_art.scene(scene, sp)}</div></div>')
 
 
-def feature_art_html(kind: str, species: str = "dog") -> str:
-    scene = {"assess": "symptoms", "photo": "photo", "scan": "breath", "longevity": "longevity"}.get(kind, "symptoms")
+def feature_art_html(kind: str, species: str = "dog", compact: bool = False, raw: bool = False) -> str:
+    scene = {"assess": "symptoms", "scan": "breath"}.get(kind, kind)
     sp = species if species in ("dog", "cat") else "dog"
-    return f'<div class="pn-art-wrap">{_art.scene(scene, sp)}</div>'
+    svg = _art.scene(scene, sp)
+    if raw:
+        return svg
+    return f'<div class="pn-art-wrap{" sm" if compact else ""}">{svg}</div>'
 
 
 def snapshot_html(items: list) -> str:
