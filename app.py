@@ -1617,6 +1617,42 @@ def delete_draft(email):
         log_event("supabase_delete", ok=False, ms=(time.time()-_t0)*1000, error=str(e), table="pet_drafts")
 
 
+# ── PET PROFILES (per account, Fernet-encrypted; profiles only — never chats/photos) ──
+def save_pets(email, pets, active=0):
+    sb = _supabase_client()
+    if not sb or not email or not _ENC_OK:
+        return
+    try:
+        blob = _fernet().encrypt(json.dumps({"pets": pets, "active": active}, ensure_ascii=False).encode()).decode()
+        sb.table("user_pets").upsert({"user_email": email, "data": blob, "updated_at": datetime.utcnow().isoformat()},
+                                     on_conflict="user_email").execute()
+        log_event("supabase_write", ok=True, table="user_pets")
+    except Exception as e:
+        log_event("supabase_write", ok=False, error=str(e), table="user_pets")
+
+def load_pets(email):
+    sb = _supabase_client()
+    if not sb or not email or not _ENC_OK:
+        return None
+    try:
+        res = sb.table("user_pets").select("data").eq("user_email", email).limit(1).execute()
+        rows = res.data or []
+        if rows and rows[0].get("data"):
+            return json.loads(_fernet().decrypt(rows[0]["data"].encode()).decode())
+    except Exception as e:
+        log_event("supabase_read", ok=False, error=str(e), table="user_pets")
+    return None
+
+def delete_pets(email):
+    sb = _supabase_client()
+    if not sb or not email:
+        return
+    try:
+        sb.table("user_pets").delete().eq("user_email", email).execute()
+    except Exception as e:
+        log_event("supabase_delete", ok=False, error=str(e), table="user_pets")
+
+
 # ── USER PREFERENCES (per-account, plain JSON — not encrypted) ───────────────
 # Single row per user in `user_prefs` (columns: user_email TEXT PK, prefs JSONB).
 # Single JSON blob so future prefs (theme, default species, etc.) can be added
@@ -1756,7 +1792,7 @@ def has_insurance_subscription(email: str) -> bool:
     try:
         res = (sb.table("subscriptions")
                  .select("plan,valid_until")
-                 .eq("user_email", email)
+                 .in_("user_email", list({email, email.lower()}))
                  .in_("plan", ["plus", "insurance"])
                  .limit(1)
                  .execute())
@@ -1822,6 +1858,8 @@ _PLUS_SERVICES = [
            ("PDF ή φωτογραφία αιματολογικών σε απλά λόγια.", "PDF or photo of blood tests in plain words.")),
     ("🧬", ("Έλεγχος μακροζωίας", "Longevity check"),
            ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, πλάνο.", "Age in human years, wellness score, plan.")),
+    ("🐾", ("Απεριόριστα κατοικίδια", "Unlimited pets"),
+           ("Προφίλ για κάθε κατοικίδιο, με δυνατότητα αλλαγής και έλεγχο συμπτωμάτων για όλα.", "A profile for every pet you have, editable, with symptom checks for all of them.")),
     ("📅", ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
            ("Τι συμβαίνει στον χρόνο, έτοιμο για τον κτηνίατρο.", "What happens over time, ready for your vet.")),
     ("🛡️", ("Ασφάλιση: κάλυψη & κόστος", "Insurance: cover & cost"),
@@ -1928,11 +1966,17 @@ def render_plus_paywall(lang="el", feature_label="", full=True):
                   for ic, ti, de in _PLUS_SERVICES)
         + '</div>'
         '<div class="pn-free">🎁 <b>' + ("Δωρεάν για πάντα" if el else "Free, always") + '</b> · '
-        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα), κτηνίατρος κοντά σου και λίστα συμβεβλημένων κλινικών."
-           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month), find a vet near you and the contracted clinics list.")
+        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και λίστα συμβεβλημένων κλινικών."
+           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month) for 1 pet, find a vet near you and the contracted clinics list.")
         + '</div>', unsafe_allow_html=True)
-    _mo = os.environ.get("STRIPE_CHECKOUT_MONTHLY", "")
-    _yr = os.environ.get("STRIPE_CHECKOUT_YEARLY", "")
+    import urllib.parse as _up
+    _em = st.session_state.get("auth_user", "")
+    def _co(u):
+        if not u or not _em:
+            return u
+        return u + ("&" if "?" in u else "?") + "prefilled_email=" + _up.quote(_em) + "&client_reference_id=" + _up.quote(_em)
+    _mo = _co(os.environ.get("STRIPE_CHECKOUT_MONTHLY", ""))
+    _yr = _co(os.environ.get("STRIPE_CHECKOUT_YEARLY", ""))
     _mail = "mailto:info@chiinsurance.gr?subject=Pets%E2%80%99health%20Plus"
     c1, c2 = st.columns(2)
     with c1:
@@ -1954,7 +1998,7 @@ def render_paywall_page(screen_key):
              "photo": ("Ανάλυση φωτογραφιών", "Photo analysis"), "labs": ("Εργαστηριακές εξετάσεις", "Lab results"),
              "longevity": ("Έλεγχος μακροζωίας", "Longevity check"), "diary": ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
              "insurance": ("Ασφάλιση κατοικιδίου", "Pet insurance"), "report": ("Κτηνιατρική αναφορά", "Veterinary report"),
-             "plus": ("", "")}
+             "profile": ("Αλλαγή προφίλ & περισσότερα κατοικίδια", "Edit profile & more pets"), "plus": ("", "")}
     nm = names.get(screen_key, ("", ""))[0 if lang == "el" else 1]
     render_pet_nav("report" if screen_key == "report" else "dashboard")
     if st.button("← " + ("Πίσω" if lang == "el" else "Back"), key="pw_back"):
@@ -2184,7 +2228,8 @@ def render_login_gate():
 defaults = {
     "lang": "el", "screen": "home",
     "output_lang": None,  # AI response language (chat + lab + report); None = follow UI lang
-    "pet": {},           # pet profile
+    "pet": {},           # active pet profile
+    "pets": [], "active_pet": 0, "_editing_pet": None, "_pets_loaded": False,
     "vitals": {},        # pet vitals
     "vitals_analysis": "",
     "triage_chat": [],
@@ -4379,7 +4424,7 @@ def render_intake():
                 for w in tox_warns:
                     st.error(w)
                 st.stop()
-            st.session_state.pet = {
+            _new_pet = {
                 "name": draft.get("name",""), "species_key": species_key,
                 "species_label": draft.get("species_label",""),
                 "breed": draft.get("breed",""), "age_y": draft.get("age_y",0),
@@ -4391,6 +4436,17 @@ def render_intake():
                 "filled_by": draft.get("filled_by",""),
                 "insurance_provider": draft.get("insurance_provider",""),
             }
+            _pets = list(st.session_state.get("pets") or [])
+            _ei = st.session_state.get("_editing_pet")
+            if isinstance(_ei, int) and 0 <= _ei < len(_pets):
+                _pets[_ei] = _new_pet; _act = _ei
+            else:
+                _pets.append(_new_pet); _act = len(_pets) - 1
+            st.session_state.pets = _pets
+            st.session_state.active_pet = _act
+            st.session_state.pet = _new_pet
+            st.session_state["_editing_pet"] = None
+            save_pets(st.session_state.get("auth_user", ""), _pets, _act)
             st.session_state.intake_step = 0
             st.session_state.intake_draft = {}
             st.session_state.screen = "dashboard"
@@ -5170,7 +5226,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     c1,c2,c3,c4 = st.columns(4)
     with c1:
         if st.button("← "+("Νέα Εκτίμηση" if lang=="el" else "New Assessment"), use_container_width=True):
-            _keep = {k: st.session_state.get(k) for k in ("pet","lang","auth_user","output_lang","longevity")}
+            _keep = {k: st.session_state.get(k) for k in ("pet","pets","active_pet","_pets_loaded","lang","auth_user","output_lang","longevity")}
             for k,v in defaults.items(): st.session_state[k]=v
             for k,v in _keep.items():
                 if v is not None: st.session_state[k]=v
@@ -5694,6 +5750,10 @@ def render_privacy_page():
             "- **Συνομιλία triage & αναφορά**: ζουν μόνο στο session του browser σου, εκτός αν έχεις λογαριασμό "
             "και έχεις ζητήσει αποθήκευση πρόχειρου — οπότε είναι κρυπτογραφημένα (Fernet) και διαγράφονται "
             "με το κουμπί παρακάτω.\n"
+            "- **Προφίλ κατοικιδίων** (όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό που συμπλήρωσες): αποθηκεύονται "
+            "κρυπτογραφημένα (Fernet) στον λογαριασμό σου ώστε να τα βρίσκεις όταν ξαναμπείς. Διαγράφονται με το κουμπί παρακάτω.\n"
+            "- **Συνδρομή & χρήση**: κρατάμε τη συνδρομή σου Plus και μόνο το πλήθος (ημερομηνίες) των δωρεάν ελέγχων "
+            "κάθε μήνα, για να εφαρμόζεται το δωρεάν όριο· όχι το περιεχόμενο των ελέγχων.\n"
             "- **Λογαριασμός (email) & προτιμήσεις γλώσσας**: κρατούνται μόνο όσο είσαι συνδεδεμένος/η.\n"
             "- **Κανένα δεδομένο δεν μοιράζεται** με τρίτους πέρα από τους AI παρόχους (Anthropic, OpenAI, Groq, "
             "Roboflow) που χρειάζονται για να γίνει η ανάλυση που ζήτησες.\n"
@@ -5719,6 +5779,10 @@ def render_privacy_page():
             "- **Triage chat & report text**: live only in your browser session, unless you have an "
             "account and explicitly saved a draft — in which case it's Fernet-encrypted and deleted by "
             "the button below.\n"
+            "- **Pet profiles** (name, species, breed, age, weight, history you entered): stored Fernet-encrypted on your "
+            "account so they are there when you sign back in. Deleted by the button below.\n"
+            "- **Subscription & usage**: we keep your Plus subscription and only the count (dates) of free checks "
+            "per month to apply the free limit — not the content of the checks.\n"
             "- **Account email & language preference**: kept only while you're logged in.\n"
             "- **Nothing is shared** with third parties beyond the AI providers (Anthropic, OpenAI, Groq, "
             "Roboflow) strictly needed to produce the analysis you asked for.\n"
@@ -5742,6 +5806,7 @@ def render_privacy_page():
             # 1) Remove anything persisted server-side for this account.
             if _email:
                 delete_draft(_email)
+                delete_pets(_email)
                 sb = _supabase_client()
                 if sb:
                     try:
@@ -6146,6 +6211,58 @@ def render_pet_landing(gate=False):
                 unsafe_allow_html=True)
 
 
+def _switch_pet(i):
+    import copy as _copy
+    pets = st.session_state.get("pets") or []
+    if not (0 <= i < len(pets)):
+        return
+    keep = {k: st.session_state.get(k) for k in ("lang", "auth_user", "output_lang", "pets", "_pets_loaded",
+                                                  "_landing_seen", "_hero_seen", "_welcome_seen")}
+    for k, v in defaults.items():
+        st.session_state[k] = _copy.deepcopy(v)
+    for k, v in keep.items():
+        if v is not None:
+            st.session_state[k] = v
+    for k in ("longevity", "hal_insurance_chat", "photo_scan_findings"):
+        st.session_state.pop(k, None)
+    st.session_state.pet = pets[i]
+    st.session_state.active_pet = i
+    st.session_state["pet_insurance_provider"] = pets[i].get("insurance_provider", "") or ""
+    st.session_state.screen = "dashboard"
+    st.rerun()
+
+
+def render_pet_switcher(lang="el"):
+    """Home: Plus = switch between unlimited pets, edit, add; free = one pet with a locked profile."""
+    el = lang == "el"
+    pets = st.session_state.get("pets") or []
+    if paywall_enabled() and not has_plus():
+        if st.button(("🔒 Αλλαγή προφίλ & περισσότερα κατοικίδια — Plus" if el else "🔒 Edit profile & more pets — Plus"),
+                     key="pnhome_edit_locked"):
+            _goto("plus")
+        return
+    if len(pets) > 1:
+        names = [f"{p.get('name','?')}" for p in pets]
+        cur = st.session_state.get("active_pet", 0)
+        pick = st.pills(("Κατοικίδια" if el else "Pets"), names, selection_mode="single",
+                        default=names[cur] if cur < len(names) else names[0], key=f"pn_pets_{len(pets)}")
+        if pick and pick != names[cur]:
+            _switch_pet(names.index(pick))
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button(("✏️ Αλλαγή προφίλ" if el else "✏️ Edit profile"), key="pnhome_edit", use_container_width=True):
+            st.session_state.intake_draft = dict(st.session_state.pet)
+            st.session_state["_editing_pet"] = st.session_state.get("active_pet", 0)
+            st.session_state.intake_step = 0
+            _goto("intake")
+    with c2:
+        if st.button(("➕ Νέο κατοικίδιο" if el else "➕ Add a pet"), key="pnhome_add", use_container_width=True):
+            st.session_state.intake_draft = {}
+            st.session_state["_editing_pet"] = None
+            st.session_state.intake_step = 0
+            _goto("intake")
+
+
 def render_pet_home():
     """Home: the nurse first, every other feature as its own card."""
     lang = st.session_state.lang
@@ -6177,10 +6294,7 @@ def render_pet_home():
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">{chips_html}</div>
   </div>
 </div>""", unsafe_allow_html=True)
-    if st.button(("✏️ Αλλαγή προφίλ" if el else "✏️ Edit profile"), key="pnhome_edit"):
-        st.session_state.intake_draft = dict(st.session_state.pet)
-        st.session_state.intake_step = 0
-        _goto("intake")
+    render_pet_switcher(lang)
 
     render_plan_banner(lang)
     render_pet_nurse_card()
@@ -6912,6 +7026,31 @@ if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
 
+def _ensure_pets_loaded():
+    """Restore saved pet profiles once per login; migrate a session-only pet into the list."""
+    if st.session_state.get("_pets_loaded"):
+        return
+    email = st.session_state.get("auth_user", "")
+    if auth_enabled() and not email:
+        return
+    st.session_state["_pets_loaded"] = True
+    if email:
+        saved = load_pets(email)
+        if saved and saved.get("pets"):
+            st.session_state.pets = saved["pets"]
+            a = min(max(int(saved.get("active", 0)), 0), len(saved["pets"]) - 1)
+            st.session_state.active_pet = a
+            if not (st.session_state.get("pet") or {}).get("name"):
+                st.session_state.pet = saved["pets"][a]
+                st.session_state["pet_insurance_provider"] = saved["pets"][a].get("insurance_provider", "") or ""
+    cur = st.session_state.get("pet") or {}
+    if cur.get("name") and not st.session_state.get("pets"):
+        st.session_state.pets = [cur]
+        st.session_state.active_pet = 0
+        save_pets(email, [cur], 0)
+
+
+_ensure_pets_loaded()
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
@@ -6921,6 +7060,8 @@ elif screen == "landing":
 elif screen == "home":
     st.session_state.screen = "dashboard" if _has_pet else "intake"
     st.rerun()
+elif screen == "intake" and paywall_enabled() and st.session_state.get("pets") and not has_plus():
+    render_paywall_page("profile")
 elif screen == "intake":
     _top1, _top2 = st.columns([6, 1])
     with _top1:

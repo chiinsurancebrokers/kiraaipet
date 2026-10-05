@@ -16,6 +16,10 @@ if not st.session_state.get("_h2"):
         st.session_state["intake_step"]=int(st.query_params["s"])
         st.session_state["intake_draft"]={"name":"Μπόμπης","species_label":"🐕 Σκύλος","species_key":"dog","breed":"Λαμπραντόρ","age_y":6,"age_m":3,"sex":"Αρσενικό","weight":29.0}
     if st.query_params.get("plus") is not None or st.query_params.get("used"): st.session_state["auth_user"]="t@example.com"
+    if st.query_params.get("pets"):
+        _b={"name":"Μπόμπης","species_label":"🐕 Σκύλος","species_key":"dog","breed":"Λαμπραντόρ","age_y":6,"age_m":3,"sex":"Αρσενικό","weight":29.0}
+        _m={"name":"Μίνι","species_label":"🐈 Γάτα","species_key":"cat","breed":"Ευρωπαϊκή","age_y":3,"age_m":0,"sex":"Θηλυκό","weight":4.2}
+        st.session_state.update({"pets":[_b,_m],"active_pet":0,"_pets_loaded":True})
     if st.query_params.get("plus") is not None: st.session_state["_plus_override"]=st.query_params["plus"]=="1"
     if st.query_params.get("used"): st.session_state["_tri_used_local"]=int(st.query_params["used"])
     if st.query_params.get("ins") and st.query_params.get("t")!="triage": st.session_state["pet_insurance_provider"]="Eurolife FFH — My Happy Pet "+("Standard" if st.query_params["ins"]=="std" else "Plus")
