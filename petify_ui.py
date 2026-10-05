@@ -1,5 +1,5 @@
 """
-petify_ui.py — Petify-inspired visual layer for Pets’health (Kira AI Pet).
+petify_ui.py — Petify-inspired visual layer for petsaihealth (Kira AI Pet).
 
 Original design in the same spirit as the Petify product page: a royal-blue brand
 tile, lavender flow panels, an orange accent, a phone-scan visual and a small
@@ -276,7 +276,7 @@ def hero_html(lang: str, mascot_html: str = "") -> str:
     <div class="pn-hero-art"><div class="fw"><div class="frame">__ART_BREATH__</div>
       <div class="chip a"><span>__C1__</span><b>22 /min</b></div><div class="chip b"><span>__C2__</span><b>45 ↗</b></div></div></div>
     <div class="pn-hero-copy">
-    <div class="pn-logo-row"><div class="pn-logo-mark">🐾</div><div class="pn-wordmark">Pets’health</div></div>
+    <div class="pn-logo-row"><div class="pn-logo-mark">🐾</div><div class="pn-wordmark">petsaihealth</div></div>
     <div><span class="pn-eyebrow dark">{tx['kicker']}</span></div>
     <div class="pn-h1">{tx['h1']}</div>
     <div class="pn-lead">{tx['lead']}</div>
@@ -412,7 +412,7 @@ def gallery_html(lang: str, species: str = "dog") -> str:
         for k, n, t, b in cards) + '</div>'
 
 
-# ── landing page (what Pets’health does + the other services) ─────────────────
+# ── landing page (what petsaihealth does + the other services) ─────────────────
 LANDING_CSS = f"""
 <style>
 .pn-l-hero {{ display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:22px; align-items:center; background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
@@ -456,7 +456,7 @@ def landing_parts(lang: str) -> dict:
     hero = f"""{LANDING_CSS}
 <div class="pn-l-hero"><div>
   <span class="pn-eyebrow dark">{"AI ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>
-  <h1>{"Πες τι παρατηρείς. <span>Η Pets’health ρωτά, εξηγεί και ετοιμάζει την αναφορά.</span>" if el else "Tell us what you notice. <span>Pets’health asks, explains and prepares the report.</span>"}</h1>
+  <h1>{"Πες τι παρατηρείς. <span>Η petsaihealth ρωτά, εξηγεί και ετοιμάζει την αναφορά.</span>" if el else "Tell us what you notice. <span>petsaihealth asks, explains and prepares the report.</span>"}</h1>
   <p>{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD Vet Manual — και γύρω της υπηρεσίες για κάλυψη ασφαλιστηρίου, μακροζωία και ιατρική αναφορά. Συμπληρώνει, δεν αντικαθιστά τον κτηνίατρο." if el
       else "A structured symptom assessment with MSD Vet Manual references — with services around it for insurance coverage, longevity and the medical report. It complements your vet, never replaces them."}</p>
 </div><div class="art">{_art.scene("nurse", "dog")}</div></div>"""
@@ -471,12 +471,12 @@ def landing_parts(lang: str) -> dict:
 
     if el:
         services = "".join([
-            svc("nurse", False, True, "ΚΥΡΙΑ ΥΠΗΡΕΣΙΑ", "Pets’health — εκτίμηση συμπτωμάτων",
-                "Ο ιδιοκτήτης περιγράφει τι βλέπει· η Pets’health ρωτά μία ερώτηση τη φορά και ετοιμάζει δομημένη σύνοψη για τον κτηνίατρο.",
+            svc("nurse", False, True, "ΚΥΡΙΑ ΥΠΗΡΕΣΙΑ", "petsaihealth — εκτίμηση συμπτωμάτων",
+                "Ο ιδιοκτήτης περιγράφει τι βλέπει· η petsaihealth ρωτά μία ερώτηση τη φορά και ετοιμάζει δομημένη σύνοψη για τον κτηνίατρο.",
                 "Στο σπίτι δεν ξέρεις αν ένα σύμπτωμα θέλει αναμονή ή επείγον. Στο ιατρείο, ο κτηνίατρος έχει λίγα λεπτά και ένα ασαφές ιστορικό.",
                 ["Φτιάχνεις το προφίλ του κατοικιδίου: είδος, ηλικία, βάρος, φάρμακα.",
                  "Περιγράφεις με λόγια, με φωνή ή με γρήγορες επιλογές. Προαιρετικά προσθέτεις φωτογραφία, ζωτικά ή εξετάσεις.",
-                 "Η Pets’health ρωτά μία ερώτηση τη φορά· ο έλεγχος επείγοντος είναι πάντα ενεργός.",
+                 "Η petsaihealth ρωτά μία ερώτηση τη φορά· ο έλεγχος επείγοντος είναι πάντα ενεργός.",
                  "Παίρνεις αξιολόγηση με παραπομπές MSD και οδηγία για το επόμενο βήμα."],
                 "Δεν είναι διάγνωση. Σε επείγουσες καταστάσεις επικοινώνησε αμέσως με κτηνίατρο."),
             svc("shield", True, False, "ΑΣΦΑΛΙΣΤΙΚΗ ΚΑΛΥΨΗ", "Έλεγχος κάλυψης ασφαλιστηρίου",
@@ -498,7 +498,7 @@ def landing_parts(lang: str) -> dict:
             svc("report", True, False, "ΙΑΤΡΙΚΗ ΑΝΑΦΟΡΑ", "Αναφορά για τον κτηνίατρο",
                 "Η συζήτηση, οι μετρήσεις και οι εξετάσεις γίνονται ένα καθαρό έγγραφο για το ιατρείο.",
                 "Στο ιατρείο θυμάσαι τα μισά και οι εξετάσεις είναι σκόρπιες σε φωτογραφίες και PDF.",
-                ["Ολοκληρώνεις τη συζήτηση με την Pets’health.",
+                ["Ολοκληρώνεις τη συζήτηση με την petsaihealth.",
                  "Συγκεντρώνονται προφίλ, ζωτικά, φωτογραφίες και εξετάσεις.",
                  "Επιλέγεις γλώσσα για την αναφορά.",
                  "Την κατεβάζεις ή την τυπώνεις και την παίρνεις μαζί σου."]),
@@ -506,15 +506,15 @@ def landing_parts(lang: str) -> dict:
         more_t = "ΚΑΙ ΑΚΟΜΑ"
         more = [("breath", "Ζωτικά & αναπνοές", "Κάμερα ή με το χέρι"), ("photo", "Φωτογραφία", "Μάτια, δέρμα, ούλα"),
                 ("labs", "Εξετάσεις", "PDF ή φωτογραφία"), ("diary", "Ημερολόγιο", "Συμπτώματα στο χρόνο"), ("vets", "Κτηνίατρος", "Κοντινός & επείγων")]
-        foot = "Η Pets’health δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
+        foot = "Η petsaihealth δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
     else:
         services = "".join([
-            svc("nurse", False, True, "MAIN SERVICE", "Pets’health — symptom assessment",
-                "The owner describes what they see; Pets’health asks one question at a time and prepares a structured summary for the vet.",
+            svc("nurse", False, True, "MAIN SERVICE", "petsaihealth — symptom assessment",
+                "The owner describes what they see; petsaihealth asks one question at a time and prepares a structured summary for the vet.",
                 "At home you can't tell whether a symptom can wait or is an emergency. At the clinic the vet has a few minutes and a vague history.",
                 ["Create your pet's profile: species, age, weight, medication.",
                  "Describe it in words, by voice or with quick picks. Optionally add a photo, vitals or lab results.",
-                 "Pets’health asks one question at a time; the emergency check is always on.",
+                 "petsaihealth asks one question at a time; the emergency check is always on.",
                  "You get an assessment with MSD references and a next step."],
                 "Not a diagnosis. In an emergency contact a vet immediately."),
             svc("shield", True, False, "INSURANCE COVERAGE", "Policy coverage check",
@@ -536,7 +536,7 @@ def landing_parts(lang: str) -> dict:
             svc("report", True, False, "MEDICAL REPORT", "Report for the vet",
                 "The chat, the measurements and the lab results become one clean document for the clinic.",
                 "At the clinic you forget half of it, and the tests are scattered across photos and PDFs.",
-                ["Finish the chat with Pets’health.",
+                ["Finish the chat with petsaihealth.",
                  "Profile, vitals, photos and lab results are gathered.",
                  "Choose the report language.",
                  "Download or print it and take it with you."]),
@@ -544,7 +544,7 @@ def landing_parts(lang: str) -> dict:
         more_t = "AND MORE"
         more = [("breath", "Vitals & breathing", "Camera or by hand"), ("photo", "Photo check", "Eyes, skin, gums"),
                 ("labs", "Lab results", "PDF or photo"), ("diary", "Symptom diary", "Over time"), ("vets", "Find a vet", "Nearby & emergency")]
-        foot = "Pets’health does not provide veterinary diagnosis and does not replace your vet."
+        foot = "petsaihealth does not provide veterinary diagnosis and does not replace your vet."
     more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
                  "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
     return {"hero": hero, "services": services, "more": more_html, "foot": foot}

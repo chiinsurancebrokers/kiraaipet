@@ -1,5 +1,5 @@
 """
-petify_art.py — original flat illustrations for the Pets’health redesign.
+petify_art.py — original flat illustrations for the petsaihealth redesign.
 
 Every drawing here is made from simple shapes for this project (no third-party
 artwork, no known characters). Palette follows petify_ui: royal blue, orange,
