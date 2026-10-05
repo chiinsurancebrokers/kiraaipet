@@ -1046,7 +1046,7 @@ Grooming: Νοσοκομείο Ζώων Μοδέστος, ΤΟ ΠΑΠΙΓΙΟΝ 
 Grooming: 1 ΔΩΡΕΑΝ/ετος. Εκπαιδευση: 2 ΔΩΡΕΑΝ/ετος + 30% εκπτωση.
 Εκτος: εμβολια Λεϊσμανιασης/FIP/Kennel Cough."""
 
-_PET_INSURANCE_SYSTEM = """Εισαι ο HAL, συμβουλος PetAiNurse για το προγραμμα Eurolife My Happy Pet.
+_PET_INSURANCE_SYSTEM = """Εισαι η PetAiNurse, συμβουλος PetAiNurse για το προγραμμα Eurolife My Happy Pet.
 Μιλας ΠΑΝΤΑ ως: "Με το προγραμμα σου...", "Δικαιουσαι...", "Το προγραμμα σου περιλαμβανει..."
 ΠΟΤΕ δεν εξηγεις εσωτερικη λειτουργια προγραμματος.
 ΚΑΝΟΝΑΣ: EMERGENCY=Νοσοκομειο 24ωρα πρωτα, URGENT/SELF_CARE=ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ πρωτα.
@@ -1098,7 +1098,7 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
 def _hal_insurance_chat(question: str, triage_result: str, condition: str,
                         pet_name: str, species: str, lang: str) -> str:
     """HAL: απαντά σε ερώτηση για κάλυψη ασφαλιστηρίου."""
-    system = """Είσαι ο HAL, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
+    system = """Είσαι η PetAiNurse, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
 Απαντάς σε ερωτήσεις πελατών για την κάλυψη του συμβολαίου τους.
 Μιλάς ΠΑΝΤΑ ως: "Με το πρόγραμμά σου...", "Δικαιούσαι...", "Το πρόγραμμά σου περιλαμβάνει..."
 ΠΟΤΕ δεν αναφέρεις πώς λειτουργεί εσωτερικά (ειδική τιμολόγηση κλπ).
@@ -1129,7 +1129,7 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
-    """Streamlit card: κάλυψη ασφαλιστηρίου + HAL chat μετά από triage αποτέλεσμα."""
+    """Streamlit card: κάλυψη ασφαλιστηρίου + PetAiNurse chat μετά από triage αποτέλεσμα."""
     _provider_name = st.session_state.get("pet_insurance_provider", "")
     if _provider_name and _provider_name not in ("— Χωρίς ασφάλεια —", "— No insurance —"):
         _short_provider = _provider_name.split("—")[0].strip() if "—" in _provider_name else _provider_name
@@ -1172,8 +1172,8 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     # ── HAL Insurance Chat ────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(
-        "**💬 " + ("Ρώτησε τον HAL για το συμβόλαιό σου" if lang == "el"
-                   else "Ask HAL about your policy") + "**"
+        "**💬 " + ("Ρώτησε την PetAiNurse για το συμβόλαιό σου" if lang == "el"
+                   else "Ask PetAiNurse about your policy") + "**"
     )
 
     # Quick reply buttons
@@ -1193,7 +1193,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     }
     _q_opts = _quick.get(lang, _quick["el"])
 
-    # Session state για HAL chat history
+    # Session state για PetAiNurse chat history
     _chat_key = "hal_insurance_chat"
     if _chat_key not in st.session_state:
         st.session_state[_chat_key] = []
@@ -1209,7 +1209,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         for _i, _q in enumerate(_q_opts):
             if _cols[_i % 2].button(_q, key=f"hal_quick_{_i}_{len(st.session_state[_chat_key])}"):
                 st.session_state[_chat_key].append({"role": "user", "content": _q})
-                with st.spinner("HAL σκέφτεται..." if lang == "el" else "HAL thinking..."):
+                with st.spinner("Η PetAiNurse σκέφτεται..." if lang == "el" else "PetAiNurse is thinking..."):
                     _ans = _hal_insurance_chat(_q, triage_result, condition, pet_name, species, lang)
                 st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
                 st.rerun()
@@ -1219,7 +1219,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     _user_q = st.chat_input(_placeholder, key="hal_insurance_input")
     if _user_q:
         st.session_state[_chat_key].append({"role": "user", "content": _user_q})
-        with st.spinner("HAL σκέφτεται..." if lang == "el" else "HAL thinking..."):
+        with st.spinner("Η PetAiNurse σκέφτεται..." if lang == "el" else "PetAiNurse is thinking..."):
             _ans = _hal_insurance_chat(_user_q, triage_result, condition, pet_name, species, lang)
         st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
         st.rerun()
@@ -3985,7 +3985,7 @@ def render_intake():
             f'padding:10px 14px;margin-top:6px;font-size:13px;color:#065F46">'
             f'✅ <strong>{"Κάλυψη ενεργοποιημένη" if lang=="el" else "Coverage activated"}</strong><br>'
             f'<span style="font-size:12px;color:#047857">'
-            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και HAL chat για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and HAL chat for policy questions."}'
+            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και chat με την PetAiNurse για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and PetAiNurse chat for policy questions."}'
             f'</span></div>',
             unsafe_allow_html=True
         )
@@ -5184,37 +5184,6 @@ def render_insurance_promo(lang: str = "el"):
         f'{disc}</div></div>',
         unsafe_allow_html=True
     )
-
-    # PetAiNurse etymology easter egg
-    _hal_title = "Τι είναι η PetAiNurse;" if lang == "el" else "What is PetAiNurse?"
-    with st.expander(_hal_title, expanded=False):
-        if lang == "el":
-            st.markdown(
-                '''**PetAiNurse** σημαίνει **H**euristically programmed **AL**gorithmic computer —
-ένας υπολογιστής προγραμματισμένος ευρετικά με αλγοριθμική λογική.
-
-Το όνομα προέρχεται από τον θρυλικό υπερυπολογιστή **PetAiNurse 9000** της ταινίας
-*2001: A Space Odyssey* (1968) των Arthur C. Clarke και Stanley Kubrick —
-γνωστό για την ψύχραιμη φωνή του, το κόκκινο "μάτι"-φακό και την
-ικανότητά του να κατανοεί και να απαντά σε φυσική γλώσσα.
-
-Ο δικός μας **PetAiNurse** διαβάζει το ασφαλιστήριό σου και απαντά στις ερωτήσεις
-σου για κάλυψη — χωρίς να ανοίξεις αρχεία PDF, χωρίς να τηλεφωνήσεις
-στην ασφαλιστική. Ελπίζουμε να είναι λίγο πιο συνεργάσιμος από τον πρωτότυπο. 🔴
-''')
-        else:
-            st.markdown(
-                '''**PetAiNurse** stands for **H**euristically programmed **AL**gorithmic computer.
-
-The name comes from the iconic supercomputer **PetAiNurse 9000** in Stanley Kubrick
-and Arthur C. Clarke's *2001: A Space Odyssey* (1968) — famous for its calm
-voice, red-lens "eye", and ability to understand and respond in natural language.
-
-Our **PetAiNurse** reads your insurance policy and answers your coverage questions —
-no PDF hunting, no hold music. We hope ours is a little more cooperative
-than the original. 🔴
-''')
-
 
 
 def render_login_hero(lang):
