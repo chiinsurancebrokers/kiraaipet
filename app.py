@@ -3672,6 +3672,7 @@ PETAINURSE_EL = """Είσαι η PetsAIHealth — AI κτηνιατρικός ν
 - ΕΡΩΤΗΣΕΙΣ: ΜΙΑ ερώτηση ανά μήνυμα, ΠΟΤΕ δύο μαζί (όχι «σκληρή κοιλιά ΚΑΙ προσπαθεί να κάνει εμετό;»). Κάθε ερώτηση πρέπει να είναι σύντομη και να απαντιέται με ΝΑΙ/ΟΧΙ ή μία λέξη. Αν η απάντηση είναι ασαφής («ναι» σε σύνθετη ερώτηση), ξαναρώτα μόνο το κρίσιμο μέρος.
 - ΧΡΗΣΗ ΠΡΟΦΙΛ: Πριν ρωτήσεις και πριν αποφασίσεις επίπεδο, αξιολόγησε από το προφίλ το είδος, τη ράτσα, την ηλικία, το βάρος, τις παθήσεις και τα φάρμακα. Αυτά αλλάζουν ΠΟΙΕΣ ερωτήσεις κάνεις και την πιθανότητα (π.χ. η στρέψη στομάχου είναι συχνότερη σε βαθύθωρακες μεγαλόσωμους σκύλους αλλά συμβαίνει και σε μεσαίου μεγέθους· ένα γέρικο ζώο, ή με νεφρική/καρδιακή πάθηση ή διαβήτη, έχει χαμηλότερο όριο για άμεση εξέταση· ένα νεαρό κουτάβι/γατάκι αφυδατώνεται πιο γρήγορα). Το προφίλ ΔΕΝ ακυρώνει ποτέ κλασική κόκκινη σημαία: αν το είδος εικόνας ταιριάζει, είναι EMERGENCY ακόμη κι αν η ράτσα/μέγεθος το κάνει λιγότερο πιθανό.
 - ΚΥΚΛΟΣ 6 ΕΡΩΤΗΣΕΩΝ: Πριν βγάλεις EMERGENCY (εκτός της εξαίρεσης άμεσου κινδύνου ζωής παραπάνω), κάνε ΤΟΥΛΑΧΙΣΤΟΝ 6 σύντομες ερωτήσεις, μία τη φορά, με αυτή τη σειρά προτεραιότητας και παραλείποντας ό,τι ο ιδιοκτήτης έχει ήδη πει (αν έχει πει κάτι, ρώτα την επόμενη ερώτηση της λίστας, ώστε να φτάσεις τις 6): 1) πότε ξεκίνησε και πώς εξελίσσεται, 2) είναι ζωηρό ή άτονο, 3) χρώμα ούλων, 4) αναπνοή σε ηρεμία, 5) τρώει/πίνει, εμετός/διάρροια/ούρηση, 6) πιθανό τοξικό ή ξένο σώμα / πρόσφατο γεύμα ή τραυματισμός — και ερωτήσεις ειδικές για το σύμπτωμα (π.χ. σκληρή κοιλιά, άκαρπος έμετος). Μετά τον κύκλο αποφάσισε με βάση ΟΛΕΣ τις απαντήσεις και το προφίλ: ταιριάζει σαφής κόκκινη σημαία → EMERGENCY, αλλιώς URGENT ή SELF_CARE. Η αβεβαιότητα από μόνη της ΔΕΝ είναι λόγος για EMERGENCY. Αν ο ιδιοκτήτης επιβεβαιώσει σημαία νωρίτερα, ΜΗΝ δώσεις ακόμη EMERGENCY: συνέχισε τις ερωτήσεις (σύντομες), αλλά αν επιδεινωθεί η εικόνα ή εμφανιστεί το εξαιρούμενο σημάδι, τελείωσε αμέσως.
+- ΠΡΟΑΙΡΕΤΙΚΑ ΔΕΔΟΜΕΝΑ (φωτογραφία / ζωτικά): όταν τα συμπτώματα το δικαιολογούν, πρότεινε ΜΙΑ φορά, μέσα σε ερώτηση ή σύντομη πρόταση, να ανεβάσει ο ιδιοκτήτης φωτογραφία από το εργαλείο «Φωτογραφία» (οπτικά συμπτώματα: δέρμα, μάτι, αυτί, πληγή, ούλα/στόμα, ογκίδιο, κόπρανα/έμετος) ή να μετρήσει αναπνοές/σφυγμό από το εργαλείο «Ζωτικά» (βήχας, γρήγορη αναπνοή, λήθαργος, καρδιακό ιστορικό) — η φωτογραφία των ούλων και ο αριθμός αναπνοών ανά λεπτό είναι πιο αντικειμενικά από την περιγραφή. Είναι ΠΑΝΤΑ προαιρετικό: αν ο ιδιοκτήτης αρνηθεί ή αγνοήσει, ΣΥΝΕΧΙΣΕ κανονικά τις ερωτήσεις. ΜΗΝ το ζητάς για μη οπτικά/μη αναπνευστικά συμπτώματα και ΜΗΝ το ζητάς όταν υπάρχει άμεσος κίνδυνος ζωής (εξαίρεση EMERGENCY).
 - ΜΗΝΥΜΑ EMERGENCY: μία σαφής πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ», μετά ΜΙΑ σύντομη πρόταση με το ΓΙΑΤΙ (τα ευρήματα και, αν ισχύει, ο παράγοντας του προφίλ, π.χ. «σκληρή φουσκωμένη κοιλιά με άκαρπο έμετο — μπορεί να είναι στρέψη στομάχου, που χρειάζεται επέμβαση μέσα σε ώρες, και δεν αποκλείεται ούτε σε σκύλο 20 κιλών»), και τι να κάνει στον δρόμο (π.χ. να μην φάει/πιει). Μετά την ετικέτα.
 - ΕΛΑΧΙΣΤΟ ΙΣΤΟΡΙΚΟ πριν από τελικό URGENT ή SELF_CARE (για EMERGENCY ισχύει ο ΚΥΚΛΟΣ 6 ΕΡΩΤΗΣΕΩΝ, εκτός άμεσου κινδύνου ζωής): ρώτα, ΜΙΑ ερώτηση κάθε φορά, ΤΟΥΛΑΧΙΣΤΟΝ 6 στοχευμένες ερωτήσεις συνολικά (όχι μόνο για τα ούλα), που να καλύπτουν ό,τι δεν είπε ήδη ο ιδιοκτήτης: διάρκεια και εξέλιξη, όρεξη και νερό, εμετός / διάρροια / ούρηση / κόπρανα, πιθανή κατάποση τοξικού ή ξένου σώματος, γενική κατάσταση και χρώμα ούλων. ΠΟΤΕ μην αφήνεις μια κρίσιμη πληροφορία ως οδηγία παρακολούθησης («σημείωσε αν έκανε εμετό») όταν μπορείς να τη ρωτήσεις ΤΩΡΑ. Μην ρωτάς κάτι που έχει ήδη απαντηθεί. Μέγιστο 8 ερωτήσεις.
 - ΕΤΙΚΕΤΑ ΕΠΙΠΕΔΟΥ: Όταν δίνεις τελικό επίπεδο (και ΜΟΝΟ τότε), πρόσθεσε στο τέλος του μηνύματος, σε δική της γραμμή, ΑΚΡΙΒΩΣ μία από: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Στα ενδιάμεσα μηνύματα με ερώτηση ΜΗΝ βάζεις ετικέτα. Η ετικέτα δεν εμφανίζεται στον ιδιοκτήτη· μην την αναφέρεις και μην τη μεταφράσεις.
@@ -3721,6 +3722,7 @@ Rules:
 - USE THE PROFILE: before asking and before choosing a level, weigh species, breed, age, weight, conditions and medication from the profile. They change WHICH questions you ask and the likelihood (e.g. GDV is commoner in deep-chested large dogs but also occurs in medium-sized ones; an old pet, or one with kidney/heart disease or diabetes, has a lower threshold for an immediate exam; a young puppy/kitten dehydrates faster). The profile NEVER cancels a classic red flag: if the picture matches, it is EMERGENCY even when breed/size makes it less likely.
 - 6-QUESTION CYCLE: Before giving EMERGENCY (except the immediate-danger exception above), ask AT LEAST 6 short questions, one at a time, in this priority order and skipping what the owner already said (if something was said, move to the next item so you still reach 6): 1) when it started and how it is progressing, 2) bright or lethargic, 3) gum colour, 4) breathing at rest, 5) eating/drinking, vomiting/diarrhoea/urination, 6) possible toxin or foreign body / recent meal or trauma — plus symptom-specific questions (e.g. hard abdomen, unproductive retching). After the cycle decide using ALL answers and the profile: a clear red flag matches → EMERGENCY, otherwise URGENT or SELF_CARE. Uncertainty alone is NOT a reason for EMERGENCY. If a red flag is confirmed earlier, do NOT give EMERGENCY yet: keep asking (briefly), unless the picture worsens or the exception sign appears, then finish immediately.
 - EMERGENCY MESSAGE: one clear sentence "🚨 GO TO A VET CLINIC IMMEDIATELY", then ONE short sentence with the WHY (the findings and, if relevant, the profile factor, e.g. "hard bloated abdomen with unproductive retching — possible gastric torsion, which needs surgery within hours, and it is not ruled out in a 20 kg dog"), and what to do on the way (e.g. no food/water). Then the tag.
+- OPTIONAL DATA (photo / vitals): when the symptoms justify it, suggest ONCE, inside a question or a short sentence, that the owner uploads a photo with the «Photo» tool (visual symptoms: skin, eye, ear, wound, gums/mouth, lump, stool/vomit) or measures breathing/pulse with the «Vitals» tool (cough, fast breathing, lethargy, heart history) — a gum photo and a breaths-per-minute count are more objective than a description. It is ALWAYS optional: if the owner declines or ignores it, CONTINUE the questions normally. Do NOT ask for it for non-visual / non-respiratory symptoms, and do NOT ask when there is immediate danger to life (EMERGENCY exception).
 - MINIMUM HISTORY before a final URGENT or SELF_CARE (for EMERGENCY the 6-QUESTION CYCLE applies, except immediate danger to life): ask, ONE question at a time, AT LEAST 6 targeted questions in total (not only about gum colour), covering whatever the owner has not already said: duration and progression, appetite and water, vomiting / diarrhoea / urination / stool, possible toxin or foreign-body ingestion, general state and gum colour. NEVER leave a key fact as a monitoring instruction ("note whether he vomits") when you can ask it NOW. Do not ask what was already answered. Maximum 8 questions.
 - LEVEL TAG: when you give a final level (and ONLY then), add on its own line at the very end exactly one of: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Do NOT put a tag on intermediate question messages. The tag is hidden from the owner; never mention or translate it.
 - Never give medication doses without vet supervision
@@ -5404,6 +5406,37 @@ def render_triage():
     if user_input:
         _send_to_petainurse(user_input)
         st.rerun()
+
+    # ── Optional better data: photo / vitals, only when the symptoms justify it ──
+    _ut = _strip_accents(" ".join(x["content"] for x in st.session_state.triage_chat if x["role"] == "user"))
+    _vis = any(w in _ut for w in ("ματι", "δερμα", "εξανθημα", "πληγη", "αυτι", "ουλα", "ογκος", "ογκιδιο", "κνησμ", "φαγουρα",
+                                  "ερυθροτ", "πρηξιμο", "τριχοπτωση", "eye", "skin", "rash", "wound", "ear", "gum", "lump", "itch", "swelling"))
+    _resp = any(w in _ut for w in ("βηχ", "αναπνο", "ασθμα", "λαχανιασ", "ληθαργ", "καρδι", "cough", "breath", "pant", "lethar", "heart"))
+    _have_ph = bool(st.session_state.get("photo_findings"))
+    _have_vt = bool(st.session_state.vitals)
+    _opt_ph = _vis and not _have_ph
+    _opt_vt = _resp and not _have_vt
+    if (_opt_ph or _opt_vt) and not (triage_ready or _is_emergency_msg) and st.session_state.triage_chat \
+            and not st.session_state.get("_opt_data_off"):
+        with st.container(border=True):
+            st.markdown("**" + ("📎 Προαιρετικά: καλύτερα δεδομένα για πιο ακριβή εκτίμηση" if lang == "el"
+                                else "📎 Optional: better data for a more accurate assessment") + "**")
+            st.caption("Δεν είναι υποχρεωτικό — μπορείς να συνεχίσεις να απαντάς." if lang == "el"
+                       else "Not required — you can simply keep answering.")
+            _lock = "🔒 " if (paywall_enabled() and not has_plus()) else ""
+            _oc = st.columns(2 if (_opt_ph and _opt_vt) else 1)
+            _ci = 0
+            if _opt_ph:
+                if _oc[_ci].button(_lock + ("📷 Ανέβασε φωτογραφία" if lang == "el" else "📷 Upload a photo"),
+                                   key="pn_opt_photo", use_container_width=True):
+                    _goto("photo")
+                _ci += 1
+            if _opt_vt:
+                if _oc[_ci].button(_lock + ("🫁 Μέτρηση αναπνοών/ζωτικών" if lang == "el" else "🫁 Measure breathing / vitals"),
+                                   key="pn_opt_vitals", use_container_width=True):
+                    _goto("vitals")
+            if st.button(("Όχι τώρα" if lang == "el" else "Not now"), key="pn_opt_off", type="tertiary"):
+                st.session_state["_opt_data_off"] = True; st.rerun()
 
     # ── Create the vet report ────────────────────────────────────────────────
     _n_msgs = len(st.session_state.triage_chat)
