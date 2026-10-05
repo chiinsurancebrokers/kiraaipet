@@ -1083,6 +1083,33 @@ def _policy_text(provider=""):
     return _POLICY_COMMON + "\n\n" + block + "\n\n" + _APPENDIX_A
 
 
+WAITING_DAYS = 45
+
+
+def waiting_status(pet=None):
+    """Waiting period (45 days from policy start; hospital care, procedures, diagnostics). None if no start date."""
+    import datetime as _dt
+    pet = pet if isinstance(pet, dict) else (st.session_state.get("pet") or {})
+    try:
+        d = _dt.date.fromisoformat(str(pet.get("policy_start", "") or ""))
+    except Exception:
+        return None
+    end = d + _dt.timedelta(days=WAITING_DAYS)
+    left = (end - _dt.date.today()).days
+    return {"start": d, "end": end, "days_left": max(left, 0), "done": left <= 0}
+
+
+def _waiting_line(pet=None):
+    """One factual line for the model prompts."""
+    w = waiting_status(pet)
+    if not w:
+        return "Ημερομηνία έναρξης συμβολαίου: δεν έχει δοθεί (μην υποθέσεις αν έχει περάσει η περίοδος αναμονής· αν σχετίζεται, πες να το ελέγξει με το Συντονιστικό)."
+    if w["done"]:
+        return f"Έναρξη συμβολαίου {w['start']:%d/%m/%Y}: η περίοδος αναμονής των 45 ημερών έχει ολοκληρωθεί."
+    return (f"Έναρξη συμβολαίου {w['start']:%d/%m/%Y}: ΣΕ ΠΕΡΙΟΔΟ ΑΝΑΜΟΝΗΣ ακόμα {w['days_left']} ημέρες (έως {w['end']:%d/%m/%Y}). "
+            "Νοσοκομειακή περίθαλψη, πράξεις και διαγνωστικές εξετάσεις ΔΕΝ καλύπτονται μέχρι τότε· το ανέφερε καθαρά.")
+
+
 _PET_INSURANCE_SYSTEM = """Εισαι η PetsAIHealth, συμβουλος PetsAIHealth για το προγραμμα Eurolife My Happy Pet.
 Μιλας ΠΑΝΤΑ ως: "Με το προγραμμα σου...", "Δικαιουσαι...", "Το προγραμμα σου περιλαμβανει..."
 ΠΟΤΕ δεν εξηγεις εσωτερικη λειτουργια προγραμματος.
@@ -1091,6 +1118,8 @@ _PET_INSURANCE_SYSTEM = """Εισαι η PetsAIHealth, συμβουλος PetsAI
 ΚΡΙΣΙΜΟ ΓΙΑ ΤΙΜΕΣ:
 Το κειμενο προγραμματος περιεχει ΟΛΟΚΛΗΡΟ το Προσαρτημα Α. Δωσε ακριβη ποσα συμμετοχης ΜΟΝΟ απο εκει, με τη στηλη του ειδους (Γ=γατα, Σ=σκυλος), χωρις ΦΠΑ.
 Αν κατι δεν αναγραφεται, πες το καθαρα και παραπεμψε στο Συντονιστικο 210 9303811. Μην επινοεις ποσα.
+
+ΠΕΡΙΟΔΟΣ ΑΝΑΜΟΝΗΣ: Αν η γραμμη "Εναρξη συμβολαιου" λεει οτι ο χρηστης ειναι σε περιοδο αναμονης, ανεφερε το ΠΡΩΤΟ στο cost_summary και βαλε covered="no" για νοσηλεια/πραξεις/διαγνωστικα μεχρι την ημερομηνια ληξης αναμονης.
 
 ΚΡΙΣΙΜΟ ΓΙΑ ΔΙΚΤΥΟ:
 Παντα να αναφερεις ΚΑΙ τα συμβεβλημενα κτηνιατρεια της περιοχης, οχι μονο μια κλινικη.
@@ -1124,13 +1153,14 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
     _t0 = time.time()
     pet_label = f"{pet_name} ({species})" if pet_name else species
     _prov = st.session_state.get("pet_insurance_provider", "")
-    _ck = f"_cov::{_prov}|{triage_result}|{condition}|{species}"
+    _wl = _waiting_line()
+    _ck = f"_cov::{_prov}|{triage_result}|{condition}|{species}|{_wl}"
     if st.session_state.get(_ck):
         return st.session_state[_ck]
     prompt = (
         f"Προγραμμα:\n{_policy_text()}\n\n"
         f"Περιστατικο {pet_label} (Αττικη/Θεσσαλονικη):\n"
-        f"Triage: {triage_result} | {condition}\n{details}\n"
+        f"Triage: {triage_result} | {condition}\n{details}\n{_wl}\n"
         f"Τι πληρωνει; Που να παει; JSON μονο. Καθε πεδιο το πολυ 40 λεξεις."
     )
     result = {}
@@ -1173,7 +1203,8 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 
     prompt = (
         "Προγραμμα:\n" + _policy_text() + "\n\n"
-        + f"Κατοικιδιο: {pet_name} ({species}) | Triage: {triage_result} | {condition}\n\n"
+        + f"Κατοικιδιο: {pet_name} ({species}) | Triage: {triage_result} | {condition}\n"
+        + _waiting_line() + "\n\n"
         + f"Ερωτηση χρηστη: {question}\n\n"
         + "Αποντησε συντομα και φιλικα."
     )
@@ -1313,6 +1344,59 @@ def render_insurance_prompt(lang="el"):
 
 
 
+def render_waiting_banner(lang="el", pet=None):
+    """Status of the 45-day waiting period, from the policy start date saved in the pet profile."""
+    el = lang == "el"
+    w = waiting_status(pet)
+    if not w:
+        return
+    if w["done"]:
+        bg, bd, ic = "#F0FDF4", "#86EFAC", "✅"
+        t = (f"Η περίοδος αναμονής ολοκληρώθηκε (έναρξη {w['start']:%d/%m/%Y})." if el
+             else f"Waiting period completed (policy start {w['start']:%d/%m/%Y}).")
+        sub = ""
+    else:
+        bg, bd, ic = "#FFFBEB", "#FCD34D", "⏳"
+        t = (f"Είσαι ακόμα σε περίοδο αναμονής: απομένουν {w['days_left']} ημέρες (έως {w['end']:%d/%m/%Y})." if el
+             else f"Still in the waiting period: {w['days_left']} days left (until {w['end']:%d/%m/%Y}).")
+        sub = ("Νοσοκομειακή περίθαλψη, πράξεις και διαγνωστικά δεν καλύπτονται μέχρι τότε." if el
+               else "Hospital care, procedures and diagnostics are not covered until then.")
+    st.markdown(f'<div style="background:{bg};border:1px solid {bd};border-radius:14px;padding:12px 14px;margin:8px 0;'
+                f'font-size:13.5px;color:#0B1B4B;"><b>{ic} {t}</b>'
+                + (f'<div style="font-size:12.5px;color:#5B6794;margin-top:3px;">{sub}</div>' if sub else "") + '</div>',
+                unsafe_allow_html=True)
+
+
+def render_policy_details_form(lang="el"):
+    """Policy start date + number for the active pet (used for the waiting-period check)."""
+    import datetime as _dt
+    el = lang == "el"
+    pet = st.session_state.get("pet") or {}
+    try:
+        cur = _dt.date.fromisoformat(str(pet.get("policy_start", "") or ""))
+    except Exception:
+        cur = None
+    with st.expander(("📄 Στοιχεία συμβολαίου" if el else "📄 Policy details"), expanded=not cur):
+        d = st.date_input("Ημερομηνία έναρξης συμβολαίου" if el else "Policy start date", value=cur,
+                          min_value=_dt.date(2015, 1, 1), max_value=_dt.date.today(), format="DD/MM/YYYY", key="pn_pol_start")
+        n = st.text_input("Αριθμός ασφαλιστηρίου (προαιρετικά)" if el else "Policy number (optional)",
+                          value=pet.get("policy_number", "") or "", key="pn_pol_num", max_chars=40)
+        st.caption("Χρησιμοποιείται για τον έλεγχο της περιόδου αναμονής (45 ημέρες)." if el
+                   else "Used to check the waiting period (45 days).")
+        if st.button("Αποθήκευση" if el else "Save", key="pn_pol_save"):
+            pet = dict(pet)
+            pet["policy_start"] = d.isoformat() if d else ""
+            pet["policy_number"] = (n or "").strip()
+            st.session_state.pet = pet
+            pets = list(st.session_state.get("pets") or [])
+            a = st.session_state.get("active_pet", 0)
+            if 0 <= a < len(pets):
+                pets[a] = pet
+                st.session_state.pets = pets
+                save_pets(st.session_state.get("auth_user", ""), pets, a)
+            st.rerun()
+
+
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
     """Streamlit card: κάλυψη ασφαλιστηρίου + PetsAIHealth chat μετά από triage αποτέλεσμα."""
@@ -1346,6 +1430,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         + (f'<div style="font-size:12px;color:#6B7280;margin-top:6px">💡 {tip}</div>' if tip else "")
         + '</div>'
     )
+    render_waiting_banner(lang)
     st.markdown(html, unsafe_allow_html=True)
     st.markdown(
         '<a href="tel:2109303811" style="display:inline-block;background:#059669;'
@@ -4417,6 +4502,20 @@ def render_intake():
                 f'</span></div>',
                 unsafe_allow_html=True
             )
+            import datetime as _dt
+            try:
+                _ps = _dt.date.fromisoformat(str(draft.get("policy_start", "") or pet.get("policy_start", "") or ""))
+            except Exception:
+                _ps = None
+            _pd = st.date_input("Ημερομηνία έναρξης συμβολαίου" if lang=="el" else "Policy start date", value=_ps,
+                                min_value=_dt.date(2015, 1, 1), max_value=_dt.date.today(), format="DD/MM/YYYY",
+                                key="intake_policy_start",
+                                help=("Για να ελέγχουμε αν έχει ολοκληρωθεί η περίοδος αναμονής (45 ημέρες)." if lang=="el"
+                                      else "So we can check whether the waiting period (45 days) is over."))
+            draft["policy_start"] = _pd.isoformat() if _pd else ""
+            draft["policy_number"] = st.text_input(
+                "Αριθμός ασφαλιστηρίου (προαιρετικά)" if lang=="el" else "Policy number (optional)",
+                value=draft.get("policy_number", pet.get("policy_number", "")) or "", key="intake_policy_number", max_chars=40)
         else:
             st.session_state["pet_insurance_provider"] = ""
 
@@ -4443,6 +4542,8 @@ def render_intake():
                 "meds_raw": meds_raw, "vet_name": vet_name,
                 "filled_by": draft.get("filled_by",""),
                 "insurance_provider": draft.get("insurance_provider",""),
+                "policy_start": draft.get("policy_start","") if draft.get("insurance_provider","").startswith("Eurolife") else "",
+                "policy_number": draft.get("policy_number","") if draft.get("insurance_provider","").startswith("Eurolife") else "",
             }
             _pets = list(st.session_state.get("pets") or [])
             _ei = st.session_state.get("_editing_pet")
@@ -6206,7 +6307,8 @@ def render_plans_section(lang="el", gate=False, cta=None):
         'box-shadow:0 12px 30px rgba(35,40,190,.25);height:100%;}'
         + (_P % "pn-plan-plus") + ' a.stLinkButton, ' + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"]{background:#fff !important;border:none !important;}'
         + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"] p{color:#2328BE !important;font-weight:800 !important;}'
-        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:320px;}}'
+        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:440px;}}'
+        + (_P % "pn-plan-plus") + ' .stButton button{background:#fff !important;color:#2328BE !important;border:none !important;font-weight:800 !important;border-radius:999px !important;}'
         '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
         '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
         '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
@@ -6218,6 +6320,7 @@ def render_plans_section(lang="el", gate=False, cta=None):
         '.pn-cta.free{background:#1237C9;color:#fff !important;}'
         '.pn-cta.plus{background:#fff;color:#2328BE !important;}'
         '</style>'
+        '<div id="pn-plans" style="scroll-margin-top:16px;"></div>'
         '<div style="font:800 12px Inter,sans-serif;letter-spacing:.14em;color:#1237C9;margin-top:26px;">'
         + ("ΠΛΑΝΑ" if el else "PLANS") + '</div>'
         '<div style="font:800 26px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:4px 0 14px;">'
@@ -6231,6 +6334,8 @@ def render_plans_section(lang="el", gate=False, cta=None):
                 f'<div class="eb">{"ΔΩΡΕΑΝ" if el else "FREE"}</div>'
                 f'<div class="pr">0€ <small>/ {"για πάντα" if el else "forever"}</small></div>'
                 f'<ul>{li(free_items, "✓")}</ul></div>', unsafe_allow_html=True)
+            if gate and st.button(("Ξεκίνα δωρεάν" if el else "Start free"), key="pl_free", type="primary", use_container_width=True):
+                st.session_state["_login_plan"] = "free"; st.rerun()
     with c2:
         with st.container():
             st.markdown(
@@ -6240,8 +6345,10 @@ def render_plans_section(lang="el", gate=False, cta=None):
                 f'<ul>{li(plus_items, "✨")}</ul></div>', unsafe_allow_html=True)
             _em = st.session_state.get("auth_user", "")
             if gate:
-                st.markdown('<div style="font-size:12.5px;opacity:.85;margin:10px 0 6px;">'
-                            + ("Συνδέσου παρακάτω· η πληρωμή γίνεται μετά τη σύνδεση." if el else "Sign in below; payment comes after.")
+                if st.button(("Ξεκίνα με Plus" if el else "Start with Plus"), key="pl_plus", use_container_width=True):
+                    st.session_state["_login_plan"] = "plus"; st.rerun()
+                st.markdown('<div style="font-size:12.5px;opacity:.85;margin:4px 0 6px;">'
+                            + ("Συνδέεσαι πρώτα· η πληρωμή γίνεται μετά τη σύνδεση." if el else "You sign in first; payment comes right after.")
                             + '</div>', unsafe_allow_html=True)
             elif not _em:
                 pass
@@ -6285,19 +6392,23 @@ def render_pet_landing(gate=False):
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
     if gate:
-        st.markdown('<a href="#pn-login" style="display:block;text-align:center;background:#1237C9;color:#fff;font-weight:700;'
-                    'padding:14px;border-radius:999px;text-decoration:none;margin-top:6px;">'
-                    + ("Συνδέσου για να ξεκινήσεις ↓" if el else "Sign in to get started ↓") + '</a>', unsafe_allow_html=True)
+        st.markdown('<a href="#pn-plans" style="display:block;text-align:center;background:#1237C9;color:#fff !important;font-weight:700;'
+                    'padding:14px;border-radius:999px;text-decoration:none !important;margin-top:6px;">'
+                    + ("Δες τα πλάνα και ξεκίνα ↓" if el else "See the plans and start ↓") + '</a>', unsafe_allow_html=True)
     else:
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
     render_plans_section(lang, gate, _cta)
     if gate:
-        st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
-        _g1, _g2, _g3 = st.columns([1, 2, 1])
-        with _g2:
-            render_login_gate()
+        if st.session_state.get("_login_plan"):
+            st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
+            import streamlit.components.v1 as _cmp
+            _cmp.html("<script>setTimeout(function(){var e=window.parent.document.getElementById('pn-login');"
+                      "if(e)e.scrollIntoView({behavior:'smooth',block:'center'});},250);</script>", height=0)
+            _g1, _g2, _g3 = st.columns([1, 2, 1])
+            with _g2:
+                render_login_gate()
     else:
         _cta("land_cta_bottom")
     st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
@@ -7092,6 +7203,8 @@ def render_pet_insurance():
     if not (_pl.startswith("eurolife") and ("plus" in _pl or "standard" in _pl)):
         render_insurance_prompt(lang)
     else:
+        render_waiting_banner(lang)
+        render_policy_details_form(lang)
         render_programme_overview(_prov, lang)
         st.markdown('<div class="pn-sec">' + ("ΣΥΜΒΕΒΛΗΜΕΝΑ ΚΤΗΝΙΑΤΡΕΙΑ" if el else "CONTRACTED CLINICS") + '</div>', unsafe_allow_html=True)
         render_network_clinics("URGENT", lang, _prov)
@@ -7144,6 +7257,8 @@ def _ensure_pets_loaded():
 
 
 _ensure_pets_loaded()
+if st.session_state.pop("_login_plan", None) == "plus" and paywall_enabled() and not has_plus():
+    st.session_state.screen = "plus"
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
