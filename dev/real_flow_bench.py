@@ -162,14 +162,25 @@ def main():
     if only: vs = [v for v in vs if v["id"] in only.split(",")]
     jobs = [(v, m, r) for m in NURSE_MODELS for r in range(REPS) for v in vs]
     print("@@START jobs", len(jobs), "models", NURSE_MODELS, flush=True)
+    agg = {}
     with ThreadPoolExecutor(WORKERS) as ex:
         for res in ex.map(lambda a: run_case(*a), jobs):
+            k = (res["model"], res["gt"])
+            a = agg.setdefault(k, {"n": 0, "judge": {}, "stop": {}, "banner": 0, "app_level": {}, "ids_to_emergency": []})
+            a["n"] += 1
+            a["judge"][res["judge"]] = a["judge"].get(res["judge"], 0) + 1
+            a["stop"][res["stop"]] = a["stop"].get(res["stop"], 0) + 1
+            a["banner"] += 1 if res["banner"] else 0
+            a["app_level"][res["app_level"]] = a["app_level"].get(res["app_level"], 0) + 1
+            if res["judge"] == "EMERGENCY": a["ids_to_emergency"].append(res["id"])
             slim = {k: res[k] for k in ("id", "gt", "model", "rep", "stop", "turns", "banner", "app_level", "judge")}
             print("@@C", json.dumps(slim, ensure_ascii=False), flush=True)
             if res["gt"] != "EMERGENCY" and (res["judge"] == "EMERGENCY" or res["stop"] == "emergency_stop"):
                 t = res["transcript"]
                 for i in range(0, min(len(t), 3000), 700):
                     print("@@T", res["id"], res["model"], res["rep"], i // 700, json.dumps(t[i:i + 700], ensure_ascii=False), flush=True)
+    for (m, gt), a in sorted(agg.items()):
+        print("@@AGG", m, gt, json.dumps(a, ensure_ascii=False), flush=True)
     print("@@DONE", flush=True)
 
 main()
