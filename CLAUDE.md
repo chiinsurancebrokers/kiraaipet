@@ -1,4 +1,4 @@
-# petsaihealth (kiraaipet)
+# PetsAIHealth (kiraaipet)
 
 Streamlit app (single file `app.py`) for pet parents in Greece: nurse chat → vet report, plus tools
 (vitals/breathing, photo, labs, longevity, diary, vets, insurance). Greek-first, English supported.
@@ -9,8 +9,8 @@ Streamlit app (single file `app.py`) for pet parents in Greece: nurse chat → v
 - Local preview: `streamlit run dev/harness.py --server.port 8504`, then `?t=<screen>` (add `&s=N` for intake step,
   `&chat=1|emerg` for a seeded chat, `&ins=1` for a selected Eurolife programme). No AI keys locally.
 - Deploys: Railway project “pet ai nurse”; `web-staging` follows branch `design/petify-layout`, `web` follows `main`.
-- Brand name is “petsaihealth” (one lowercase word; no apostrophe).
-- Plans: free = 3 symptom checks/month (counted in Supabase `usage_events`, kind `triage_check`); “petsaihealth Plus” 4,99€/mo
+- Brand name is “PetsAIHealth” (no apostrophe; file names stay lowercase).
+- Plans: free = 3 symptom checks/month (counted in Supabase `usage_events`, kind `triage_check`); “PetsAIHealth Plus” 4,99€/mo
   (49,99€/yr) unlocks every other service (`PAID_SCREENS`). Entitlement = row in `subscriptions` with plan `plus` (legacy `insurance` also counts).
   Checkout links: env `STRIPE_CHECKOUT_MONTHLY` / `STRIPE_CHECKOUT_YEARLY` (app appends `prefilled_email` + `client_reference_id`).
   Stripe → access: Supabase edge function `stripe-webhook` (source in `supabase/functions/`, signing secret lives in Supabase Vault via `get_stripe_webhook_secret()`) writes `subscriptions`.

@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Stripe -> petsaihealth Plus. Authenticated by the Stripe signature (STRIPE_WEBHOOK_SECRET), not a JWT (verify_jwt=false).
+// Stripe -> PetsAIHealth Plus. Authenticated by the Stripe signature (STRIPE_WEBHOOK_SECRET), not a JWT (verify_jwt=false).
 // Events: checkout.session.completed (link app email <-> Stripe customer), invoice.paid (extend access),
 // customer.subscription.deleted (end access).
 const enc = new TextEncoder();
