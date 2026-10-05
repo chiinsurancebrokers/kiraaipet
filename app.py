@@ -1388,6 +1388,25 @@ _CJK_RANGES = _re_san.compile(
     "\uF900-\uFAFF\uFF00-\uFFEF\uAC00-\uD7AF]+"
 )
 
+# Unnatural Greek verb forms the model sometimes invents for symptoms -> natural phrasing.
+_GR_SYMPTOM_FIXES = [
+    (r"εμ[έε]τισε", "έκανε εμετό"), (r"εμ[έε]τισες", "έκανες εμετό"), (r"εμ[έε]τισα\b", "έκανα εμετό"),
+    (r"εμ[έε]τισαν", "έκαναν εμετό"), (r"εμετ[ίι]ζει", "κάνει εμετό"), (r"εμετ[ίι]ζεις", "κάνεις εμετό"),
+    (r"εμετ[ίι]ζω", "κάνω εμετό"), (r"εμετ[ίι]ζουν", "κάνουν εμετό"), (r"εμετο[ύυ]σε", "έκανε εμετό"),
+    (r"διαρροι[άα]σε", "είχε διάρροια"), (r"δι[άα]ρροιασε", "είχε διάρροια"),
+]
+
+
+def _fix_greek_symptom_verbs(text):
+    import re as _r
+    for pat, rep in _GR_SYMPTOM_FIXES:
+        def _sub(m, rep=rep):
+            return rep[0].upper() + rep[1:] if m.group(0)[:1].isupper() else rep
+        text = _r.sub(r"(?<![Α-Ωα-ωΆ-Ώά-ώ])" + pat + r"(?![Α-Ωα-ωΆ-Ώά-ώ])", _sub, text, flags=_r.IGNORECASE)
+    return text
+
+
+
 def sanitize_ai_text(text):
     """Remove non-Greek/Latin stray glyphs and clean up dangling markdown so the
     report never shows Chinese characters or a half-written blockquote header."""
@@ -1402,6 +1421,7 @@ def sanitize_ai_text(text):
     text = _re_san.sub(r"\bΠΑΓΑΙΝΕΤΕ\b", "ΠΗΓΑΙΝΕΤΕ", text)
     text = _re_san.sub(r"\bΠαγαίνετε\b", "Πηγαίνετε", text)
     text = _re_san.sub(r"\bπαγαίνετε\b", "πηγαίνετε", text)
+    text = _fix_greek_symptom_verbs(text)
     # 1c) tidy stray double-space left after stripping CJK, e.g. "腹水 (x)" -> " (x)"
     text = _re_san.sub(r"(?<=\S) {2,}\(", " (", text)
     # 2) remove a blockquote line that was cut off mid-sentence (no closing on
@@ -2727,6 +2747,11 @@ PETAINURSE_EL = """Είσαι η Pets’health — AI κτηνιατρικός �
 - Ζωτικές ενδείξεις: Ερμηνεία βάσει είδους ΚΑΙ ράτσας (π.χ. HR φυσιολογικό για γάτα ≠ σκύλο)
 - Φάρμακα: ΤΟΞΙΚΑ — ΠΑΝΤΑ προειδοποίηση (παρακεταμόλη/γάτες = ΘΑΝΑΤΗΦΟΡΟ)
 - Ελληνικό σύστημα: Παραπομπή σε επείγον κτηνιατρείο (διεύθυνση αν γνωρίζεις)
+
+ΕΛΛΗΝΙΚΑ (φυσική, σωστή γλώσσα, όχι μεταφρασμένη):
+- Ποτέ ρήματα που δεν υπάρχουν στα ελληνικά. ΜΗΝ γράφεις «εμέτισε», «εμετίζει», «διάρροιασε». Γράφε «έκανε εμετό», «κάνει εμετούς», «έχει διάρροια».
+- Χρησιμοποίησε απλές, καθημερινές εκφράσεις: «δεν τρώει», «δεν πίνει νερό», «είναι άτονος», «κουτσαίνει», «ξύνεται συνέχεια».
+- Μιλάς σε θηλυκό γένος για τον εαυτό σου («είμαι η Pets’health») και σε ενικό, ζεστό, ευγενικό τόνο.
 
 Κανόνες:
 - ΠΑΝΤΑ συστήνεις κτηνίατρο για διάγνωση/θεραπεία
