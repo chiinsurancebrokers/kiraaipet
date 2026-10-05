@@ -548,3 +548,81 @@ def landing_parts(lang: str) -> dict:
     more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
                  "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
     return {"hero": hero, "services": services, "more": more_html, "foot": foot}
+
+
+# ── illustrated section cards (report), species picker and intake steps ───────
+SECTION_CSS = f"""<style>
+.pn-sh {{ display:flex; align-items:center; gap:14px; background:#fff; border:1px solid {LINE}; border-radius:22px; padding:10px 18px 10px 10px; margin:22px 0 10px; }}
+.pn-sh .th {{ width:92px; height:60px; flex:0 0 92px; border-radius:15px; overflow:hidden; }}
+.pn-sh .th svg {{ width:100%; height:100%; display:block; }}
+.pn-sh .tt {{ font:700 16.5px/1.2 'Sora',sans-serif; letter-spacing:-.02em; color:{INK}; }}
+.pn-sh .ss {{ font-size:12.5px; color:{MUTED}; margin-top:3px; line-height:1.4; }}
+.pn-sh.warm {{ background:#FFF3EC; border-color:#FFD9C6; }}
+.pn-sh.cool {{ background:{LAV}; border-color:#D0D6F5; }}
+.pf-title,.lf-title {{ display:none !important; }}
+.pn-sp {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr)); gap:10px; margin:2px 0 14px; }}
+.pn-sp .o {{ background:#fff; border:1.5px solid {LINE}; border-radius:20px; padding:12px 6px 10px; text-align:center; opacity:.62; }}
+.pn-sp .o.on {{ border-color:{BLUE}; background:{LAV}; opacity:1; box-shadow:0 14px 26px -20px rgba(18,55,201,.7); }}
+.pn-sp .f {{ display:flex; justify-content:center; height:56px; align-items:center; }}
+.pn-sp .f .em {{ width:56px; height:56px; border-radius:50%; background:#FFDCC7; display:flex; align-items:center; justify-content:center; font-size:30px; }}
+.pn-sp .n {{ font:700 12.5px 'Inter',sans-serif; color:{INK}; margin-top:6px; }}
+.pn-steps {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:4px 0 16px; }}
+.pn-steps .s {{ background:#fff; border:1px solid {LINE}; border-radius:18px; overflow:hidden; opacity:.6; position:relative; }}
+.pn-steps .s.on {{ opacity:1; border-color:{BLUE}; box-shadow:0 14px 26px -20px rgba(18,55,201,.7); }}
+.pn-steps .s.done {{ opacity:1; }}
+.pn-steps .im {{ height:54px; }} .pn-steps .im svg {{ width:100%; height:100%; display:block; }}
+.pn-steps .lb {{ font:700 11.5px/1.25 'Inter',sans-serif; color:{INK}; padding:7px 9px 8px; }}
+.pn-steps .lb small {{ display:block; font-weight:600; color:{MUTED}; font-size:10.5px; letter-spacing:.06em; }}
+.pn-steps .ck {{ position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:{BLUE}; color:#fff; font:800 12px/20px 'Inter',sans-serif; text-align:center; }}
+.pn-petchip {{ display:flex; align-items:center; gap:12px; background:{LAV}; border:1px solid #D0D6F5; border-radius:20px; padding:8px 16px 8px 8px; margin:0 0 14px; }}
+.pn-petchip .t {{ font:700 15.5px 'Sora',sans-serif; color:{INK}; letter-spacing:-.02em; }}
+.pn-petchip .s {{ font-size:12px; color:{MUTED}; }}
+@media (max-width:520px) {{ .pn-steps {{ gap:5px; }} .pn-steps .im {{ height:40px; }} .pn-steps .lb {{ font-size:10.5px; padding:5px 6px 6px; }} .pn-steps .lb small {{ display:none; }}
+  .pn-sh .th {{ width:70px; flex-basis:70px; height:50px; }} .pn-sh .tt {{ font-size:15px; }} }}
+</style>"""
+
+
+def section_head_html(scene: str, title: str, sub: str = "", tone: str = "", species: str = "dog") -> str:
+    sp = species if species in ("dog", "cat") else "dog"
+    return (f'<div class="pn-sh {tone}"><div class="th">{_art.scene(scene, sp)}</div><div><div class="tt">{_h.escape(title)}</div>'
+            + (f'<div class="ss">{_h.escape(sub)}</div>' if sub else "") + '</div></div>')
+
+
+def species_picker_html(selected: str, lang: str) -> str:
+    el = lang == "el"
+    opts = [("dog", "Σκύλος" if el else "Dog"), ("cat", "Γάτα" if el else "Cat"), ("rabbit", "Κουνέλι" if el else "Rabbit"),
+            ("bird", "Πουλί" if el else "Bird"), ("reptile", "Ερπετό" if el else "Reptile"), ("other", "Άλλο" if el else "Other")]
+    emo = {"bird": "🐦", "reptile": "🦎", "other": "🐾"}
+    cells = ""
+    for k, n in opts:
+        face = _art.species_face(k, 56) if k in ("dog", "cat", "rabbit") else f'<div class="em">{emo[k]}</div>'
+        cells += f'<div class="o{" on" if k == selected else ""}"><div class="f">{face}</div><div class="n">{n}</div></div>'
+    return f'<div class="pn-sp">{cells}</div>'
+
+
+def intake_steps_html(step: int, lang: str) -> str:
+    el = lang == "el"
+    items = [("pets", "Το κατοικίδιο" if el else "Your pet"), ("measure", "Βασικά" if el else "Basics"),
+             ("report", "Ιστορικό" if el else "History"), ("meds", "Φάρμακα" if el else "Meds & vet")]
+    out = ""
+    for i, (sc, lb) in enumerate(items):
+        cls = "on" if i == step else ("done" if i < step else "")
+        ck = '<span class="ck">✓</span>' if i < step else ""
+        out += (f'<div class="s {cls}">{ck}<div class="im">{_art.scene(sc, "dog")}</div>'
+                f'<div class="lb"><small>{"ΒΗΜΑ" if el else "STEP"} {i + 1}</small>{lb}</div></div>')
+    return f'<div class="pn-steps">{out}</div>'
+
+
+def pet_chip_html(pet: dict, lang: str) -> str:
+    el = lang == "el"
+    key = pet.get("species_key", "dog")
+    nm = _h.escape(str(pet.get("name", "")))
+    bits = [pet.get("species_label", "")]
+    if pet.get("breed") and pet.get("breed") != "—":
+        bits.append(pet["breed"])
+    ay, am = int(pet.get("age_y") or 0), int(pet.get("age_m") or 0)
+    if ay or am:
+        bits.append((f"{ay} έτ." if el else f"{ay} y") + (f" {am} μ." if (am and el) else (f" {am} m" if am else "")))
+    face = _art.species_face(key, 46) if key in ("dog", "cat", "rabbit") else '<div style="width:46px;height:46px;border-radius:50%;background:#FFDCC7;display:flex;align-items:center;justify-content:center;font-size:24px">🐾</div>'
+    return (f'<div class="pn-petchip">{face}<div><div class="t">{nm}</div>'
+            f'<div class="s">{_h.escape(" · ".join(str(b) for b in bits if b))}</div></div></div>')

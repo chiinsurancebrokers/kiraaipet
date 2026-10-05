@@ -20,7 +20,9 @@ import pet_longevity as _plg
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
                        result_card_html as _pet_result_card_html, banner_html as _pn_banner,
-                       feature_art_html as _pn_feat_art, snapshot_html as _pn_snap, BANNER_ICONS as _PN_BANNER_ICONS)
+                       feature_art_html as _pn_feat_art, snapshot_html as _pn_snap, BANNER_ICONS as _PN_BANNER_ICONS,
+                       SECTION_CSS as _PN_SECTION_CSS, section_head_html as _pn_sh, species_picker_html as _pn_species,
+                       intake_steps_html as _pn_steps, pet_chip_html as _pn_chip)
 from petscan_component import petscan_component as _petscan
 
 # "Stay signed in" via a browser cookie (persists login across reloads / new tabs).
@@ -3736,19 +3738,8 @@ def _render_pet_health_pillars(pet, vitals, status_map, report_text, lang):
 
 
 def _render_intake_progress(step, total, lang):
-    """Small inline progress bar for the grouped intake sub-steps."""
-    pct = int(((step+1)/total)*100)
-    label = (f"Βήμα {step+1} από {total}" if lang=="el" else f"Step {step+1} of {total}")
-    st.markdown(f"""
-<div style="margin:4px 0 14px">
-  <div style="display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;
-              font-weight:600;letter-spacing:.04em;margin-bottom:6px">
-    <span>{label}</span><span>{pct}%</span>
-  </div>
-  <div style="background:#F3F4F6;border-radius:99px;height:6px;overflow:hidden">
-    <div style="background:#1D9E75;width:{pct}%;height:4px;border-radius:99px;transition:width .2s"></div>
-  </div>
-</div>""", unsafe_allow_html=True)
+    """Illustrated step cards for the grouped intake sub-steps."""
+    st.markdown(_PN_SECTION_CSS + _pn_steps(step, lang), unsafe_allow_html=True)
 
 
 def render_intake():
@@ -3786,6 +3777,10 @@ def render_intake():
         body_en="Fill in the basics so the assessment can use **species** and **breed**-appropriate ranges (a cat's normal HR ≠ a dog's). Fields with an asterisk are required; the rest are optional.",
     )
     _render_intake_progress(step, 4, lang)
+    if step > 0:
+        _chip_pet = dict(pet or {}); _chip_pet.update({k: v for k, v in (draft or {}).items() if v})
+        if _chip_pet.get("name"):
+            st.markdown(_pn_chip(_chip_pet, lang), unsafe_allow_html=True)
 
     # ── STEP 0: who's filling this in + name + species ────────────────────────
     if step == 0:
@@ -3818,6 +3813,8 @@ def render_intake():
             if prev_sp not in species_opts: prev_sp = species_opts[0]
             species_label = st.selectbox(t("species"), species_opts,
                                          index=species_opts.index(prev_sp))
+
+        st.markdown(_pn_species(SPECIES_KEY.get(species_label, "dog"), lang), unsafe_allow_html=True)
 
         # Show common conditions for the chosen species — mirrors Asklepios
         # giving owners a quick heads-up of what to watch for in their species.
@@ -4470,15 +4467,20 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     for w in tox_warns:
         st.markdown(f'<div class="toxicity-warn">{w}</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    def _sh(scene, el_t, en_t, el_s="", en_s="", tone=""):
+        st.markdown(_PN_SECTION_CSS + _pn_sh(scene, el_t if lang == "el" else en_t, el_s if lang == "el" else en_s, tone, sp),
+                    unsafe_allow_html=True)
+
+    _sh("report", "Η εκτίμηση για " + (nm or "το κατοικίδιο"), "Assessment for " + (nm or "your pet"),
+        "Σύνοψη συζήτησης, πιθανές αιτίες και επόμενο βήμα", "Chat summary, possible causes and next step", "cool")
     st.markdown(st.session_state.report)
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # Photo findings card — if the user uploaded any photos during intake/triage,
     # the AI vision analyses become visible evidence in the final report.
     # Mirrors the Asklepios "📷 PHOTO FINDINGS" card.
     _pfs = st.session_state.get("photo_findings") or []
     if isinstance(_pfs, list) and _pfs:
+        _sh("photo", "Ευρήματα από φωτογραφίες", "Photo findings", "Ανάλυση εικόνας με AI", "AI image analysis")
         _pf_title = ("📷 ΕΥΡΗΜΑΤΑ ΑΠΟ ΦΩΤΟΓΡΑΦΙΕΣ" if lang=="el" else "📷 PHOTO FINDINGS")
         _pf_count = len(_pfs)
         import html as _html_pf, re as _re_pf
@@ -4515,6 +4517,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     # for laboratory data. Mirrors the Asklepios "🧪 LAB FINDINGS" card.
     _lfs = st.session_state.get("lab_findings") or []
     if isinstance(_lfs, list) and _lfs:
+        _sh("labs", "Αποτελέσματα εξετάσεων", "Lab results", "Όσα ανέβασες, σε απλή γλώσσα", "What you uploaded, in plain words")
         _lf_title = ("🧪 ΕΥΡΗΜΑΤΑ ΕΡΓΑΣΤΗΡΙΑΚΩΝ ΕΞΕΤΑΣΕΩΝ" if lang=="el" else "🧪 LAB FINDINGS")
         _lf_count = len(_lfs)
         import html as _html_lf, re as _re_lf
@@ -4550,21 +4553,28 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
     # Personalized recommendations (activity / nutrition / home-care),
     # mirroring the Asklepios "📍 Εξατομικευμένες Συστάσεις" cards.
     if st.session_state.get("report_recs"):
+        _sh("meds", "Συστάσεις φροντίδας", "Care recommendations", "Δραστηριότητα, διατροφή και φροντίδα στο σπίτι",
+            "Activity, nutrition and home care", "warm")
         render_pet_recommendations(st.session_state.report_recs, sp, lang)
 
     # Health profile (vitals + symptom burden pillars)
     if st.session_state.vitals:
+        _sh("vitals", "Ζωτικά & προφίλ υγείας", "Vitals & health profile", "Πού βρίσκονται οι μετρήσεις σε σχέση με το φυσιολογικό",
+            "Where the measurements sit against normal ranges")
         status_map = classify_pet_vitals(dict(st.session_state.vitals), sp)
         _render_pet_health_pillars(pet, st.session_state.vitals, status_map, st.session_state.report, lang)
 
     # Longevity check (if the owner did it) — compact result with the same pillars
     _lgr = (st.session_state.get("longevity") or {}).get("result")
     if _lgr:
-        st.markdown("##### 🧬 " + (f"Έλεγχος μακροζωίας ({_lgr.get('date','')})" if lang == "el" else f"Longevity check ({_lgr.get('date','')})"))
+        _sh("longevity", "Έλεγχος μακροζωίας" + (f" · {_lgr.get('date','')}" if _lgr.get('date') else ""),
+            "Longevity check" + (f" · {_lgr.get('date','')}" if _lgr.get('date') else ""),
+            "Ηλικία σε ανθρώπινα χρόνια και επίπεδο ανά τομέα", "Age in human years and a level per area", "cool")
         render_pet_longevity_result(_lgr, lang, compact=True)
 
     # MSD Vet Manual references
     if st.session_state.report_refs:
+        _sh("nurse", "Τεκμηρίωση", "Evidence", "Παραπομπές από το MSD Veterinary Manual", "References from the MSD Veterinary Manual")
         with st.expander(f"📋 {t('msdvet')} ({len(st.session_state.report_refs)})"):
             for a in st.session_state.report_refs:
                 st.markdown(f"**[{a['title']}]({a['url']})**")
