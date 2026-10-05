@@ -13,6 +13,6 @@ Streamlit app (single file `app.py`) for pet parents in Greece: nurse chat → v
 - Plans: free = 3 symptom checks/month (counted in Supabase `usage_events`, kind `triage_check`); “Pets’health Plus” 4,99€/mo
   (49,99€/yr) unlocks every other service (`PAID_SCREENS`). Entitlement = row in `subscriptions` with plan `plus` (legacy `insurance` also counts).
   Checkout links: env `STRIPE_CHECKOUT_MONTHLY` / `STRIPE_CHECKOUT_YEARLY` (app appends `prefilled_email` + `client_reference_id`).
-  Stripe → access: Supabase edge function `stripe-webhook` (source in `supabase/functions/`, needs secret `STRIPE_WEBHOOK_SECRET`) writes `subscriptions`.
+  Stripe → access: Supabase edge function `stripe-webhook` (source in `supabase/functions/`, signing secret lives in Supabase Vault via `get_stripe_webhook_secret()`) writes `subscriptions`.
   Pets: free = 1 pet, profile locked; Plus = unlimited pets (switch/edit/add on Home). Profiles saved encrypted in `user_pets`. `PLUS_PAYWALL=off` disables gating.
   Harness: `&plus=0|1`, `&used=N` (needs fake SUPABASE env to turn the paywall on).

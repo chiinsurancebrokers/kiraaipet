@@ -35,14 +35,19 @@ const json = (o: unknown, status = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: true });
-  const secret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-  if (!secret) return json({ error: "STRIPE_WEBHOOK_SECRET not configured" }, 500);
+  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Signing secret: edge-function env STRIPE_WEBHOOK_SECRET, else Supabase Vault (public.get_stripe_webhook_secret, service_role only).
+  let secret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+  if (!secret) {
+    const { data } = await sb.rpc("get_stripe_webhook_secret");
+    secret = (data as string) ?? "";
+  }
+  if (!secret) return json({ error: "webhook secret not configured" }, 500);
   const body = await req.text();
   const sig = req.headers.get("stripe-signature") ?? "";
   if (!(await verify(body, sig, secret))) return json({ error: "bad signature" }, 400);
 
   const event = JSON.parse(body);
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const obj = event.data?.object ?? {};
 
   try {
