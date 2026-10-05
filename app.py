@@ -5704,17 +5704,18 @@ def render_pet_landing(gate=False):
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
     if gate:
-        _g1, _g2, _g3 = st.columns([1, 2, 1])
-        with _g2:
-            render_login_gate()
+        st.markdown('<a href="#pn-login" style="display:block;text-align:center;background:#1237C9;color:#fff;font-weight:700;'
+                    'padding:14px;border-radius:999px;text-decoration:none;margin-top:6px;">'
+                    + ("Συνδέσου για να ξεκινήσεις ↓" if el else "Sign in to get started ↓") + '</a>', unsafe_allow_html=True)
     else:
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
     if gate:
-        st.markdown('<a href="#" style="display:block;text-align:center;background:#1237C9;color:#fff;font-weight:700;'
-                    'padding:14px;border-radius:999px;text-decoration:none;margin-top:6px;">'
-                    + ("↑ Συνδέσου για να ξεκινήσεις" if el else "↑ Sign in to get started") + '</a>', unsafe_allow_html=True)
+        st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
+        _g1, _g2, _g3 = st.columns([1, 2, 1])
+        with _g2:
+            render_login_gate()
     else:
         _cta("land_cta_bottom")
     st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
