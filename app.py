@@ -2163,6 +2163,96 @@ def render_paid_page():
                 st.rerun()
 
 
+_BILLING_SYSTEM = """Είσαι ο βοηθός συνδρομής της PetsAIHealth. Βοηθάς τον χρήστη να αγοράσει, να διαχειριστεί ή να ακυρώσει τη συνδρομή του.
+ΓΕΓΟΝΟΤΑ (μην επινοείς άλλα):
+- Δωρεάν πλάνο: 3 έλεγχοι συμπτωμάτων τον μήνα, 1 κατοικίδιο με κλειδωμένο προφίλ, κτηνίατρος κοντά σου και επείγοντα.
+- PetsAIHealth Plus: 4,99€ τον μήνα ή 49,99€ τον χρόνο. Ξεκλειδώνει ΟΛΕΣ τις υπηρεσίες: απεριόριστοι έλεγχοι, κτηνιατρική αναφορά, δεύτερη γνώμη, ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο, απεριόριστα κατοικίδια με επεξεργάσιμο προφίλ, ασφάλιση Eurolife (κάλυψη, κόστος, κλινικές, ερωτήσεις συμβολαίου).
+- Πληρωμή και τιμολόγια: μέσω Stripe. Ακύρωση όποτε θέλεις από την πύλη του Stripe· η πρόσβαση συνεχίζεται μέχρι το τέλος της περιόδου που έχει πληρωθεί.
+- Επιστροφές χρημάτων, αλλαγή email πληρωμής, προβλήματα πρόσβασης: info@chiinsurance.gr (μην υπόσχεσαι επιστροφή).
+ΚΑΝΟΝΕΣ: Δεν ακυρώνεις και δεν χρεώνεις εσύ τίποτα· ο χρήστης το κάνει με τα κουμπιά που εμφανίζονται κάτω από την απάντησή σου. Απάντα σύντομα (έως 70 λέξεις), φιλικά, στη γλώσσα του χρήστη, χωρίς τίτλους.
+Αποντησε ΜΟΝΟ JSON: {"reply":"...","action":"none|subscribe|manage|cancel"}
+action=subscribe όταν θέλει να αγοράσει/αναβαθμίσει· manage για κάρτα/τιμολόγια/στοιχεία πληρωμής· cancel όταν θέλει να ακυρώσει· αλλιώς none. Αν δεν έχει Plus, ποτέ manage/cancel."""
+
+
+def _billing_agent_reply(question, plus, row, lang):
+    state = (f"Κατάσταση χρήστη: {'έχει Plus' if plus else 'δωρεάν πλάνο'}"
+             + (", πληρώνει μέσω Stripe" if (row and row.get('stripe_customer_id')) else (", πρόσβαση χωρίς Stripe (δόθηκε από την ομάδα)" if plus else ""))
+             + f". Γλώσσα: {'ελληνικά' if lang == 'el' else 'English'}.")
+    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.get("_bill_chat", [])[-6:]]
+    raw = claude(messages=hist + [{"role": "user", "content": state + "\n\n" + question}], system=_BILLING_SYSTEM, max_tokens=500, timeout=30)
+    import re as _r
+    m = _r.search(r"\{.*\}", raw or "", _r.DOTALL)
+    reply, action = (raw or "").strip(), "none"
+    if m:
+        try:
+            j = json.loads(m.group(0)); reply = str(j.get("reply", reply)); action = str(j.get("action", "none"))
+        except Exception:
+            mm = _r.search(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)', raw or "")
+            if mm: reply = mm.group(1).replace('\\"', '"').replace("\\n", " ")
+    if action not in ("subscribe", "manage", "cancel"):
+        action = "none"
+    if not plus and action in ("manage", "cancel"):
+        action = "subscribe"
+    if plus and action == "subscribe":
+        action = "none"
+    return _re_san.sub(r"(?m)^#{1,6}\s*", "", reply), action
+
+
+def render_billing_agent(lang, plus, row):
+    """Chat that helps buy / manage / cancel the subscription. It never changes anything itself:
+    it answers and shows the action buttons (Stripe checkout or Stripe portal)."""
+    import urllib.parse as _up
+    el = lang == "el"
+    st.markdown('<div style="font:800 17px Sora,Inter,sans-serif;color:#0B1B4B;margin:6px 0 2px;">💬 '
+                + ("Βοήθεια με τη συνδρομή" if el else "Subscription help") + '</div>', unsafe_allow_html=True)
+    st.caption("Ρώτα για τιμές, αναβάθμιση, τιμολόγια ή ακύρωση." if el else "Ask about prices, upgrading, invoices or cancelling.")
+    if "_bill_chat" not in st.session_state:
+        st.session_state["_bill_chat"] = []
+    chat = st.session_state["_bill_chat"]
+    for m in chat:
+        st.markdown(("🧑 " if m["role"] == "user" else "🤖 ") + m["content"])
+    last_action = chat[-1].get("action", "none") if chat and chat[-1]["role"] == "assistant" else "none"
+    _em = st.session_state.get("auth_user", "")
+    def _co(u):
+        return (u + ("&" if "?" in u else "?") + "prefilled_email=" + _up.quote(_em) + "&client_reference_id=" + _up.quote(_em)) if (u and _em) else u
+    if last_action == "subscribe":
+        b1, b2 = st.columns(2)
+        with b1:
+            st.link_button(f"Μηνιαίο · {PLUS_PRICE_MONTH}" if el else f"Monthly · {PLUS_PRICE_MONTH}",
+                           _co(os.environ.get("STRIPE_CHECKOUT_MONTHLY", "")) or "mailto:info@chiinsurance.gr", type="primary", use_container_width=True)
+        with b2:
+            st.link_button(f"Ετήσιο · {PLUS_PRICE_YEAR}" if el else f"Yearly · {PLUS_PRICE_YEAR}",
+                           _co(os.environ.get("STRIPE_CHECKOUT_YEARLY", "")) or "mailto:info@chiinsurance.gr", use_container_width=True)
+    elif last_action in ("manage", "cancel") and row and row.get("stripe_customer_id"):
+        if st.session_state.get("_portal_url"):
+            st.link_button(("Άνοιγμα Stripe για ακύρωση ↗" if last_action == "cancel" else "Άνοιγμα Stripe ↗") if el
+                           else ("Open Stripe to cancel ↗" if last_action == "cancel" else "Open Stripe ↗"),
+                           st.session_state["_portal_url"], type="primary", use_container_width=True)
+        elif st.button(("Συνέχεια στο Stripe" if el else "Continue to Stripe"), key="bill_portal", type="primary", use_container_width=True):
+            u = _stripe_portal_url(row["stripe_customer_id"])
+            if u:
+                st.session_state["_portal_url"] = u
+            else:
+                st.warning("Δεν μπόρεσα να ανοίξω το Stripe τώρα. Γράψε μας στο info@chiinsurance.gr." if el else "Could not open Stripe now. Write to info@chiinsurance.gr.")
+            st.rerun()
+    quick = ([("Πώς ακυρώνω;", "How do I cancel?"), ("Πού βλέπω τα τιμολόγια;", "Where are my invoices?")] if plus
+             else [("Τι περιλαμβάνει το Plus;", "What does Plus include?"), ("Θέλω να αναβαθμίσω", "I want to upgrade")])
+    if len(chat) < 6:
+        qc = st.columns(2)
+        for i, q in enumerate(quick):
+            if qc[i].button(q[0 if el else 1], key=f"bill_q{i}_{len(chat)}", use_container_width=True):
+                chat.append({"role": "user", "content": q[0 if el else 1]})
+                with st.spinner("…"):
+                    r, a = _billing_agent_reply(q[0 if el else 1], plus, row, lang)
+                chat.append({"role": "assistant", "content": r, "action": a}); st.rerun()
+    ask = st.chat_input("Γράψε την ερώτησή σου για τη συνδρομή…" if el else "Ask about your subscription…", key="bill_input")
+    if ask:
+        chat.append({"role": "user", "content": ask})
+        with st.spinner("…"):
+            r, a = _billing_agent_reply(ask, plus, row, lang)
+        chat.append({"role": "assistant", "content": r, "action": a}); st.rerun()
+
+
 def render_account_page():
     lang = st.session_state.lang
     el = lang == "el"
@@ -2215,6 +2305,9 @@ def render_account_page():
         if st.button(("✨ Ξεκλείδωσε όλες τις υπηρεσίες · " + PLUS_PRICE_MONTH + "/μήνα") if el else ("✨ Unlock every service · " + PLUS_PRICE_MONTH + "/month"),
                      type="primary", use_container_width=True, key="acc_upgrade"):
             _goto("plus")
+    if paywall_enabled():
+        st.markdown("---")
+        render_billing_agent(lang, plus, row)
     st.markdown("---")
     if st.button(("🚪 Αποσύνδεση" if el else "🚪 Log out"), use_container_width=True, key="acc_logout"):
         logout(); st.rerun()
