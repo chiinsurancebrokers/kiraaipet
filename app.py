@@ -4163,6 +4163,24 @@ def render_triage():
             else:
                 st.markdown(msg["content"])
 
+    # ── Inline composer: sits right under the nurse's last message (not pinned to the viewport) ──
+    st.markdown(
+        '<style>div[data-testid="stForm"]:has(.pn-compose-marker){background:#fff;border:1.5px solid #D9DEF5 !important;'
+        'border-radius:22px !important;padding:10px 12px 12px !important;margin:6px 0 4px;box-shadow:0 14px 30px -24px rgba(18,55,201,.55);}'
+        'div[data-testid="stForm"]:has(.pn-compose-marker) textarea{border:none !important;background:transparent !important;'
+        'box-shadow:none !important;font-size:15.5px !important;min-height:64px !important;}'
+        'div[data-testid="stForm"]:has(.pn-compose-marker) div[data-baseweb="textarea"],'
+        'div[data-testid="stForm"]:has(.pn-compose-marker) div[data-baseweb="base-input"]{border:none !important;background:transparent !important;}'
+        'div[data-testid="stForm"]:has(.pn-compose-marker) button{border-radius:999px !important;min-height:42px !important;font-weight:700 !important;}'
+        'div[data-testid="stElementContainer"]:has(.pn-compose-marker){display:none !important;}</style>',
+        unsafe_allow_html=True)
+    with st.form("pn_compose", clear_on_submit=True, border=False):
+        st.markdown('<span class="pn-compose-marker"></span>', unsafe_allow_html=True)
+        _cmp_txt = st.text_area("msg", placeholder=triage_placeholder_for(pet), label_visibility="collapsed",
+                                key="pn_compose_text", height=80)
+        _cmp_send = st.form_submit_button("➤ " + ("Αποστολή" if lang == "el" else "Send"), type="primary",
+                                          use_container_width=True)
+
     ready_phrases = ["έχω αρκετά στοιχεία","μπορούμε να δημιουργήσουμε","i have enough information","we can generate","veterinary report","κτηνιατρική αναφορά"]
     last_assistant = next((m["content"].lower() for m in reversed(st.session_state.triage_chat) if m["role"]=="assistant"), "")
     triage_ready = any(ph in last_assistant for ph in ready_phrases)
@@ -4267,7 +4285,7 @@ def render_triage():
                         voice_text = edited
                         st.session_state._voice_widget_counter += 1
 
-    user_input = st.chat_input(triage_placeholder_for(pet), key="triage_input")
+    user_input = (_cmp_txt or "").strip() if _cmp_send else None
     if voice_text:
         user_input = voice_text
     if user_input:
