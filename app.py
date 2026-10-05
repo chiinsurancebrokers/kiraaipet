@@ -4366,16 +4366,17 @@ def render_intake():
     st.caption("💡 Προαιρετικό — μπορείς να το προσθέσεις αργότερα." if lang=="el"
                else "💡 Optional — you can add this later.")
 
-    # ── Ασφαλιστική κάλυψη κατοικιδίου ────────────────────────────────────────
-    st.divider()
-    st.markdown(
-        "**🐾 " + ("Ασφάλεια Κατοικιδίου" if lang=="el" else "Pet Insurance") + "**"
-    )
-    st.caption(
-        "Αν το κατοικίδιό σου είναι ασφαλισμένο, επέλεξε το πρόγραμμα για να δεις την κάλυψη μετά την αξιολόγηση συμπτωμάτων."
-        if lang=="el" else
-        "If your pet is insured, select the programme to see coverage details after triage."
-    )
+    # ── Ασφαλιστική κάλυψη κατοικιδίου (Plus feature) ─────────────────────────
+    if not (paywall_enabled() and not has_plus()):
+        st.divider()
+        st.markdown(
+            "**🐾 " + ("Ασφάλεια Κατοικιδίου" if lang=="el" else "Pet Insurance") + "**"
+        )
+        st.caption(
+            "Αν το κατοικίδιό σου είναι ασφαλισμένο, επέλεξε το πρόγραμμα για να δεις την κάλυψη μετά την αξιολόγηση συμπτωμάτων."
+            if lang=="el" else
+            "If your pet is insured, select the programme to see coverage details after triage."
+        )
     _insurance_providers = {
         "el": [
             "— Χωρίς ασφάλεια —",
@@ -4388,30 +4389,36 @@ def render_intake():
             "Eurolife FFH — My Happy Pet Standard",
         ],
     }
-    _ins_opts = _insurance_providers.get(lang, _insurance_providers["el"])
-    _prev_ins = draft.get("insurance_provider", pet.get("insurance_provider", _ins_opts[0]))
-    if _prev_ins not in _ins_opts: _prev_ins = _ins_opts[0]
-    _selected_ins = st.selectbox(
-        "Ασφαλιστική εταιρεία" if lang=="el" else "Insurance provider",
-        _ins_opts,
-        index=_ins_opts.index(_prev_ins),
-        key="intake_insurance_provider"
-    )
-    draft["insurance_provider"] = _selected_ins
-    # Store in session_state immediately for triage flow to read
-    if _selected_ins != _ins_opts[0]:
-        st.session_state["pet_insurance_provider"] = _selected_ins
-        st.markdown(
-            f'<div style="background:#F0FDF4;border:0.5px solid #86EFAC;border-radius:8px;'
-            f'padding:10px 14px;margin-top:6px;font-size:13px;color:#065F46">'
-            f'✅ <strong>{"Κάλυψη ενεργοποιημένη" if lang=="el" else "Coverage activated"}</strong><br>'
-            f'<span style="font-size:12px;color:#047857">'
-            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και chat με την PetsAIHealth για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and PetsAIHealth chat for policy questions."}'
-            f'</span></div>',
-            unsafe_allow_html=True
-        )
+    _ins_locked = paywall_enabled() and not has_plus()
+    if _ins_locked:
+        # Insurance is a Plus feature: free users are not asked about a programme at all.
+        draft["insurance_provider"] = draft.get("insurance_provider", "") if str(draft.get("insurance_provider", "")).startswith("Eurolife") else ""
+        st.session_state["pet_insurance_provider"] = draft["insurance_provider"]
     else:
-        st.session_state["pet_insurance_provider"] = ""
+        _ins_opts = _insurance_providers.get(lang, _insurance_providers["el"])
+        _prev_ins = draft.get("insurance_provider", pet.get("insurance_provider", _ins_opts[0]))
+        if _prev_ins not in _ins_opts: _prev_ins = _ins_opts[0]
+        _selected_ins = st.selectbox(
+            "Ασφαλιστική εταιρεία" if lang=="el" else "Insurance provider",
+            _ins_opts,
+            index=_ins_opts.index(_prev_ins),
+            key="intake_insurance_provider"
+        )
+        draft["insurance_provider"] = _selected_ins
+        # Store in session_state immediately for triage flow to read
+        if _selected_ins != _ins_opts[0]:
+            st.session_state["pet_insurance_provider"] = _selected_ins
+            st.markdown(
+                f'<div style="background:#F0FDF4;border:0.5px solid #86EFAC;border-radius:8px;'
+                f'padding:10px 14px;margin-top:6px;font-size:13px;color:#065F46">'
+                f'✅ <strong>{"Κάλυψη ενεργοποιημένη" if lang=="el" else "Coverage activated"}</strong><br>'
+                f'<span style="font-size:12px;color:#047857">'
+                f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και chat με την PetsAIHealth για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and PetsAIHealth chat for policy questions."}'
+                f'</span></div>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.session_state["pet_insurance_provider"] = ""
 
     col_b, col_n = st.columns([1,3])
     with col_b:
@@ -6172,8 +6179,10 @@ def render_pet_nurse_card():
                 _goto("vets")
 
 
-def render_plans_section(lang="el"):
-    """Landing: Free vs Plus side by side."""
+def render_plans_section(lang="el", gate=False, cta=None):
+    """Landing: Free vs Plus, one call to action each. Sign in first; payment happens after sign-in
+    (so the Stripe checkout is always tied to the account's email)."""
+    import urllib.parse as _up
     el = lang == "el"
     i = 0 if el else 1
     free_items = [
@@ -6186,32 +6195,72 @@ def render_plans_section(lang="el"):
         ("Απεριόριστα κατοικίδια, με επεξεργάσιμο προφίλ", "Unlimited pets with editable profiles"),
         ("Κτηνιατρική αναφορά + δεύτερη γνώμη", "Veterinary report + second opinion"),
         ("Ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο", "Vitals, photos, labs, longevity, diary"),
-        ("Ασφάλιση Eurolife (Plus & Standard): κάλυψη, κόστος, ερωτήσεις", "Eurolife insurance (Plus & Standard): cover, costs, questions"),
+        ("Ασφάλιση Eurolife (Plus & Standard): κάλυψη, κόστος, κλινικές, ερωτήσεις", "Eurolife insurance (Plus & Standard): cover, costs, clinics, questions"),
     ]
     li = lambda items, ic: "".join(f'<li><span>{ic}</span>{t[i]}</li>' for t in items)
+    _P = 'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .%s)'
     st.markdown(
-        '<style>.pn-pl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:26px 0 8px;}'
-        '.pn-pl .c{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:22px 22px 18px;}'
-        '.pn-pl .c.plus{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);color:#fff;border:none;box-shadow:0 12px 30px rgba(35,40,190,.25);}'
+        '<style>'
+        + (_P % "pn-plan-free") + '{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:22px 22px 14px;height:100%;}'
+        + (_P % "pn-plan-plus") + '{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);color:#fff;border-radius:24px;padding:22px 22px 14px;'
+        'box-shadow:0 12px 30px rgba(35,40,190,.25);height:100%;}'
+        + (_P % "pn-plan-plus") + ' a.stLinkButton, ' + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"]{background:#fff !important;border:none !important;}'
+        + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"] p{color:#2328BE !important;font-weight:800 !important;}'
         '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
         '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
         '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
-        '.pn-pl ul{list-style:none;margin:14px 0 0;padding:0;}'
+        '.pn-pl ul{list-style:none;margin:14px 0 8px;padding:0;}'
         '.pn-pl li{display:flex;gap:9px;font-size:13.5px;line-height:1.45;padding:6px 0;}'
         '.pn-pl li span{flex-shrink:0;}'
         '.pn-pl .tag{display:inline-block;background:#FF6B35;color:#fff;font:800 10px Inter,sans-serif;letter-spacing:.08em;padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;}'
+        '.pn-cta,.pn-cta:hover,.pn-cta:visited{display:block;text-align:center;font-weight:800;padding:12px;border-radius:999px;text-decoration:none !important;margin:6px 0 8px;}'
+        '.pn-cta.free{background:#1237C9;color:#fff !important;}'
+        '.pn-cta.plus{background:#fff;color:#2328BE !important;}'
         '</style>'
         '<div style="font:800 12px Inter,sans-serif;letter-spacing:.14em;color:#1237C9;margin-top:26px;">'
         + ("ΠΛΑΝΑ" if el else "PLANS") + '</div>'
-        '<div style="font:800 26px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:4px 0 0;">'
-        + ("Ξεκίνα δωρεάν. Ξεκλείδωσε τα πάντα με Plus." if el else "Start free. Unlock everything with Plus.") + '</div>'
-        '<div class="pn-pl">'
-        f'<div class="c"><div class="eb">{"ΔΩΡΕΑΝ" if el else "FREE"}</div>'
-        f'<div class="pr">0€ <small>/ {"για πάντα" if el else "forever"}</small></div>'
-        f'<ul>{li(free_items, "✓")}</ul></div>'
-        f'<div class="c plus"><div class="eb">PETSAIHEALTH PLUS<span class="tag">{"ΟΛΕΣ ΟΙ ΥΠΗΡΕΣΙΕΣ" if el else "EVERYTHING"}</span></div>'
-        f'<div class="pr">{PLUS_PRICE_MONTH} <small>/ {"μήνα" if el else "month"} · {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</small></div>'
-        f'<ul>{li(plus_items, "✨")}</ul></div></div>', unsafe_allow_html=True)
+        '<div style="font:800 26px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:4px 0 14px;">'
+        + ("Ξεκίνα δωρεάν. Ξεκλείδωσε τα πάντα με Plus." if el else "Start free. Unlock everything with Plus.") + '</div>',
+        unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="medium")
+    with c1:
+        with st.container():
+            st.markdown(
+                '<span class="pn-plan-free"></span><div class="pn-pl">'
+                f'<div class="eb">{"ΔΩΡΕΑΝ" if el else "FREE"}</div>'
+                f'<div class="pr">0€ <small>/ {"για πάντα" if el else "forever"}</small></div>'
+                f'<ul>{li(free_items, "✓")}</ul></div>', unsafe_allow_html=True)
+            if gate:
+                st.markdown('<a class="pn-cta free" href="#pn-login">' + ("Ξεκίνα δωρεάν ↓" if el else "Start free ↓") + '</a>',
+                            unsafe_allow_html=True)
+            elif cta:
+                cta("land_cta_plans")
+    with c2:
+        with st.container():
+            st.markdown(
+                '<span class="pn-plan-plus"></span><div class="pn-pl">'
+                f'<div class="eb">PETSAIHEALTH PLUS<span class="tag">{"ΟΛΕΣ ΟΙ ΥΠΗΡΕΣΙΕΣ" if el else "EVERYTHING"}</span></div>'
+                f'<div class="pr">{PLUS_PRICE_MONTH} <small>/ {"μήνα" if el else "month"} · {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</small></div>'
+                f'<ul>{li(plus_items, "✨")}</ul></div>', unsafe_allow_html=True)
+            _em = st.session_state.get("auth_user", "")
+            if gate or not _em:
+                st.markdown('<a class="pn-cta plus" href="#pn-login">' + ("Ξεκίνα με Plus ↓" if el else "Start with Plus ↓") + '</a>'
+                            '<div style="font-size:12px;opacity:.8;margin:0 0 6px;">'
+                            + ("Συνδέσου πρώτα· η πληρωμή γίνεται μετά τη σύνδεση." if el else "Sign in first; payment comes right after.")
+                            + '</div>', unsafe_allow_html=True)
+            elif has_plus(_em):
+                st.markdown('<div class="pn-cta plus">✨ ' + ("Το Plus είναι ενεργό" if el else "Plus is active") + '</div>', unsafe_allow_html=True)
+            else:
+                def _co(u):
+                    return u + ("&" if "?" in u else "?") + "prefilled_email=" + _up.quote(_em) + "&client_reference_id=" + _up.quote(_em) if u else u
+                _mail = "mailto:info@chiinsurance.gr?subject=PetsAIHealth%20Plus"
+                _mo = _co(os.environ.get("STRIPE_CHECKOUT_MONTHLY", "")) or _mail
+                _yr = _co(os.environ.get("STRIPE_CHECKOUT_YEARLY", "")) or _mail
+                b1, b2 = st.columns(2)
+                with b1:
+                    st.link_button((f"Μηνιαίο · {PLUS_PRICE_MONTH}" if el else f"Monthly · {PLUS_PRICE_MONTH}"), _mo, use_container_width=True)
+                with b2:
+                    st.link_button((f"Ετήσιο · {PLUS_PRICE_YEAR}" if el else f"Yearly · {PLUS_PRICE_YEAR}"), _yr, use_container_width=True)
 
 
 def render_pet_landing(gate=False):
@@ -6246,7 +6295,7 @@ def render_pet_landing(gate=False):
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
-    render_plans_section(lang)
+    render_plans_section(lang, gate, _cta)
     if gate:
         st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
         _g1, _g2, _g3 = st.columns([1, 2, 1])
