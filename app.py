@@ -6760,6 +6760,45 @@ def render_plans_section(lang="el", gate=False, cta=None):
                     st.link_button((f"Ετήσιο · {PLUS_PRICE_YEAR}" if el else f"Yearly · {PLUS_PRICE_YEAR}"), _yr, use_container_width=True)
 
 
+def render_benchmark_section(lang="el"):
+    """Landing: transparency about the open VetTriageBench-45 preprint (figures from the Zenodo record, v2)."""
+    el = lang == "el"
+    url = os.environ.get("BENCHMARK_URL", "https://doi.org/10.5281/zenodo.21127217").strip()
+    stats = [("45", "Σενάρια σκύλων & γατών" if el else "Dog & cat scenarios", "ίσα μοιρασμένα σε επείγον, επιτακτικό, ήπιο" if el else "equally split: emergency, urgent, self-care"),
+             ("100%", "Ευαισθησία σε σαφή επείγοντα" if el else "Sensitivity on clear emergencies", "και τα 2 μοντέλα: GDV, επιληπτική κρίση, δηλητηρίαση" if el else "both models: GDV, seizures, poisoning"),
+             ("0%", "Επικίνδυνη υποεκτίμηση" if el else "Unsafe undertriage", "Claude Sonnet 4.6, το μοντέλο της εφαρμογής" if el else "Claude Sonnet 4.6, the app’s model"),
+             ("73%", "Ακρίβεια Claude Sonnet 4.6" if el else "Claude Sonnet 4.6 accuracy", "95% CI 59–84%, n=45" if el else "95% CI 59–84%, n=45")]
+    st.markdown(
+        '<style>.pn-bm{background:#fff;border:1px solid #DDE2F8;border-radius:28px;padding:28px 28px 22px;margin:26px 0 8px;}'
+        '.pn-bm .eb{font:800 12px Inter,sans-serif;letter-spacing:.14em;color:#1237C9;}'
+        '.pn-bm h3{font:800 24px/1.25 Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:6px 0 8px;}'
+        '.pn-bm p{font-size:14.5px;color:#2B3566;line-height:1.6;margin:0 0 14px;}'
+        '.pn-bms{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin:14px 0;}'
+        '.pn-bms div{background:linear-gradient(180deg,#F7F8FF,#EEF1FF);border:1px solid #DDE2F8;border-radius:20px;padding:16px;}'
+        '.pn-bms b{display:block;font:800 30px Sora,Inter,sans-serif;color:#2328BE;letter-spacing:-.03em;}'
+        '.pn-bms span{display:block;font:700 13px Inter,sans-serif;color:#0B1B4B;margin-top:2px;}'
+        '.pn-bms small{display:block;font-size:12px;color:#5B6794;margin-top:2px;}'
+        '.pn-bm .lim{background:#FFFBEB;border:1px solid #FCD34D;border-radius:16px;padding:12px 14px;font-size:12.5px;color:#5B4A12;line-height:1.55;}</style>'
+        '<div class="pn-bm"><div class="eb">' + ("ΔΙΑΦΑΝΕΙΑ" if el else "TRANSPARENCY") + '</div>'
+        '<h3>' + ("Δημοσιεύσαμε ανοιχτό benchmark για κτηνιατρικό triage σκύλων και γατών" if el
+                  else "We published an open benchmark for dog and cat veterinary triage") + '</h3>'
+        '<p>' + ("Το <b>VetTriageBench-45</b> (preprint, Zenodo, Ιούλιος 2026) έχει 45 τυποποιημένα σενάρια, με μεθοδολογία προσαρμοσμένη από τη μελέτη Semigran et al. (BMJ, 2015) για ελεγκτές συμπτωμάτων ανθρώπων. "
+                 "Είναι ανοιχτό και αναπαραγώγιμο. Το Claude Sonnet 4.6 δεν υποτίμησε επικίνδυνα κανένα σενάριο· το GPT-4o ξέφυγε σε ένα (φραγή ουρήθρας σε γάτα). Και τα δύο αναγνώρισαν όλα τα σαφή επείγοντα."
+                 if el else
+                 "<b>VetTriageBench-45</b> (preprint, Zenodo, July 2026) has 45 standardised scenarios, with a methodology adapted from Semigran et al. (BMJ, 2015) for human symptom checkers. "
+                 "It is open and reproducible. Claude Sonnet 4.6 did not dangerously undertriage any scenario; GPT-4o missed one (a feline urethral obstruction). Both recognised every clear emergency.") + '</p>'
+        '<div class="pn-bms">' + "".join(f'<div><b>{a}</b><span>{b}</span><small>{c}</small></div>' for a, b, c in stats) + '</div>'
+        '<div class="lim"><b>' + ("Τι δεν σημαίνει: " if el else "What it does not mean: ") + '</b>'
+        + ("δοκιμάστηκε το μοντέλο, όχι ολόκληρη η εφαρμογή· είναι preprint και δεν έχει περάσει peer review· οι σωστές απαντήσεις των σεναρίων έχουν διαμορφωθεί με βοήθεια AI και δεν έχουν ακόμη επικυρωθεί από κτηνιάτρους (προγραμματισμένο στο v2.0)· "
+           "το δείγμα είναι μικρό (n=45) και δεν κάνουμε κατάταξη μοντέλων· η δοκιμή έγινε από εμάς. Η PetsAIHealth δεν κάνει διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
+           if el else
+           "the model was tested, not the whole app; it is a preprint without peer review; the scenario answers were developed with AI assistance and are not yet validated by veterinarians (planned for v2.0); "
+           "the sample is small (n=45) and we do not rank models; the test was run by us. PetsAIHealth does not diagnose and does not replace a veterinarian.")
+        + '</div></div>', unsafe_allow_html=True)
+    if url:
+        st.link_button(("Δες το benchmark και τα δεδομένα ↗" if el else "See the benchmark and data ↗"), url)
+
+
 def render_pet_landing(gate=False):
     """Hero / landing: what PetsAIHealth does + the other services."""
     from petify_ui import landing_parts as _lp
@@ -6792,6 +6831,7 @@ def render_pet_landing(gate=False):
         _cta("land_cta_top")
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
+    render_benchmark_section(lang)
     render_plans_section(lang, gate, _cta)
     if gate:
         if st.session_state.get("_login_plan"):
