@@ -1760,21 +1760,51 @@ def _pet_key(email, pet=None):
     return hashlib.sha256(f"{(email or '').lower()}|{nm}".encode()).hexdigest()[:16]
 
 
+def history_available(email=""):
+    email = email or st.session_state.get("auth_user", "")
+    return bool(email and _ENC_OK and paywall_enabled() and _supabase_client() and has_plus(email))
+
+
+def history_consent(email=""):
+    """None = not asked yet, True = consented, False = declined. Opt-in: nothing is stored until True."""
+    email = email or st.session_state.get("auth_user", "")
+    if "_hist_on" not in st.session_state:
+        st.session_state["_hist_on"] = load_user_pref(email, "history_consent", None)
+    return st.session_state["_hist_on"]
+
+
 def history_enabled(email=""):
     email = email or st.session_state.get("auth_user", "")
-    if not (email and _ENC_OK and paywall_enabled() and _supabase_client()):
-        return False
-    if not has_plus(email):
-        return False
-    if "_hist_off" not in st.session_state:
-        st.session_state["_hist_off"] = bool(load_user_pref(email, "history_off", False))
-    return not st.session_state["_hist_off"]
+    return history_available(email) and history_consent(email) is True
 
 
 def set_history_enabled(email, on):
-    st.session_state["_hist_off"] = not on
-    save_user_pref(email, "history_off", not on)
+    st.session_state["_hist_on"] = bool(on)
+    save_user_pref(email, "history_consent", bool(on))
     st.session_state.pop("_hist_ctx", None)
+
+
+def render_history_consent(lang="el", key="hc"):
+    """Explicit opt-in card. Shown to Plus users who have not decided yet."""
+    el = lang == "el"
+    st.markdown(
+        '<div style="background:#EEF1FF;border:1px solid #D0D6F5;border-radius:20px;padding:16px 18px;margin:8px 0 8px;">'
+        f'<div style="font:800 16px Sora,Inter,sans-serif;color:#0B1B4B;">📁 {"Να κρατάμε το ιστορικό του κατοικιδίου σου;" if el else "Keep your pet’s history?"}</div>'
+        '<div style="font-size:13px;color:#2B3566;line-height:1.6;margin-top:6px;">'
+        + (f"Αν συμφωνείς, αποθηκεύουμε τα <b>κείμενα</b> των αποτελεσμάτων (αναφορές, εξετάσεις, φωτογραφίες, ζωτικά), κρυπτογραφημένα, "
+           f"ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να τα έχουν ως αναφορά και να συγκρίνεις νέες εξετάσεις. "
+           f"<b>Διαγράφονται οριστικά μετά από {HISTORY_MONTHS} μήνες.</b> Δεν αποθηκεύουμε αρχεία ή φωτογραφίες. Μπορείς να αλλάξεις γνώμη ή να σβήσεις τα πάντα όποτε θέλεις."
+           if el else
+           f"If you agree, we store the result <b>texts</b> (reports, labs, photos, vitals), encrypted, so the nurse, the report and the second opinion can use them as reference and you can compare new results. "
+           f"<b>They are permanently deleted after {HISTORY_MONTHS} months.</b> We never store files or photos. You can change your mind or delete everything at any time.")
+        + '</div></div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button(("Ναι, αποθήκευσε" if el else "Yes, save it"), type="primary", use_container_width=True, key=f"{key}_yes"):
+            set_history_enabled(st.session_state.get("auth_user", ""), True); st.rerun()
+    with c2:
+        if st.button(("Όχι, ευχαριστώ" if el else "No thanks"), use_container_width=True, key=f"{key}_no"):
+            set_history_enabled(st.session_state.get("auth_user", ""), False); st.rerun()
 
 
 def save_record(kind, title, payload, pet=None):
@@ -2455,13 +2485,16 @@ def render_history_page():
            f"{_html.escape(nm)}'s findings (reports, labs, photos, vitals) are kept here so the nurse, the report and the second opinion can use them as reference, "
            f"and so you can upload new results to compare. <b>They are kept for {HISTORY_MONTHS} months and then permanently deleted.</b> We store only the result texts, never your files or photos, encrypted.")
         + '</p></div>', unsafe_allow_html=True)
-    on = history_enabled(email)
-    new_on = st.toggle(("Αποθήκευση ιστορικού" if el else "Save history"), value=on, key="hist_toggle")
-    if new_on != on:
-        set_history_enabled(email, new_on); st.rerun()
-    if not new_on:
-        st.info("Το ιστορικό είναι απενεργοποιημένο: δεν αποθηκεύεται τίποτα νέο και δεν χρησιμοποιείται ως αναφορά. Τα υπάρχοντα μένουν μέχρι να λήξουν ή να τα διαγράψεις." if el
-                else "History is off: nothing new is saved or used as reference. Existing records stay until they expire or you delete them.")
+    consent = history_consent(email)
+    if consent is None:
+        render_history_consent(lang, key="hc_page")
+    else:
+        new_on = st.toggle(("Αποθήκευση ιστορικού" if el else "Save history"), value=bool(consent), key="hist_toggle")
+        if new_on != bool(consent):
+            set_history_enabled(email, new_on); st.rerun()
+        if not new_on:
+            st.info("Το ιστορικό είναι απενεργοποιημένο: δεν αποθηκεύεται τίποτα νέο και δεν χρησιμοποιείται ως αναφορά. Τα υπάρχοντα μένουν μέχρι να λήξουν ή να τα διαγράψεις." if el
+                    else "History is off: nothing new is saved or used as reference. Existing records stay until they expire or you delete them.")
     c1, c2 = st.columns(2)
     with c1:
         if st.button(("➕ Νέες εξετάσεις" if el else "➕ Upload new labs"), use_container_width=True, key="hist_labs", type="primary"):
@@ -2578,6 +2611,8 @@ def render_plan_banner(lang="el"):
         if (st.session_state.get("pet") or {}).get("name") and st.button(("📁 Αρχείο κατοικιδίου" if el else "📁 Pet archive"),
                                                                           key="plan_hist", use_container_width=True):
             _goto("history")
+        if (st.session_state.get("pet") or {}).get("name") and history_available() and history_consent() is None:
+            render_history_consent(lang, key="hc_home")
         return
     left = free_triage_left()
     dots = "".join(f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:{"#2328BE" if k < left else "#D3D9F5"};"></span>'
@@ -6351,7 +6386,7 @@ def render_privacy_page():
             "με το κουμπί παρακάτω.\n"
             "- **Προφίλ κατοικιδίων** (όνομα, είδος, φυλή, ηλικία, βάρος, ιστορικό που συμπλήρωσες): αποθηκεύονται "
             "κρυπτογραφημένα (Fernet) στον λογαριασμό σου ώστε να τα βρίσκεις όταν ξαναμπείς. Διαγράφονται με το κουμπί παρακάτω.\n"
-            "- **Αρχείο κατοικιδίου (μόνο Plus)**: τα **κείμενα** των αποτελεσμάτων (αναφορά, δεύτερη γνώμη, ανάλυση εξετάσεων και φωτογραφιών, ζωτικά) "
+            "- **Αρχείο κατοικιδίου (μόνο Plus, μόνο αν το επιτρέψεις ρητά)**: τα **κείμενα** των αποτελεσμάτων (αναφορά, δεύτερη γνώμη, ανάλυση εξετάσεων και φωτογραφιών, ζωτικά) "
             "αποθηκεύονται κρυπτογραφημένα (Fernet) για **6 μήνες** και μετά **διαγράφονται μόνιμα και αυτόματα**. Χρησιμεύουν ως αναφορά για τις επόμενες αξιολογήσεις. "
             "Τα ίδια τα αρχεία και οι φωτογραφίες δεν αποθηκεύονται ποτέ. Μπορείς να το απενεργοποιήσεις ή να διαγράψεις εγγραφές ανά πάσα στιγμή από «Αρχείο κατοικιδίου».\n"
             "- **Συνδρομή & χρήση**: κρατάμε τη συνδρομή σου Plus και μόνο το πλήθος (ημερομηνίες) των δωρεάν ελέγχων "
@@ -6383,7 +6418,7 @@ def render_privacy_page():
             "the button below.\n"
             "- **Pet profiles** (name, species, breed, age, weight, history you entered): stored Fernet-encrypted on your "
             "account so they are there when you sign back in. Deleted by the button below.\n"
-            "- **Pet archive (Plus only)**: the result **texts** (report, second opinion, lab and photo analysis, vitals) are stored "
+            "- **Pet archive (Plus only, and only if you explicitly opt in)**: the result **texts** (report, second opinion, lab and photo analysis, vitals) are stored "
             "Fernet-encrypted for **6 months** and then **permanently and automatically deleted**. They serve as reference for later assessments. "
             "The files and photos themselves are never stored. You can turn it off or delete entries any time from “Pet archive”.\n"
             "- **Subscription & usage**: we keep your Plus subscription and only the count (dates) of free checks "
