@@ -1355,6 +1355,10 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         unsafe_allow_html=True
     )
 
+    render_policy_chat(triage_result, condition, pet_name, species, lang)
+
+
+def render_policy_chat(triage_result="", condition="", pet_name="", species="σκύλος", lang="el"):
     # ── HAL Insurance Chat ────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(
@@ -1753,7 +1757,7 @@ def has_insurance_subscription(email: str) -> bool:
         res = (sb.table("subscriptions")
                  .select("plan,valid_until")
                  .eq("user_email", email)
-                 .eq("plan", "insurance")
+                 .in_("plan", ["plus", "insurance"])
                  .limit(1)
                  .execute())
         rows = res.data or []
@@ -1793,29 +1797,198 @@ def invalidate_subscription_cache(email: str):
     st.session_state.pop(f"_insurance_sub_{email}", None)
 
 
-def render_insurance_upsell(lang: str = "el"):
-    """Εμφανίζει upsell card για χρήστες χωρίς συνδρομή."""
-    if lang == "el":
-        title = "🔒 Κάλυψη Ασφαλιστηρίου"
-        body  = ("Δες αμέσως τι καλύπτει το πρόγραμμά σου, πόσο θα πληρώσεις "
-                 "και ποια κλινική του δικτύου να επισκεφτείς — χωρίς αναζήτηση.")
-        cta   = "Ενεργοποίησε το Insurance Coverage →"
-    else:
-        title = "🔒 Insurance Coverage"
-        body  = ("See instantly what your programme covers, how much you'll pay "
-                 "and which network clinic to visit — no searching required.")
-        cta   = "Activate Insurance Coverage →"
+# ── PETS’HEALTH PLUS — one subscription (4,99€/μήνα) for every service ───────
+# Free tier: FREE_TRIAGE_PER_MONTH symptom checks (nurse chat) per calendar month.
+# Everything else (report, second opinion, vitals, photo, labs, longevity, diary,
+# insurance) needs an active plan ('plus', or legacy 'insurance') in `subscriptions`.
+# Usage is counted in Supabase table `usage_events` (user_email, kind, created_at).
+FREE_TRIAGE_PER_MONTH = 3
+PLUS_PRICE_MONTH = "4,99€"
+PLUS_PRICE_YEAR = "49,99€"
+PAID_SCREENS = {"vitals", "scan", "photo", "labs", "longevity", "diary", "insurance", "report"}
+
+_PLUS_SERVICES = [
+    ("💬", ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
+           ("Στο δωρεάν πλάνο: 3 τον μήνα.", "Free plan: 3 per month.")),
+    ("📋", ("Κτηνιατρική αναφορά", "Veterinary report"),
+           ("Δομημένη αναφορά για τον κτηνίατρο — PDF, HTML, WhatsApp.", "A structured report for your vet — PDF, HTML, WhatsApp.")),
+    ("🩺", ("Δεύτερη κτηνιατρική γνώμη", "Second veterinary opinion"),
+           ("Ανεξάρτητος έλεγχος της εκτίμησης από δεύτερο μοντέλο AI.", "An independent check of the assessment by a second AI model.")),
+    ("🫁", ("Ζωτικά & αναπνοές", "Vitals & breathing"),
+           ("Μέτρηση αναπνοών με την κάμερα, σφυγμοί, θερμοκρασία.", "Camera breathing count, pulse and temperature.")),
+    ("📷", ("Ανάλυση φωτογραφιών", "Photo analysis"),
+           ("Μάτια, δέρμα, αυτιά, ούλα — περιγραφή από AI.", "Eyes, skin, ears, gums — described by AI.")),
+    ("🧪", ("Εργαστηριακές εξετάσεις", "Lab results"),
+           ("PDF ή φωτογραφία αιματολογικών σε απλά λόγια.", "PDF or photo of blood tests in plain words.")),
+    ("🧬", ("Έλεγχος μακροζωίας", "Longevity check"),
+           ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, πλάνο.", "Age in human years, wellness score, plan.")),
+    ("📅", ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
+           ("Τι συμβαίνει στον χρόνο, έτοιμο για τον κτηνίατρο.", "What happens over time, ready for your vet.")),
+    ("🛡️", ("Ασφάλιση: κάλυψη & κόστος", "Insurance: cover & cost"),
+           ("Έλεγχος κάλυψης, πόσο πληρώνεις, συμβεβλημένες κλινικές, ερωτήσεις για το συμβόλαιο.",
+            "Coverage check, what you pay, contracted clinics, policy questions.")),
+]
+
+
+def paywall_enabled() -> bool:
+    """Paywall is active only with real accounts (Supabase) and unless PLUS_PAYWALL=off."""
+    return auth_enabled() and os.environ.get("PLUS_PAYWALL", "on").lower() != "off"
+
+
+def has_plus(email: str = "") -> bool:
+    if not paywall_enabled():
+        return True
+    if st.session_state.get("_plus_override") is not None:
+        return bool(st.session_state["_plus_override"])
+    email = email or st.session_state.get("auth_user", "")
+    return has_insurance_subscription(email)
+
+
+def _month_start_iso() -> str:
+    from datetime import timezone
+    n = datetime.now(timezone.utc)
+    return n.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+
+def triage_used_this_month(email: str = "") -> int:
+    email = email or st.session_state.get("auth_user", "")
+    local = int(st.session_state.get("_tri_used_local", 0))
+    if not email:
+        return local
+    ck = f"_tri_used_{email}"
+    if ck in st.session_state:
+        return max(st.session_state[ck], local)
+    sb = _supabase_client()
+    if not sb:
+        return local
+    try:
+        res = (sb.table("usage_events").select("id", count="exact")
+                 .eq("user_email", email).eq("kind", "triage_check")
+                 .gte("created_at", _month_start_iso()).execute())
+        n = int(res.count if res.count is not None else len(res.data or []))
+        st.session_state[ck] = n
+        return max(n, local)
+    except Exception as e:
+        log_event("usage_read", ok=False, error=str(e))
+        return local
+
+
+def free_triage_left(email: str = "") -> int:
+    return max(0, FREE_TRIAGE_PER_MONTH - triage_used_this_month(email))
+
+
+def record_triage_check(email: str = ""):
+    """Count one symptom check (called when a new assessment gets its first message)."""
+    email = email or st.session_state.get("auth_user", "")
+    st.session_state["_tri_used_local"] = int(st.session_state.get("_tri_used_local", 0)) + 1
+    if not email:
+        return
+    base = triage_used_this_month(email)
+    st.session_state[f"_tri_used_{email}"] = max(base, st.session_state["_tri_used_local"])
+    sb = _supabase_client()
+    if not sb:
+        return
+    try:
+        sb.table("usage_events").insert({"user_email": email, "kind": "triage_check"}).execute()
+        log_event("usage_write", ok=True, kind="triage_check")
+    except Exception as e:
+        log_event("usage_write", ok=False, error=str(e))
+
+
+def render_plus_paywall(lang="el", feature_label="", full=True):
+    """The one upgrade card: every service for 4,99€/μήνα (or 49,99€/έτος)."""
+    el = lang == "el"
+    i = 0 if el else 1
+    left = free_triage_left()
     st.markdown(
-        f'<div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;'
-        f'padding:16px 18px;margin:12px 0;opacity:0.85">'
-        f'<div style="font-weight:700;font-size:15px;margin-bottom:6px">{title}</div>'
-        f'<div style="font-size:13px;color:#374151;margin-bottom:12px">{body}</div>'
-        f'<div style="font-size:12px;font-weight:600;color:#059669">'
-        f'📧 Επικοινώνησε μαζί μας για να ενεργοποιήσεις: '
-        f'<a href="mailto:info@chiinsurance.gr" style="color:#059669">info@chiinsurance.gr</a>'
-        f'</div></div>',
-        unsafe_allow_html=True
-    )
+        '<style>'
+        '.pn-plus{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);border-radius:24px;padding:22px 24px;color:#fff;margin:8px 0 14px;'
+        'box-shadow:0 10px 28px rgba(35,40,190,.25);}'
+        '.pn-plus .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.8;}'
+        '.pn-plus .ti{font:800 24px/1.2 Sora,Inter,sans-serif;letter-spacing:-.02em;margin:6px 0 4px;}'
+        '.pn-plus .su{font-size:13.5px;opacity:.9;line-height:1.55;}'
+        '.pn-plus .pr{display:inline-block;background:#fff;color:#2328BE;border-radius:999px;font:800 13px Inter,sans-serif;padding:5px 12px;margin-top:12px;}'
+        '.pn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:6px 0 12px;}'
+        '.pn-svc{display:flex;gap:11px;background:#fff;border:1px solid #DDE2F8;border-radius:18px;padding:12px 14px;}'
+        '.pn-svc .ic{width:38px;height:38px;border-radius:12px;background:#EEF1FF;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}'
+        '.pn-svc b{display:block;font:700 13.5px Sora,Inter,sans-serif;color:#0B1B4B;margin-bottom:2px;}'
+        '.pn-svc span{font-size:12px;color:#5B6794;line-height:1.45;}'
+        '.pn-free{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:18px;padding:12px 16px;font-size:12.5px;color:#14532D;line-height:1.55;margin-bottom:12px;}'
+        '</style>'
+        '<div class="pn-plus"><div class="eb">PETS’HEALTH PLUS</div>'
+        f'<div class="ti">{"Όλες οι υπηρεσίες, ένα πλάνο" if el else "Every service, one plan"}</div>'
+        '<div class="su">'
+        + ((f"Η υπηρεσία «{feature_label}» περιλαμβάνεται στο Plus. " if feature_label else "")
+           + ("Με μία συνδρομή ξεκλειδώνεις αναφορά για τον κτηνίατρο, δεύτερη γνώμη, ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο και όλο το κομμάτι της ασφάλισης."
+              if el else "One subscription unlocks the vet report, second opinion, vitals, photos, labs, longevity, diary and all the insurance tools."))
+        + '</div>'
+        f'<div class="pr">{PLUS_PRICE_MONTH} / {"μήνα" if el else "month"} · {"ή" if el else "or"} {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</div></div>'
+        '<div class="pn-grid">'
+        + "".join(f'<div class="pn-svc"><div class="ic">{ic}</div><div><b>{ti[i]}</b><span>{de[i]}</span></div></div>'
+                  for ic, ti, de in _PLUS_SERVICES)
+        + '</div>'
+        '<div class="pn-free">🎁 <b>' + ("Δωρεάν για πάντα" if el else "Free, always") + '</b> · '
+        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα), κτηνίατρος κοντά σου και λίστα συμβεβλημένων κλινικών."
+           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month), find a vet near you and the contracted clinics list.")
+        + '</div>', unsafe_allow_html=True)
+    _mo = os.environ.get("STRIPE_CHECKOUT_MONTHLY", "")
+    _yr = os.environ.get("STRIPE_CHECKOUT_YEARLY", "")
+    _mail = "mailto:info@chiinsurance.gr?subject=Pets%E2%80%99health%20Plus"
+    c1, c2 = st.columns(2)
+    with c1:
+        st.link_button((f"Μηνιαίο · {PLUS_PRICE_MONTH}" if el else f"Monthly · {PLUS_PRICE_MONTH}"),
+                       _mo or _mail, use_container_width=True, type="primary")
+    with c2:
+        st.link_button((f"Ετήσιο · {PLUS_PRICE_YEAR}" if el else f"Yearly · {PLUS_PRICE_YEAR}"),
+                       _yr or _mail, use_container_width=True)
+    if not (_mo and _yr):
+        st.caption("Η ενεργοποίηση γίνεται από την ομάδα μας: info@chiinsurance.gr" if el
+                   else "Activation is handled by our team: info@chiinsurance.gr")
+    st.caption("Ακύρωση όποτε θέλεις. Η Pets’health δεν παρέχει κτηνιατρική διάγνωση." if el
+               else "Cancel any time. Pets’health does not provide veterinary diagnosis.")
+
+
+def render_paywall_page(screen_key):
+    lang = st.session_state.lang
+    names = {"vitals": ("Ζωτικά & αναπνοές", "Vitals & breathing"), "scan": ("Ζωτικά & αναπνοές", "Vitals & breathing"),
+             "photo": ("Ανάλυση φωτογραφιών", "Photo analysis"), "labs": ("Εργαστηριακές εξετάσεις", "Lab results"),
+             "longevity": ("Έλεγχος μακροζωίας", "Longevity check"), "diary": ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
+             "insurance": ("Ασφάλιση κατοικιδίου", "Pet insurance"), "report": ("Κτηνιατρική αναφορά", "Veterinary report"),
+             "plus": ("", "")}
+    nm = names.get(screen_key, ("", ""))[0 if lang == "el" else 1]
+    render_pet_nav("report" if screen_key == "report" else "dashboard")
+    if st.button("← " + ("Πίσω" if lang == "el" else "Back"), key="pw_back"):
+        _goto("triage" if screen_key == "report" else "dashboard")
+    render_plus_paywall(lang, nm)
+
+
+def render_plan_banner(lang="el"):
+    """Home: free-plan usage or Plus status."""
+    if not paywall_enabled():
+        return
+    el = lang == "el"
+    if has_plus():
+        st.markdown('<div style="display:inline-block;background:#EEF1FF;color:#2328BE;border-radius:999px;font:700 12px Inter,sans-serif;padding:5px 12px;margin:0 0 10px;">'
+                    '✨ Pets’health Plus ' + ("ενεργό" if el else "active") + '</div>', unsafe_allow_html=True)
+        return
+    left = free_triage_left()
+    dots = "".join(f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:{"#2328BE" if k < left else "#D3D9F5"};"></span>'
+                   for k in range(FREE_TRIAGE_PER_MONTH))
+    st.markdown(
+        '<div style="background:#fff;border:1px solid #DDE2F8;border-radius:18px;padding:12px 16px;margin:0 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+        f'<div>{dots}</div><div style="font-size:13px;color:#0B1B4B;flex:1 1 200px;"><b>'
+        + (f"Δωρεάν πλάνο · {left} από {FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων αυτόν τον μήνα" if el
+           else f"Free plan · {left} of {FREE_TRIAGE_PER_MONTH} symptom checks left this month") + '</b></div></div>',
+        unsafe_allow_html=True)
+    if st.button(("✨ Ξεκλείδωσε όλες τις υπηρεσίες · " + PLUS_PRICE_MONTH + "/μήνα") if el
+                 else ("✨ Unlock every service · " + PLUS_PRICE_MONTH + "/month"),
+                 key="plan_upgrade", use_container_width=True):
+        _goto("plus")
+
+
+def render_insurance_upsell(lang: str = "el"):
+    """Upsell for the insurance coverage check — the unified Plus plan."""
+    render_plus_paywall(lang, "Έλεγχος κάλυψης ασφαλιστηρίου" if lang == "el" else "Insurance coverage check")
 
 
 # ── ADMIN-CONFIGURABLE APP SETTINGS (B2B2C: featured vet, emergency vets, links) ──
@@ -4260,6 +4433,17 @@ def render_triage():
         sub_en=(f"Chat about {nm} — one question at a time" if nm else "Tell us what you're noticing — one question at a time"),
         mascot_key=mascot_for_pet(pet),
     )
+    if paywall_enabled() and not has_plus():
+        _left = free_triage_left()
+        if not st.session_state.triage_chat and _left <= 0:
+            st.warning("Χρησιμοποίησες και τους 3 δωρεάν ελέγχους αυτού του μήνα." if lang == "el"
+                       else "You've used all 3 free checks this month.")
+            render_plus_paywall(lang, "Απεριόριστοι έλεγχοι συμπτωμάτων" if lang == "el" else "Unlimited symptom checks")
+            if st.button("🐾 " + ("Κτηνίατρος κοντά σου (δωρεάν)" if lang == "el" else "Find a vet near you (free)"), key="tri_free_vets"):
+                _goto("vets")
+            return
+        st.caption((f"🎁 Δωρεάν πλάνο · απομένουν {_left} από {FREE_TRIAGE_PER_MONTH} έλεγχοι αυτόν τον μήνα" if lang == "el"
+                    else f"🎁 Free plan · {_left} of {FREE_TRIAGE_PER_MONTH} checks left this month"))
     render_vitals_summary()
     _render_disclaimer_strip()
 
@@ -4270,6 +4454,8 @@ def render_triage():
         silently doing nothing."""
         if not _rate_limit_gate("triage_chat"):
             return
+        if not st.session_state.triage_chat and paywall_enabled() and not has_plus():
+            record_triage_check()   # a new assessment = one of the free monthly checks
         st.session_state.triage_chat.append({"role":"user","content":user_text})
         with st.spinner("Pets’health..."):
             p = pet
@@ -4525,7 +4711,7 @@ def render_triage():
             st.caption("💬 Απάντησε σε μερικές ακόμα ερωτήσεις και η αναφορά ξεκλειδώνει αυτόματα." if lang=="el"
                        else "💬 Answer a few more questions and the report unlocks automatically.")
         render_output_language_picker(lang, key_suffix="triage")
-        if st.button(t("generate_report"), type=("primary" if _nurse_done else "secondary"), use_container_width=True,
+        if st.button(("🔒 " if (paywall_enabled() and not has_plus()) else "") + t("generate_report"), type=("primary" if _nurse_done else "secondary"), use_container_width=True,
                      disabled=not enabled, key="pn_gen_report"):
             st.session_state.screen = "report"; st.rerun()
     with st.expander(("ℹ️ Συχνές παθήσεις για το είδος του" if lang=="el" else "ℹ️ Common conditions for this species"), expanded=False):
@@ -5867,7 +6053,8 @@ def render_pet_tool_card(key, screen, eb, title, body, cta, where):
         st.markdown(
             f'<div class="{mk}" style="padding:2px 4px 0;">'
             f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="pn-eyebrow">{eb[i]}</span>'
-            + (f'<span class="pn-chip ok">✓ {chip}</span>' if chip else "") + '</div>'
+            + (f'<span class="pn-chip ok">✓ {chip}</span>' if chip else "")
+            + ('<span class="pn-chip">🔒 Plus</span>' if (paywall_enabled() and screen in PAID_SCREENS and not has_plus()) else "") + '</div>'
             f'<div style="font-family:Sora,Inter,sans-serif;color:#0B1B4B;font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:10px 0 4px;">{title[i]}</div>'
             f'<div style="color:#5B6794;font-size:13px;line-height:1.55;margin-bottom:8px;">{body[i]}</div></div>',
             unsafe_allow_html=True)
@@ -5995,6 +6182,7 @@ def render_pet_home():
         st.session_state.intake_step = 0
         _goto("intake")
 
+    render_plan_banner(lang)
     render_pet_nurse_card()
 
     st.markdown('<div class="pn-sec">' + ("ΕΡΓΑΛΕΙΑ — ΚΑΘΕΝΑ ΛΕΙΤΟΥΡΓΕΙ ΜΟΝΟ ΤΟΥ ΚΑΙ ΤΡΟΦΟΔΟΤΕΙ ΤΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el
@@ -6625,10 +6813,84 @@ def render_pet_vets():
     _tool_footer(chat_cta=False)
 
 
+def render_programme_overview(provider, lang="el"):
+    """Plus subscribers: what the Eurolife programme gives, at a glance — no AI call."""
+    el = lang == "el"
+    p = (provider or "").lower()
+    std = "standard" in p
+    name = "My Happy Pet " + ("Standard" if std else "Plus")
+    if el:
+        common = ["Πρώτα κάλεσε το Συντονιστικό 210 9303811 (ραντεβού Δευ-Παρ 8-20, επείγοντα 24/7)",
+                  "Ισχύει σε Αττική και Θεσσαλονίκη, σε συμβεβλημένο δίκτυο και συνεργαζόμενες κλινικές",
+                  "Περίοδος αναμονής 45 ημέρες για νοσηλεία, πράξεις και διαγνωστικά",
+                  "Απαραίτητο microchip", "Νοσηλεία 22€ + ΦΠΑ/ημέρα, εντατική 32€ + ΦΠΑ/ημέρα"]
+        own = (["Επισκέψεις ΜΟΝΟ για επείγον: 10€ (Δευ-Παρ 9-21) / 30€ (εκτός ωραρίου)",
+                "Δεν περιλαμβάνει δωρεάν επισκέψεις, κατ’ οίκον, φυσικοθεραπείες, δωρεάν check-up",
+                "Φροντίδα: 1 δωρεάν grooming, 2 δωρεάν συνεδρίες εκπαίδευσης"] if std else
+               ["2 δωρεάν επισκέψεις τον χρόνο, μετά 10€ / 30€ ανά επίσκεψη (απεριόριστες)",
+                "Δωρεάν επανεξέταση της ίδιας πάθησης μετά από σύσταση γιατρού",
+                "Κατ’ οίκον επίσκεψη 20€ / 40€ · φυσικοθεραπείες 45€ + ΦΠΑ",
+                "Δωρεάν ετήσιο check-up, έλεγχος αυτιών και οδοντιατρικός έλεγχος",
+                "Εμβόλια στο δίκτυο από 16,50€ + ΦΠΑ · 1 δωρεάν grooming, 2 δωρεάν εκπαιδεύσεις"])
+        h_own, h_com, h_tab = "Μόνο " + name, "Ισχύουν και στα δύο προγράμματα", "Ενδεικτικές συμμετοχές (χωρίς ΦΠΑ)"
+        cols = ("Γάτα", "Σκύλος")
+        rows = [("Επίσκεψη με ενέσιμη θεραπεία", "15€", "25€"), ("Γενική αίματος", "5€", "5€"),
+                ("Ακτινογραφία (με ηρέμηση)", "20€", "20€"), ("Υπέρηχος κοιλίας", "40€", "40€"),
+                ("Ευνουχισμός", "50€", "90–120€"), ("Ωοθηκυστερεκτομή", "80€", "130–180€"),
+                ("Εντεροτομή", "150€", "300€"), ("Στροφή στομάχου (GDV)", "—", "660€")]
+        note = "Ποσά από το Προσάρτημα Α των Όρων 07.26. Ηρέμηση/αναισθησία έχουν ξεχωριστή συμμετοχή."
+    else:
+        common = ["Call the Coordination Centre first: 210 9303811 (appointments Mon-Fri 8-20, emergencies 24/7)",
+                  "Attica and Thessaloniki only, at contracted and cooperating clinics",
+                  "45-day waiting period for hospital care, procedures and diagnostics", "Microchip required",
+                  "Hospital stay €22 + VAT/day, intensive care €32 + VAT/day"]
+        own = (["Visits for emergencies ONLY: €10 (Mon-Fri 9-21) / €30 (after hours)",
+                "No free visits, home visits, physiotherapy or free check-up",
+                "Care: 1 free grooming, 2 free training sessions"] if std else
+               ["2 free visits a year, then €10 / €30 per visit (unlimited)",
+                "Free re-examination of the same condition on a vet's advice",
+                "Home visit €20 / €40 · physiotherapy €45 + VAT",
+                "Free annual check-up, ear and dental check",
+                "Network vaccines from €16.50 + VAT · 1 free grooming, 2 free training sessions"])
+        h_own, h_com, h_tab = name + " only", "Both programmes", "Typical co-payments (excl. VAT)"
+        cols = ("Cat", "Dog")
+        rows = [("Visit with injectable treatment", "15€", "25€"), ("Complete blood count", "5€", "5€"),
+                ("X-ray (with sedation)", "20€", "20€"), ("Abdominal ultrasound", "40€", "40€"),
+                ("Castration", "50€", "90–120€"), ("Spay", "80€", "130–180€"),
+                ("Enterotomy", "150€", "300€"), ("Stomach torsion (GDV)", "—", "660€")]
+        note = "Amounts from Appendix A of the Terms 07.26. Sedation/anaesthesia carry a separate co-payment."
+    li = lambda xs: "".join(f"<li>{x}</li>" for x in xs)
+    tr = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>" for a, b, c in rows)
+    st.markdown(
+        '<style>.pn-po{background:#fff;border:1px solid #DDE2F8;border-radius:22px;padding:18px 20px;margin:10px 0;}'
+        '.pn-po h4{font:700 15px Sora,Inter,sans-serif;color:#0B1B4B;margin:0 0 8px;}'
+        '.pn-po ul{margin:0;padding-left:18px;font-size:13px;color:#2B3566;line-height:1.7;}'
+        '.pn-po table{width:100%;border-collapse:collapse;font-size:13px;}'
+        '.pn-po td,.pn-po th{padding:7px 6px;border-bottom:1px solid #EEF0FB;text-align:left;color:#0B1B4B;}'
+        '.pn-po th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5B6794;}'
+        '.pn-po small{color:#5B6794;font-size:11.5px;}</style>'
+        f'<div class="pn-po" style="background:#EEF1FF;"><h4>🛡️ {name}</h4><ul>{li(own)}</ul></div>'
+        f'<div class="pn-po"><h4>{h_com}</h4><ul>{li(common)}</ul></div>'
+        f'<div class="pn-po"><h4>{h_tab}</h4><table><tr><th></th><th>{cols[0]}</th><th>{cols[1]}</th></tr>{tr}</table>'
+        f'<small>{note}</small></div>', unsafe_allow_html=True)
+
+
 def render_pet_insurance():
+    lang = st.session_state.lang
+    el = lang == "el"
     _tool_screen("🛡️", "Ασφάλιση κατοικιδίου", "Pet insurance",
                  "Κάλυψη εξόδων κτηνιάτρου για {nm}", "Cover vet costs for {nm}")
-    render_insurance_promo(st.session_state.lang)
+    _prov = st.session_state.get("pet_insurance_provider", "") or (st.session_state.get("pet") or {}).get("insurance_provider", "")
+    _pl = str(_prov).lower()
+    if not (_pl.startswith("eurolife") and ("plus" in _pl or "standard" in _pl)):
+        render_insurance_prompt(lang)
+    else:
+        render_programme_overview(_prov, lang)
+        st.markdown('<div class="pn-sec">' + ("ΣΥΜΒΕΒΛΗΜΕΝΑ ΚΤΗΝΙΑΤΡΕΙΑ" if el else "CONTRACTED CLINICS") + '</div>', unsafe_allow_html=True)
+        render_network_clinics("URGENT", lang, _prov)
+        st.markdown('<div class="pn-sec">' + ("ΡΩΤΑ ΓΙΑ ΤΟ ΣΥΜΒΟΛΑΙΟ ΣΟΥ" if el else "ASK ABOUT YOUR POLICY") + '</div>', unsafe_allow_html=True)
+        _pet = st.session_state.get("pet") or {}
+        render_policy_chat("", "", _pet.get("name", ""), _pet.get("species", "σκύλος"), lang)
     _tool_footer(chat_cta=False)
 
 
@@ -6668,6 +6930,9 @@ elif screen == "intake":
         if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
             st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
     render_intake()
+elif screen == "plus": render_paywall_page("plus")
+elif screen in PAID_SCREENS and not has_plus():
+    render_paywall_page(screen)
 elif screen == "dashboard": render_pet_home()
 elif screen in ("vitals", "scan"): render_pet_scan()
 elif screen == "photo": render_pet_photo()

@@ -10,3 +10,7 @@ Streamlit app (single file `app.py`) for pet parents in Greece: nurse chat → v
   `&chat=1|emerg` for a seeded chat, `&ins=1` for a selected Eurolife programme). No AI keys locally.
 - Deploys: Railway project “pet ai nurse”; `web-staging` follows branch `design/petify-layout`, `web` follows `main`.
 - Brand name is “Pets’health” (typographic apostrophe, because a plain one breaks Python strings).
+- Plans: free = 3 symptom checks/month (counted in Supabase `usage_events`, kind `triage_check`); “Pets’health Plus” 4,99€/mo
+  (49,99€/yr) unlocks every other service (`PAID_SCREENS`). Entitlement = row in `subscriptions` with plan `plus` (legacy `insurance` also counts).
+  Checkout links: env `STRIPE_CHECKOUT_MONTHLY` / `STRIPE_CHECKOUT_YEARLY` (no webhook yet — rows are added by hand). `PLUS_PAYWALL=off` disables gating.
+  Harness: `&plus=0|1`, `&used=N` (needs fake SUPABASE env to turn the paywall on).
