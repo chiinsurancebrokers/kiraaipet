@@ -5049,7 +5049,7 @@ def render_insurance_promo(lang: str = "el"):
     if lang == "el":
         badge    = "✨ Νέο feature"
         title    = "Έλεγχος ασφαλιστικής κάλυψης κατοικιδίου"
-        sub      = ("Μετά από κάθε αξιολόγηση συμπτωμάτων, ο HAL ελέγχει αυτόματα "
+        sub      = ("Μετά από κάθε αξιολόγηση συμπτωμάτων, η PetAiNurse ελέγχει αυτόματα "
                     "αν η κατάσταση του κατοικιδίου σου καλύπτεται από το ασφαλιστήριό σου.")
         feats = [
             ("🩺", "Αρχικός έλεγχος κάλυψης",
@@ -5057,8 +5057,8 @@ def render_insurance_promo(lang: str = "el"):
             ("💰", "Ακριβές κόστος συμμετοχής",
              "Πόσο θα πληρώσεις ανά επίσκεψη, εξέταση ή επέμβαση — με βάση τον τιμοκατάλογο του προγράμματός σου."),
             ("🏥", "Πληροφορίες δικτύου κλινικών",
-             "Αν το συμβόλαιό σου έχει αποκλειστικά συμβεβλημένο δίκτυο κτηνιάτρων και κλινικών, ο HAL σε κατευθύνει στη σωστή."),
-            ("💬", "Ερωτήσεις στον HAL",
+             "Αν το συμβόλαιό σου έχει αποκλειστικά συμβεβλημένο δίκτυο κτηνιάτρων και κλινικών, η PetAiNurse σε κατευθύνει στη σωστή."),
+            ("💬", "Ερωτήσεις στην PetAiNurse",
              "Ρώτα οτιδήποτε για το συμβόλαιό σου — απεριόριστες ερωτήσεις, καλύπτει και προϋπάρχουσες παθήσεις."),
         ]
         mo_lbl  = "ΜΗΝΙΑΙΑ"
@@ -5075,7 +5075,7 @@ def render_insurance_promo(lang: str = "el"):
     else:
         badge    = "✨ New feature"
         title    = "Pet insurance coverage check"
-        sub      = ("After every symptom assessment, HAL automatically checks whether "
+        sub      = ("After every symptom assessment, PetAiNurse automatically checks whether "
                     "your pet's condition is covered by your insurance policy.")
         feats = [
             ("🩺", "Initial coverage check",
@@ -5083,8 +5083,8 @@ def render_insurance_promo(lang: str = "el"):
             ("💰", "Exact co-payment per case",
              "How much you'll pay per visit, test or procedure — based on your programme's price list."),
             ("🏥", "Network clinic information",
-             "If your policy has an exclusive network of vets and clinics, HAL directs you to the right one."),
-            ("💬", "Ask HAL anything",
+             "If your policy has an exclusive network of vets and clinics, PetAiNurse directs you to the right one."),
+            ("💬", "Ask PetAiNurse anything",
              "Ask any question about your policy — unlimited queries, covers pre-existing conditions too."),
         ]
         mo_lbl  = "MONTHLY"
@@ -5185,32 +5185,32 @@ def render_insurance_promo(lang: str = "el"):
         unsafe_allow_html=True
     )
 
-    # HAL etymology easter egg
-    _hal_title = "Τι είναι ο HAL;" if lang == "el" else "What is HAL?"
+    # PetAiNurse etymology easter egg
+    _hal_title = "Τι είναι η PetAiNurse;" if lang == "el" else "What is PetAiNurse?"
     with st.expander(_hal_title, expanded=False):
         if lang == "el":
             st.markdown(
-                '''**HAL** σημαίνει **H**euristically programmed **AL**gorithmic computer —
+                '''**PetAiNurse** σημαίνει **H**euristically programmed **AL**gorithmic computer —
 ένας υπολογιστής προγραμματισμένος ευρετικά με αλγοριθμική λογική.
 
-Το όνομα προέρχεται από τον θρυλικό υπερυπολογιστή **HAL 9000** της ταινίας
+Το όνομα προέρχεται από τον θρυλικό υπερυπολογιστή **PetAiNurse 9000** της ταινίας
 *2001: A Space Odyssey* (1968) των Arthur C. Clarke και Stanley Kubrick —
 γνωστό για την ψύχραιμη φωνή του, το κόκκινο "μάτι"-φακό και την
 ικανότητά του να κατανοεί και να απαντά σε φυσική γλώσσα.
 
-Ο δικός μας **HAL** διαβάζει το ασφαλιστήριό σου και απαντά στις ερωτήσεις
+Ο δικός μας **PetAiNurse** διαβάζει το ασφαλιστήριό σου και απαντά στις ερωτήσεις
 σου για κάλυψη — χωρίς να ανοίξεις αρχεία PDF, χωρίς να τηλεφωνήσεις
 στην ασφαλιστική. Ελπίζουμε να είναι λίγο πιο συνεργάσιμος από τον πρωτότυπο. 🔴
 ''')
         else:
             st.markdown(
-                '''**HAL** stands for **H**euristically programmed **AL**gorithmic computer.
+                '''**PetAiNurse** stands for **H**euristically programmed **AL**gorithmic computer.
 
-The name comes from the iconic supercomputer **HAL 9000** in Stanley Kubrick
+The name comes from the iconic supercomputer **PetAiNurse 9000** in Stanley Kubrick
 and Arthur C. Clarke's *2001: A Space Odyssey* (1968) — famous for its calm
 voice, red-lens "eye", and ability to understand and respond in natural language.
 
-Our **HAL** reads your insurance policy and answers your coverage questions —
+Our **PetAiNurse** reads your insurance policy and answers your coverage questions —
 no PDF hunting, no hold music. We hope ours is a little more cooperative
 than the original. 🔴
 ''')
@@ -5789,6 +5789,38 @@ def render_pet_nurse_card():
                 _goto("vets")
 
 
+def render_pet_landing():
+    """Hero / landing: what PetAiNurse does + the other services."""
+    from petify_ui import landing_parts as _lp
+    lang = st.session_state.lang
+    el = lang == "el"
+    parts = _lp(lang)
+    st.markdown(_PETIFY_THEME, unsafe_allow_html=True)
+    _t1, _t2 = st.columns([6, 1])
+    with _t1:
+        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetAiNurse</div>',
+                    unsafe_allow_html=True)
+    with _t2:
+        if st.button("EN" if el else "ΕΛ", key="land_lang"):
+            st.session_state.lang = "en" if el else "el"; st.rerun()
+    has_pet = bool((st.session_state.get("pet") or {}).get("name"))
+
+    def _cta(key):
+        lbl = ("Συνέχεια στην εφαρμογή" if has_pet else "Ξεκίνα δωρεάν") if el else ("Open the app" if has_pet else "Get started")
+        if st.button(lbl, key=key, type="primary", use_container_width=True, icon="🐾"):
+            st.session_state["_landing_seen"] = True
+            st.session_state.screen = "dashboard" if has_pet else "intake"
+            st.rerun()
+
+    st.markdown(parts["hero"], unsafe_allow_html=True)
+    _cta("land_cta_top")
+    st.markdown(parts["services"], unsafe_allow_html=True)
+    st.markdown(parts["more"], unsafe_allow_html=True)
+    _cta("land_cta_bottom")
+    st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
+                unsafe_allow_html=True)
+
+
 def render_pet_home():
     """Home: the nurse first, every other feature as its own card."""
     lang = st.session_state.lang
@@ -5846,6 +5878,9 @@ def render_pet_home():
     if S.get("result"):
         st.markdown('<div class="pn-sec">' + ("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK") + '</div>', unsafe_allow_html=True)
         render_pet_longevity_result(S["result"], lang, compact=True)
+    if st.button(("ℹ️ Τι μπορεί να κάνει η PetAiNurse;" if el else "ℹ️ What can PetAiNurse do?"), key="home_open_landing",
+                 use_container_width=True):
+        st.session_state.screen = "landing"; st.rerun()
     _render_disclaimer_strip()
     _emergency_banner()
 
@@ -6479,7 +6514,11 @@ if auth_enabled() and not is_logged_in():
 
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
-if screen == "home":
+if screen == "home" and not st.session_state.get("_landing_seen"):
+    render_pet_landing()
+elif screen == "landing":
+    render_pet_landing()
+elif screen == "home":
     st.session_state.screen = "dashboard" if _has_pet else "intake"
     st.rerun()
 elif screen == "intake":

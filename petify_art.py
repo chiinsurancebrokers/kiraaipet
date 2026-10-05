@@ -202,6 +202,27 @@ def scene(kind: str, species: str = "dog") -> str:
                 + f'<path d="M200 46l74 28v50c0 30 -30 54 -74 72c-44 -18 -74 -42 -74 -72V74z" fill="{BLUE2}"/>'
                 + _paw(200, 112, 1.9, "#fff") + _heart(262, 52, .9) + _sparkle(98, 50, 1.2, ORANGE) + _sparkle(318, 166, 1.0, BLUE))
         return _svg("0 0 400 220", body, "pn-art-shield", "insurance")
+    if kind == "pets":
+        body = (_bg("#FFE9DC", PEACH, "gpt") + _blobs("#fff", .5)
+                + f'<rect x="36" y="120" width="104" height="100" rx="52" fill="{BLUE}"/><rect x="148" y="104" width="104" height="116" rx="52" fill="{BLUE2}"/><rect x="260" y="120" width="104" height="100" rx="52" fill="{ORANGE}"/>'
+                + _dog_head(88, 104, .78) + _cat_head(200, 90, .78) + _bunny_head(312, 118, .66)
+                + _heart(200, 28, .8) + _sparkle(40, 46, 1.2, BLUE) + _sparkle(364, 52, 1.0, ORANGE))
+        return _svg("0 0 400 220", body, "pn-art-pets", "your pet")
+    if kind == "measure":
+        ticks = "".join(f'<path d="M{70 + i*20} 150v{14 if i%2 else 22}" stroke="{INK}" stroke-width="3" stroke-linecap="round"/>' for i in range(14))
+        body = (_bg(LAV, LAV2, "gme") + _blobs()
+                + f'<rect x="56" y="138" width="288" height="52" rx="14" fill="#fff"/>{ticks}'
+                + f'<g transform="translate(200 76)"><rect x="-62" y="-14" width="124" height="70" rx="18" fill="{BLUE}"/><circle cy="20" r="24" fill="#fff"/>'
+                  f'<path d="M0 20l10 -12" stroke="{ORANGE}" stroke-width="5" stroke-linecap="round"/><circle cy="20" r="4" fill="{INK}"/></g>'
+                + _paw(332, 70, 1.2, ORANGE) + _sparkle(60, 56, 1.2, BLUE))
+        return _svg("0 0 400 220", body, "pn-art-measure", "measurements")
+    if kind == "meds":
+        body = (_bg("#EAF8F1", "#BFE9D4", "gmd") + _blobs()
+                + f'<g transform="translate(120 36)"><rect width="96" height="140" rx="20" fill="#fff" stroke="{INK}" stroke-width="3"/><rect x="-6" y="-12" width="108" height="34" rx="12" fill="{BLUE}"/>'
+                  f'<rect x="16" y="52" width="64" height="52" rx="10" fill="{LAV}"/><rect x="42" y="58" width="12" height="40" rx="3" fill="{ORANGE}"/><rect x="28" y="72" width="40" height="12" rx="3" fill="{ORANGE}"/></g>'
+                + f'<g transform="translate(262 120) rotate(-28)"><rect width="76" height="30" rx="15" fill="{ORANGE}"/><path d="M38 0h23a15 15 0 0 1 0 30H38z" fill="#fff"/></g>'
+                + f'<circle cx="300" cy="64" r="16" fill="#fff"/><circle cx="268" cy="176" r="11" fill="{BLUE2}"/>' + _sparkle(64, 54, 1.2, ORANGE) + _sparkle(356, 170, 1.0, BLUE))
+        return _svg("0 0 400 220", body, "pn-art-meds", "medications")
     if kind == "emergency":
         body = (_bg("#FFE3E3", "#FFC7C7", "ge") + _blobs()
                 + f'<circle cx="200" cy="110" r="68" fill="#fff"/><rect x="188" y="66" width="24" height="88" rx="8" fill="#DC2626"/><rect x="156" y="98" width="88" height="24" rx="8" fill="#DC2626"/>')

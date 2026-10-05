@@ -367,7 +367,8 @@ def result_card_html(res: dict, lang: str) -> str:
 _BANNER_SCENE = {"🫁": ("breath", True), "🧬": ("longevity", True), "❤️": ("vitals", False),
                  "💬": ("symptoms", False), "📋": ("report", False), "📷": ("photo", False),
                  "📍": ("vets", False), "🧪": ("labs", False), "📅": ("diary", False),
-                 "🛡️": ("shield", False), "🩺": ("nurse", True)}
+                 "🛡️": ("shield", False), "🩺": ("nurse", True),
+                 "🐾": ("pets", False), "📏": ("measure", False), "🩹": ("report", False), "💊": ("meds", False)}
 BANNER_ICONS = tuple(_BANNER_SCENE.keys())
 
 
@@ -409,3 +410,141 @@ def gallery_html(lang: str, species: str = "dog") -> str:
     return '<div class="pn-gallery">' + "".join(
         f'<div class="pn-gcard"><div class="im">{_art.scene(k, sp)}</div><div class="bd"><div class="n">{n}</div><h4>{t}</h4><p>{b}</p></div></div>'
         for k, n, t, b in cards) + '</div>'
+
+
+# ── landing page (what PetAiNurse does + the other services) ─────────────────
+LANDING_CSS = f"""
+<style>
+.pn-l-hero {{ display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:22px; align-items:center; background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
+  border-radius:28px; padding:34px 32px; color:#fff; box-shadow:0 30px 60px -34px rgba(18,55,201,.8); margin:4px 0 14px; }}
+.pn-l-hero h1 {{ font-family:var(--pn-display); font-weight:700; font-size:40px; line-height:1.06; letter-spacing:-.035em; margin:14px 0 12px; color:#fff; }}
+.pn-l-hero h1 span {{ color:#FFB48F; }}
+.pn-l-hero p {{ font-size:15.5px; line-height:1.65; color:#D5DCFF; max-width:520px; margin:0; }}
+.pn-l-hero .art {{ border-radius:22px; overflow:hidden; aspect-ratio:400/220; box-shadow:0 24px 50px -26px rgba(0,0,0,.55); }}
+.pn-l-svc {{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:0; background:#fff; border:1px solid {LINE}; border-radius:28px; overflow:hidden; margin:0 0 16px; }}
+.pn-l-svc.flip .art {{ order:2; }}
+.pn-l-svc .art {{ display:flex; align-items:center; padding:22px; background:linear-gradient(160deg,{LAV},#fff); }}
+.pn-l-svc .art svg {{ position:static !important; width:100%; height:auto !important; aspect-ratio:400/220; flex:none; border-radius:22px; box-shadow:0 18px 36px -24px rgba(11,27,75,.45); }}
+.pn-l-svc .bd {{ padding:28px 30px 28px; display:flex; flex-direction:column; gap:10px; min-width:0; }}
+.pn-l-svc .meta {{ font-size:12px; color:{MUTED}; }}
+.pn-l-svc h2 {{ font-family:var(--pn-display); font-weight:700; font-size:26px; line-height:1.12; letter-spacing:-.03em; color:{INK}; margin:2px 0 0; }}
+.pn-l-svc .sum {{ font-size:14.5px; line-height:1.6; color:{MUTED}; }}
+.pn-l-svc .prob {{ background:{LAV}; border:1px solid {LAV2}; border-radius:16px; padding:12px 14px; font-size:13.5px; line-height:1.55; color:{INK}; }}
+.pn-l-svc .prob b {{ display:block; font:800 11px 'Inter',sans-serif; letter-spacing:.12em; color:{BLUE}; margin-bottom:3px; text-transform:uppercase; }}
+.pn-l-svc h3 {{ font:800 11px 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:{ORANGE}; margin:6px 0 0; }}
+.pn-l-svc ol {{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px; counter-reset:s; }}
+.pn-l-svc li {{ counter-increment:s; display:flex; gap:11px; align-items:flex-start; font-size:13.5px; line-height:1.5; color:{INK}; }}
+.pn-l-svc li:before {{ content:counter(s); flex:0 0 24px; height:24px; border-radius:50%; background:{BLUE}; color:#fff; font:700 12px 'Inter',sans-serif; display:flex; align-items:center; justify-content:center; margin-top:1px; }}
+.pn-l-svc .note {{ font-size:11.5px; color:{MUTED}; line-height:1.5; }}
+.pn-l-svc.main {{ border-color:{BLUE}; box-shadow:0 26px 50px -36px rgba(18,55,201,.6); }}
+.pn-l-more {{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 0 18px; }}
+.pn-l-more .c {{ background:#fff; border:1px solid {LINE}; border-radius:20px; overflow:hidden; }}
+.pn-l-more .im {{ aspect-ratio:400/190; }} .pn-l-more .t {{ padding:10px 12px 12px; font:700 13px 'Sora',sans-serif; color:{INK}; letter-spacing:-.01em; line-height:1.25; }}
+.pn-l-more .t small {{ display:block; font:500 11.5px 'Inter',sans-serif; color:{MUTED}; margin-top:3px; letter-spacing:0; }}
+@media (max-width:900px) {{ .pn-l-more {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
+@media (max-width:820px) {{
+  .pn-l-hero {{ grid-template-columns:1fr; padding:24px 22px; }} .pn-l-hero h1 {{ font-size:30px; }} .pn-l-hero .art {{ order:-1; }}
+  .pn-l-svc {{ grid-template-columns:1fr; }} .pn-l-svc.flip .art {{ order:0; }} .pn-l-svc .art {{ padding:14px 14px 0; }}
+  .pn-l-svc .bd {{ padding:20px 20px 22px; }} .pn-l-svc h2 {{ font-size:22px; }}
+}}
+</style>
+"""
+
+
+def landing_parts(lang: str) -> dict:
+    el = lang == "el"
+    hero = f"""{LANDING_CSS}
+<div class="pn-l-hero"><div>
+  <span class="pn-eyebrow dark">{"AI ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>
+  <h1>{"Πες τι παρατηρείς. <span>Η PetAiNurse ρωτά, εξηγεί και ετοιμάζει την αναφορά.</span>" if el else "Tell us what you notice. <span>PetAiNurse asks, explains and prepares the report.</span>"}</h1>
+  <p>{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD Vet Manual — και γύρω της υπηρεσίες για κάλυψη ασφαλιστηρίου, μακροζωία και ιατρική αναφορά. Συμπληρώνει, δεν αντικαθιστά τον κτηνίατρο." if el
+      else "A structured symptom assessment with MSD Vet Manual references — with services around it for insurance coverage, longevity and the medical report. It complements your vet, never replaces them."}</p>
+</div><div class="art">{_art.scene("nurse", "dog")}</div></div>"""
+
+    def svc(scene, flip, main, tag, title, summary, problem, steps, note=""):
+        lis = "".join(f"<li>{x}</li>" for x in steps)
+        return (f'<div class="pn-l-svc{" flip" if flip else ""}{" main" if main else ""}"><div class="art">{_art.scene(scene, "dog").replace("slice","meet")}</div>'
+                f'<div class="bd"><div><span class="pn-eyebrow{" orange" if main else ""}">{tag}</span></div><h2>{title}</h2><div class="sum">{summary}</div>'
+                f'<div class="prob"><b>{"Το πρόβλημα" if el else "The problem"}</b>{problem}</div>'
+                f'<h3>{"Πώς δουλεύει" if el else "How it works"}</h3><ol>{lis}</ol>'
+                + (f'<div class="note">{note}</div>' if note else "") + '</div></div>')
+
+    if el:
+        services = "".join([
+            svc("nurse", False, True, "ΚΥΡΙΑ ΥΠΗΡΕΣΙΑ", "PetAiNurse — εκτίμηση συμπτωμάτων",
+                "Ο ιδιοκτήτης περιγράφει τι βλέπει· η PetAiNurse ρωτά μία ερώτηση τη φορά και ετοιμάζει δομημένη σύνοψη για τον κτηνίατρο.",
+                "Στο σπίτι δεν ξέρεις αν ένα σύμπτωμα θέλει αναμονή ή επείγον. Στο ιατρείο, ο κτηνίατρος έχει λίγα λεπτά και ένα ασαφές ιστορικό.",
+                ["Φτιάχνεις το προφίλ του κατοικιδίου: είδος, ηλικία, βάρος, φάρμακα.",
+                 "Περιγράφεις με λόγια, με φωνή ή με γρήγορες επιλογές. Προαιρετικά προσθέτεις φωτογραφία, ζωτικά ή εξετάσεις.",
+                 "Η PetAiNurse ρωτά μία ερώτηση τη φορά· ο έλεγχος επείγοντος είναι πάντα ενεργός.",
+                 "Παίρνεις αξιολόγηση με παραπομπές MSD και οδηγία για το επόμενο βήμα."],
+                "Δεν είναι διάγνωση. Σε επείγουσες καταστάσεις επικοινώνησε αμέσως με κτηνίατρο."),
+            svc("shield", True, False, "ΑΣΦΑΛΙΣΤΙΚΗ ΚΑΛΥΨΗ", "Έλεγχος κάλυψης ασφαλιστηρίου",
+                "Μετά την αξιολόγηση, η AI ελέγχει αν η κατάσταση καλύπτεται από το ασφαλιστήριο του κατοικιδίου σου και πόσο θα πληρώσεις.",
+                "Οι ιδιοκτήτες δεν ξέρουν αν και πόσο καλύπτεται ένα ραντεβού πριν πάνε στην κλινική.",
+                ["Επιλέγεις την ασφαλιστική σου στο προφίλ.",
+                 "Ολοκληρώνεις την αξιολόγηση συμπτωμάτων.",
+                 "Βλέπεις αν καλύπτεται, τη συμμετοχή ανά επίσκεψη ή εξέταση και τις συμβεβλημένες κλινικές.",
+                 "Ρωτάς ό,τι θέλεις για το συμβόλαιό σου."],
+                "Ο έλεγχος γίνεται από AI και δεν είναι επίσημη γνωμάτευση της ασφαλιστικής. 7 μέρες δωρεάν."),
+            svc("longevity", False, False, "ΜΑΚΡΟΖΩΙΑ", "Έλεγχος μακροζωίας",
+                "Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας 0–100 και πλάνο φροντίδας για περισσότερα χρόνια μαζί.",
+                "«Πόσο χρονών είναι πραγματικά;» και «τι να αλλάξω για να ζήσει περισσότερο;» δεν έχουν απλή απάντηση.",
+                ["Απαντάς σε 5 ερωτήσεις: βάρος, δόντια, δραστηριότητα, πρόληψη.",
+                 "Προαιρετικά μετράς τις αναπνοές στον ύπνο με την κάμερα του κινητού.",
+                 "Βλέπεις ηλικία σε ανθρώπινα χρόνια και επίπεδο ανά τομέα.",
+                 "Παίρνεις πλάνο με τα επόμενα βήματα."],
+                "Εκτίμηση ευεξίας — όχι διάγνωση ή πρόβλεψη για το δικό σου ζώο."),
+            svc("report", True, False, "ΙΑΤΡΙΚΗ ΑΝΑΦΟΡΑ", "Αναφορά για τον κτηνίατρο",
+                "Η συζήτηση, οι μετρήσεις και οι εξετάσεις γίνονται ένα καθαρό έγγραφο για το ιατρείο.",
+                "Στο ιατρείο θυμάσαι τα μισά και οι εξετάσεις είναι σκόρπιες σε φωτογραφίες και PDF.",
+                ["Ολοκληρώνεις τη συζήτηση με την PetAiNurse.",
+                 "Συγκεντρώνονται προφίλ, ζωτικά, φωτογραφίες και εξετάσεις.",
+                 "Επιλέγεις γλώσσα για την αναφορά.",
+                 "Την κατεβάζεις ή την τυπώνεις και την παίρνεις μαζί σου."]),
+        ])
+        more_t = "ΚΑΙ ΑΚΟΜΑ"
+        more = [("breath", "Ζωτικά & αναπνοές", "Κάμερα ή με το χέρι"), ("photo", "Φωτογραφία", "Μάτια, δέρμα, ούλα"),
+                ("labs", "Εξετάσεις", "PDF ή φωτογραφία"), ("diary", "Ημερολόγιο", "Συμπτώματα στο χρόνο"), ("vets", "Κτηνίατρος", "Κοντινός & επείγων")]
+        foot = "Η PetAiNurse δεν παρέχει κτηνιατρική διάγνωση και δεν αντικαθιστά τον κτηνίατρο."
+    else:
+        services = "".join([
+            svc("nurse", False, True, "MAIN SERVICE", "PetAiNurse — symptom assessment",
+                "The owner describes what they see; PetAiNurse asks one question at a time and prepares a structured summary for the vet.",
+                "At home you can't tell whether a symptom can wait or is an emergency. At the clinic the vet has a few minutes and a vague history.",
+                ["Create your pet's profile: species, age, weight, medication.",
+                 "Describe it in words, by voice or with quick picks. Optionally add a photo, vitals or lab results.",
+                 "PetAiNurse asks one question at a time; the emergency check is always on.",
+                 "You get an assessment with MSD references and a next step."],
+                "Not a diagnosis. In an emergency contact a vet immediately."),
+            svc("shield", True, False, "INSURANCE COVERAGE", "Policy coverage check",
+                "After the assessment, the AI checks whether the condition is covered by your pet's policy and what you would pay.",
+                "Owners don't know whether, or how much, a visit is covered before they reach the clinic.",
+                ["Choose your insurer in the profile.",
+                 "Finish the symptom assessment.",
+                 "See whether it is covered, the co-payment per visit or test, and the network clinics.",
+                 "Ask anything about your policy."],
+                "The check is done by AI and is not an official statement from your insurer. 7 days free."),
+            svc("longevity", False, False, "LONGEVITY", "Longevity check",
+                "Age in human years, a 0–100 wellness score and a care plan for more years together.",
+                "\"How old are they really?\" and \"what should I change so they live longer?\" have no simple answer.",
+                ["Answer 5 questions: weight, teeth, activity, prevention.",
+                 "Optionally count sleeping breaths with your phone camera.",
+                 "See age in human years and a level for each area.",
+                 "Get a plan with next steps."],
+                "A wellness estimate — not a diagnosis or a prediction for your animal."),
+            svc("report", True, False, "MEDICAL REPORT", "Report for the vet",
+                "The chat, the measurements and the lab results become one clean document for the clinic.",
+                "At the clinic you forget half of it, and the tests are scattered across photos and PDFs.",
+                ["Finish the chat with PetAiNurse.",
+                 "Profile, vitals, photos and lab results are gathered.",
+                 "Choose the report language.",
+                 "Download or print it and take it with you."]),
+        ])
+        more_t = "AND MORE"
+        more = [("breath", "Vitals & breathing", "Camera or by hand"), ("photo", "Photo check", "Eyes, skin, gums"),
+                ("labs", "Lab results", "PDF or photo"), ("diary", "Symptom diary", "Over time"), ("vets", "Find a vet", "Nearby & emergency")]
+        foot = "PetAiNurse does not provide veterinary diagnosis and does not replace your vet."
+    more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
+                 "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
+    return {"hero": hero, "services": services, "more": more_html, "foot": foot}
