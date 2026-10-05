@@ -136,7 +136,7 @@ def run_case(v, nurse_model, rep):
               "Language: Greek\nBe direct and clinical. Always recommend professional veterinary evaluation. End with AI disclaimer.") % (nm, sp_label, breed, age, sex, transcript)
         report = call(nurse_model, nurse_sys, [{"role": "user", "content": rp}], 6000)
     jin = "CHAT:\n" + transcript + ("\n\nREPORT:\n" + report if report else "")
-    judge = call(JUDGE_MODEL, JUDGE_SYS, [{"role": "user", "content": jin}], 20, 0.0).strip().upper()
+    judge = call(JUDGE_MODEL, JUDGE_SYS, [{"role": "user", "content": jin}], 1024).strip().upper()
     judge = next((l for l in ("NO_GUIDANCE", "SELF_CARE", "EMERGENCY", "URGENT") if l in judge), "INVALID")
     last_assist = next(m["content"] for m in reversed(chat) if m["role"] == "assistant")
     return {"id": v["id"], "gt": v["ground_truth_category"], "model": nurse_model, "rep": rep, "stop": stop,
