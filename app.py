@@ -1967,8 +1967,8 @@ def render_plus_paywall(lang="el", feature_label="", full=True):
                   for ic, ti, de in _PLUS_SERVICES)
         + '</div>'
         '<div class="pn-free">🎁 <b>' + ("Δωρεάν για πάντα" if el else "Free, always") + '</b> · '
-        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και λίστα συμβεβλημένων κλινικών."
-           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month) for 1 pet, find a vet near you and the contracted clinics list.")
+        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και επείγοντα."
+           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month) for 1 pet, find a vet near you and emergencies.")
         + '</div>', unsafe_allow_html=True)
     import urllib.parse as _up
     _em = st.session_state.get("auth_user", "")
@@ -4659,9 +4659,12 @@ def render_triage():
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
     # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
     # Αν ΟΧΙ συνδρομή → upsell card. Αν ΝΑΙ → πλήρες coverage card.
-    if _insurance_show and not _has_provider:
+    _ins_locked = paywall_enabled() and not has_plus()
+    if _insurance_show and _ins_locked:
+        render_insurance_upsell(lang)      # insurance (cover, costs, contracted clinics) is a Plus feature
+    elif _insurance_show and not _has_provider:
         render_insurance_prompt(lang)
-    if _insurance_show and _has_provider:
+    if _insurance_show and _has_provider and not _ins_locked:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
         _last_msg = next((m["content"] for m in reversed(st.session_state.triage_chat)
@@ -4680,7 +4683,7 @@ def render_triage():
         _pet_name  = pet.get("name", "") if isinstance(pet, dict) else ""
         _species   = pet.get("species", "σκύλος") if isinstance(pet, dict) else "σκύλος"
         render_network_clinics(_triage_level, lang, _provider)
-        if has_insurance_subscription(_email):
+        if has_plus(_email):
             render_insurance_coverage_card(
                 triage_result=_triage_level,
                 condition=_condition,
@@ -6177,7 +6180,6 @@ def render_plans_section(lang="el"):
         ("3 έλεγχοι συμπτωμάτων τον μήνα", "3 symptom checks a month"),
         ("1 κατοικίδιο", "1 pet"),
         ("Κτηνίατρος κοντά σου & επείγοντα", "Find a vet near you & emergencies"),
-        ("Λίστα συμβεβλημένων κλινικών Eurolife", "Eurolife contracted clinics list"),
     ]
     plus_items = [
         ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
