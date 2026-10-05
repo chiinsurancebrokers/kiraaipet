@@ -5538,6 +5538,26 @@ def _second_opinion_generate(pet, lang):
     return sanitize_ai_text(gpt_result), ""
 
 
+_PN_REPORT_TAIL_CSS = """<style>
+.pn-note{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--pn-line,#DDE2F8);border-left:4px solid var(--pn-orange,#FF7A3D);
+  border-radius:18px;padding:14px 18px;margin:16px 0 4px;font-size:13.5px;line-height:1.55;color:var(--pn-ink,#0F1530)}
+.pn-note .ic{font-size:18px;line-height:1.3}
+.pn-gov{background:#fff;border:1px solid var(--pn-line,#DDE2F8);border-radius:22px;padding:18px 20px;margin:0 0 6px}
+.pn-gov p{margin:0 0 14px;font-size:13.5px;line-height:1.55;color:var(--pn-muted,#5B6385)}
+.pn-gbtn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:999px;background:var(--pn-blue,#1237C9);
+  color:#fff !important;font-weight:700;font-size:14px;text-decoration:none !important}
+.pn-gbtn:hover{background:var(--pn-blue2,#2F55F0)}
+.pn-gnote{font-size:12px;color:var(--pn-muted,#5B6385);margin:12px 0 8px}
+.pn-gchips{display:flex;flex-wrap:wrap;gap:8px}
+.pn-gchip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;background:var(--pn-lav,#EEF1FF);border:1px solid var(--pn-lav2,#D0D6F5);
+  font-size:12.5px;font-weight:600;color:var(--pn-blue,#1237C9) !important;text-decoration:none !important}
+.pn-gchip:hover{border-color:var(--pn-blue,#1237C9)}
+.pn-wa{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;text-decoration:none !important;font-weight:600;font-size:14px;
+  color:#fff !important;background:#25D366}
+.pn-wa:hover{filter:brightness(.95)}
+</style>"""
+
+
 def render_report():
     render_stepper("report")
     pet  = st.session_state.pet
@@ -5737,54 +5757,62 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         st.markdown(
             '<style>'
             'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker){'
-            'background:linear-gradient(180deg,#EEF1FF 0%,#E4E9FF 100%);border:1.5px solid #B9C3F2;border-radius:22px;'
-            'padding:18px 20px 16px;margin:18px 0;box-shadow:0 6px 20px rgba(35,40,190,.10);}'
-            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker) h1,'
-            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-marker) h2{font-size:15px !important;'
-            'color:#2328BE;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px !important;}'
+            'background:radial-gradient(120% 100% at 100% 0%,rgba(47,85,240,.7) 0%,rgba(47,85,240,0) 60%),#1237C9;border-radius:24px;'
+            'padding:18px 18px 18px;margin:18px 0;box-shadow:0 26px 50px -32px rgba(18,55,201,.75);}'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card){'
+            'background:#fff;border-radius:18px;padding:16px 18px 14px;margin-top:6px;color:#0B0F1E;}'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) p,'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) li{color:#0B0F1E !important;font-size:14.5px;line-height:1.6;}'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) h1,'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) h2,'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) h3{font-size:15px !important;'
+            'color:#0B0F1E !important;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px !important;}'
+            'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .pn-so-card) [data-testid="stCaptionContainer"]{color:#3A4160 !important;}'
             '</style>', unsafe_allow_html=True)
         with st.container():
             st.markdown(
                 '<span class="pn-so-marker"></span>'
                 '<div style="display:flex;align-items:center;gap:12px;">'
-                '<div style="width:44px;height:44px;border-radius:14px;background:#2328BE;color:#fff;display:flex;'
+                '<div style="width:44px;height:44px;border-radius:14px;background:#fff;color:#1237C9;display:flex;'
                 'align-items:center;justify-content:center;font-size:22px;">🩺</div>'
-                '<div><div style="font:700 17px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;">'
+                '<div><div style="font:700 17px Sora,Inter,sans-serif;color:#fff;letter-spacing:-.02em;">'
                 + ("Δεύτερη κτηνιατρική γνώμη" if lang == "el" else "Second veterinary opinion") +
-                ' <span style="background:#2328BE;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;'
+                ' <span style="background:#FF7A3D;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;'
                 'vertical-align:middle;letter-spacing:.06em;">' + ("ΕΠΙΠΛΕΟΝ ΥΠΗΡΕΣΙΑ" if lang == "el" else "EXTRA SERVICE") + '</span></div>'
-                '<div style="font-size:12.5px;color:#5B6794;margin-top:2px;">'
+                '<div style="font-size:12.5px;color:#C9D3FF;margin-top:2px;">'
                 + ("Ανεξάρτητος έλεγχος της εκτίμησης από δεύτερο μοντέλο AI (GPT)" if lang == "el"
                    else "An independent check of the assessment by a second AI model (GPT)") +
                 '</div></div></div>', unsafe_allow_html=True)
-            if not st.session_state.get("report_gpt"):
-                st.caption("Δεν είναι διαθέσιμη ακόμη." if lang == "el" else "Not available yet.")
-                if st.button(("🔄 Ζήτα δεύτερη γνώμη" if lang == "el" else "🔄 Request second opinion"),
-                             type="primary", key="pet_gpt_request"):
-                    if _rate_limit_gate("gpt4o_second_opinion"):
-                        with st.spinner(f"{SECOND_OPINION_LABEL}…"):
-                            _so, _so_err = _second_opinion_generate(pet, lang)
-                        if _so:
-                            st.session_state.report_gpt = _so
-                            st.rerun()
-                        else:
-                            st.error(("Δεν ήταν δυνατή η δεύτερη γνώμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο."
-                                      if lang == "el" else "The second opinion isn't available right now. Please try again shortly."))
-            else:
-                st.markdown(st.session_state.report_gpt)
-                if st.session_state.get("_gpt_integrated"):
-                    st.success("✓ " + ("Ενσωματώθηκε στην τελική εκτίμηση και στα exports."
-                                       if lang == "el" else "Integrated into the final assessment and exports."))
+            with st.container():
+                st.markdown('<span class="pn-so-card"></span>', unsafe_allow_html=True)
+                if not st.session_state.get("report_gpt"):
+                    st.caption("Δεν είναι διαθέσιμη ακόμη." if lang == "el" else "Not available yet.")
+                    if st.button(("🔄 Ζήτα δεύτερη γνώμη" if lang == "el" else "🔄 Request second opinion"),
+                                 type="primary", key="pet_gpt_request"):
+                        if _rate_limit_gate("gpt4o_second_opinion"):
+                            with st.spinner(f"{SECOND_OPINION_LABEL}…"):
+                                _so, _so_err = _second_opinion_generate(pet, lang)
+                            if _so:
+                                st.session_state.report_gpt = _so
+                                st.rerun()
+                            else:
+                                st.error(("Δεν ήταν δυνατή η δεύτερη γνώμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο."
+                                          if lang == "el" else "The second opinion isn't available right now. Please try again shortly."))
                 else:
-                    if st.button(("➕ Ενσωμάτωση στην αναφορά (PDF/HTML)" if lang == "el"
-                                  else "➕ Add to report (PDF/HTML)"),
-                                 key="pet_gpt_integrate", use_container_width=True):
-                        _hdr = "## " + ("ΔΕΥΤΕΡΗ ΓΝΩΜΗ (GPT-4o)" if lang == "el" else "SECOND OPINION (GPT-4o)")
-                        st.session_state["_report_with_gpt"] = (
-                            (st.session_state.report or "").rstrip() + "\n\n---\n\n" + _hdr + "\n\n"
-                            + (st.session_state.report_gpt or "").strip())
-                        st.session_state["_gpt_integrated"] = True
-                        st.rerun()
+                    st.markdown(st.session_state.report_gpt)
+                    if st.session_state.get("_gpt_integrated"):
+                        st.success("✓ " + ("Ενσωματώθηκε στην τελική εκτίμηση και στα exports."
+                                           if lang == "el" else "Integrated into the final assessment and exports."))
+                    else:
+                        if st.button(("➕ Ενσωμάτωση στην αναφορά (PDF/HTML)" if lang == "el"
+                                      else "➕ Add to report (PDF/HTML)"),
+                                     key="pet_gpt_integrate", use_container_width=True):
+                            _hdr = "## " + (f"ΔΕΥΤΕΡΗ ΓΝΩΜΗ ({SECOND_OPINION_LABEL})" if lang == "el" else f"SECOND OPINION ({SECOND_OPINION_LABEL})")
+                            st.session_state["_report_with_gpt"] = (
+                                (st.session_state.report or "").rstrip() + "\n\n---\n\n" + _hdr + "\n\n"
+                                + (st.session_state.report_gpt or "").strip())
+                            st.session_state["_gpt_integrated"] = True
+                            st.rerun()
 
     # Photo findings card — if the user uploaded any photos during intake/triage,
     # the AI vision analyses become visible evidence in the final report.
@@ -5891,7 +5919,9 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                 st.markdown(f"**[{a['title']}]({a['url']})**")
 
     # Emergency vets
-    with st.expander("🚨 " + ("Επείγοντα Κτηνιατρεία" if lang=="el" else "Emergency Vet Clinics")):
+    _sh("emergency", "Επείγοντα κτηνιατρεία", "Emergency vet clinics", "Λίστα με κλινικές που δέχονται επείγοντα",
+        "Clinics that take emergencies")
+    with st.expander("🚨 " + ("Δες τη λίστα" if lang=="el" else "See the list")):
         render_emergency_vets(lang)
 
     # Wellness summary
@@ -5912,21 +5942,25 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         </div>''', unsafe_allow_html=True)
 
     _emergency_banner()
-    st.markdown(f'<div class="disclaimer-red">AI-generated. Δεν αντικαθιστά κτηνιατρική εξέταση.</div>', unsafe_allow_html=True)
+    st.markdown(_PN_REPORT_TAIL_CSS + '<div class="pn-note"><span class="ic">🛡️</span><div>'
+                + ("<b>Δημιουργήθηκε από AI.</b> Δεν αντικαθιστά κτηνιατρική εξέταση ή διάγνωση — δείξε την αναφορά στον κτηνίατρό σου."
+                   if lang == "el" else
+                   "<b>AI-generated.</b> It does not replace a veterinary exam or diagnosis — show this report to your vet.")
+                + '</div></div>', unsafe_allow_html=True)
 
-    # pet.gov.gr official services CTA
-    st.markdown(f'''<div class="insurance-cta">
-        <div style="font-size:28px;margin-bottom:8px">🐾</div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:6px">{t("insurance_cta")}</div>
-        <div style="opacity:.85;font-size:13px;margin-bottom:14px">{get_insurance_text(lang)}</div>
-        <a href="{get_petgovgr_url()}" target="_blank"
-           style="background:white;color:#059669;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">
-            {t("insurance_btn")}
-        </a>
-    </div>''', unsafe_allow_html=True)
-    render_govgr_links(lang)
+    # pet.gov.gr official services — one card (primary link + service chips)
+    _sh("shield", t("insurance_cta"), "Official pet.gov.gr services",
+        "Ηλεκτρονικό βιβλιάριο υγείας, δηλώσεις και κτηνιατρικός φάκελος", "Health booklet, declarations and vet record")
+    _gov_links = PETGOV_LINKS_EL if lang == "el" else PETGOV_LINKS_EN
+    _chips = "".join(f'<a class="pn-gchip" href="{_u}" target="_blank" rel="noopener">{_i} {_l}</a>' for _i, _l, _u in _gov_links)
+    st.markdown(
+        '<div class="pn-gov"><p>' + get_insurance_text(lang) + '</p>'
+        f'<a class="pn-gbtn" href="{get_petgovgr_url()}" target="_blank" rel="noopener">{t("insurance_btn")}</a>'
+        f'<div class="pn-gnote">{"Επίσημες κρατικές υπηρεσίες — ανοίγουν σε νέα καρτέλα." if lang == "el" else "Official government services — open in a new tab."}</div>'
+        f'<div class="pn-gchips">{_chips}</div></div>', unsafe_allow_html=True)
 
     # Actions
+    st.markdown('<div class="pn-sec">' + ("Αποθήκευση και κοινοποίηση" if lang == "el" else "Save and share") + '</div>', unsafe_allow_html=True)
     _export_report = (st.session_state.get("_report_with_gpt") if st.session_state.get("_gpt_integrated")
                       and st.session_state.get("_report_with_gpt") else st.session_state.report)
     fname = f"petsaihealth_report_{pet.get('name','pet')}_{datetime.now().strftime('%Y%m%d')}"
@@ -5988,10 +6022,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         wa_msg = "\n".join(wa_lines)
         wa_url = "https://wa.me/?text=" + urllib.parse.quote(wa_msg)
         st.markdown(
-            f'<a href="{wa_url}" target="_blank" '
-            f'style="display:flex;align-items:center;justify-content:center;height:38.4px;'
-            f'border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;'
-            f'color:white;background:#25D366">📤 WhatsApp</a>',
+            f'<a class="pn-wa" href="{wa_url}" target="_blank" rel="noopener">📤 WhatsApp</a>',
             unsafe_allow_html=True,
         )
 
