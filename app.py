@@ -2032,11 +2032,12 @@ def render_plus_paywall(lang="el", feature_label="", full=True):
         '.pn-plus .ti{font:800 24px/1.2 Sora,Inter,sans-serif;letter-spacing:-.02em;margin:6px 0 4px;}'
         '.pn-plus .su{font-size:13.5px;opacity:.9;line-height:1.55;}'
         '.pn-plus .pr{display:inline-block;background:#fff;color:#2328BE;border-radius:999px;font:800 13px Inter,sans-serif;padding:5px 12px;margin-top:12px;}'
-        '.pn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:6px 0 12px;}'
-        '.pn-svc{display:flex;gap:11px;background:#fff;border:1px solid #DDE2F8;border-radius:18px;padding:12px 14px;}'
-        '.pn-svc .ic{width:38px;height:38px;border-radius:12px;background:#EEF1FF;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}'
-        '.pn-svc b{display:block;font:700 13.5px Sora,Inter,sans-serif;color:#0B1B4B;margin-bottom:2px;}'
-        '.pn-svc span{font-size:12px;color:#5B6794;line-height:1.45;}'
+        '.pn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin:8px 0 16px;}'
+        '.pn-svc{display:flex;gap:16px;align-items:flex-start;background:linear-gradient(180deg,#fff 0%,#F7F8FF 100%);border:1px solid #DDE2F8;border-radius:22px;padding:20px 20px;min-height:108px;box-shadow:0 6px 18px rgba(35,40,190,.06);transition:transform .15s,box-shadow .15s;}'
+        '.pn-svc:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(35,40,190,.12);}'
+        '.pn-svc .ic{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#E7EAFB,#D6DCFA);display:flex;align-items:center;justify-content:center;font-size:27px;flex-shrink:0;}'
+        '.pn-svc b{display:block;font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;margin-bottom:5px;}'
+        '.pn-svc span{font-size:13.5px;color:#5B6794;line-height:1.5;}'
         '.pn-free{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:18px;padding:12px 16px;font-size:12.5px;color:#14532D;line-height:1.55;margin-bottom:12px;}'
         '</style>'
         '<div class="pn-plus"><div class="eb">PETSAIHEALTH PLUS</div>'
@@ -2090,6 +2091,133 @@ def render_paywall_page(screen_key):
     if st.button("← " + ("Πίσω" if lang == "el" else "Back"), key="pw_back"):
         _goto("triage" if screen_key == "report" else "dashboard")
     render_plus_paywall(lang, nm)
+
+
+def get_subscription_row(email: str = ""):
+    email = (email or st.session_state.get("auth_user", "") or "").strip()
+    sb = _supabase_client()
+    if not (email and sb):
+        return None
+    try:
+        res = (sb.table("subscriptions")
+                 .select("user_email,plan,valid_until,stripe_customer_id,stripe_subscription_id,notes")
+                 .in_("user_email", list({email, email.lower()})).in_("plan", ["plus", "insurance"]).limit(1).execute())
+        return (res.data or [None])[0]
+    except Exception:
+        return None
+
+
+def _stripe_portal_url(customer_id: str) -> str:
+    """Stripe Billing Portal session (manage card, invoices, cancel). Empty string if unavailable."""
+    key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not (key and customer_id):
+        return ""
+    dom = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+    data = {"customer": customer_id}
+    if dom:
+        data["return_url"] = "https://" + dom + "/"
+    try:
+        req = urllib.request.Request("https://api.stripe.com/v1/billing_portal/sessions",
+                                     data=urllib.parse.urlencode(data).encode(),
+                                     headers={"Authorization": "Bearer " + key})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read().decode()).get("url", "")
+    except Exception as e:
+        log_event("stripe_portal", ok=False, error=str(e)[:120])
+        return ""
+
+
+def render_paid_page():
+    """Landing page after Stripe checkout (payment link redirect ?paid=1)."""
+    lang = st.session_state.lang
+    el = lang == "el"
+    email = st.session_state.get("auth_user", "")
+    st.session_state.pop(f"_insurance_sub_{email}", None)
+    ok = has_plus(email)
+    if ok:
+        st.markdown('<div style="background:linear-gradient(135deg,#2328BE,#4B52E8);color:#fff;border-radius:24px;padding:28px 24px;text-align:center;margin:20px 0;">'
+                    '<div style="font-size:44px;">🎉</div>'
+                    f'<div style="font:800 24px Sora,Inter,sans-serif;margin:6px 0;">{"Καλώς ήρθες στο Plus!" if el else "Welcome to Plus!"}</div>'
+                    f'<div style="opacity:.9;font-size:14px;">{"Η πληρωμή ολοκληρώθηκε. Όλες οι υπηρεσίες είναι πλέον ανοιχτές." if el else "Payment complete. Every service is now unlocked."}</div></div>',
+                    unsafe_allow_html=True)
+        if st.button(("Συνέχεια στην εφαρμογή →" if el else "Continue to the app →"), type="primary", use_container_width=True, key="paid_go"):
+            st.session_state["_hero_seen"] = True
+            st.session_state.screen = "dashboard" if (st.session_state.get("pet") or {}).get("name") else "intake"
+            st.rerun()
+    else:
+        st.markdown('<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:20px;padding:22px 22px;margin:20px 0;">'
+                    f'<div style="font:800 18px Sora,Inter,sans-serif;color:#0B1B4B;">⏳ {"Ενεργοποιούμε το Plus…" if el else "Activating Plus…"}</div>'
+                    f'<div style="font-size:13.5px;color:#5B6794;margin-top:6px;line-height:1.55;">'
+                    + ("Η πληρωμή έγινε. Η ενεργοποίηση παίρνει μερικά δευτερόλεπτα· πάτα «Έλεγχος ξανά». "
+                       f"Αν πλήρωσες με διαφορετικό email από το {email or 'λογαριασμό σου'}, γράψε μας στο info@chiinsurance.gr και το συνδέουμε αμέσως."
+                       if el else "Your payment went through. Activation takes a few seconds; press “Check again”. "
+                       f"If you paid with a different email than {email or 'your account'}, write to info@chiinsurance.gr and we will link it right away.")
+                    + '</div></div>', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(("Έλεγχος ξανά" if el else "Check again"), type="primary", use_container_width=True, key="paid_retry"):
+                st.rerun()
+        with c2:
+            if st.button(("Συνέχεια δωρεάν" if el else "Continue free"), use_container_width=True, key="paid_skip"):
+                st.session_state.screen = "dashboard" if (st.session_state.get("pet") or {}).get("name") else "intake"
+                st.rerun()
+
+
+def render_account_page():
+    lang = st.session_state.lang
+    el = lang == "el"
+    email = st.session_state.get("auth_user", "")
+    row = get_subscription_row(email)
+    plus = has_plus(email)
+    plan_name = "PetsAIHealth Plus" if plus else ("Δωρεάν" if el else "Free")
+    detail = ""
+    if row and row.get("valid_until"):
+        try:
+            end = datetime.fromisoformat(str(row["valid_until"]).replace("Z", "+00:00")) - timedelta(days=3)
+            detail = (f"Ισχύει έως {end:%d/%m/%Y} (ανανεώνεται αυτόματα)" if el else f"Active until {end:%d/%m/%Y} (renews automatically)") if row.get("stripe_subscription_id") \
+                else (f"Ισχύει έως {end:%d/%m/%Y}" if el else f"Active until {end:%d/%m/%Y}")
+        except Exception:
+            pass
+    elif plus and row:
+        detail = "Πρόσβαση χωρίς λήξη" if el else "No expiry"
+    elif not plus:
+        left = free_triage_left()
+        detail = (f"{left} από {FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων αυτόν τον μήνα" if el else f"{left} of {FREE_TRIAGE_PER_MONTH} symptom checks left this month")
+    pets_n = len(st.session_state.get("pets") or [])
+    st.markdown(
+        '<style>.pn-acc{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:22px 24px;margin:8px 0 14px;}'
+        '.pn-acc .r{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #EEF0FB;font-size:14px;color:#0B1B4B;}'
+        '.pn-acc .r:last-child{border-bottom:none;}.pn-acc .r span{color:#5B6794;}'
+        '.pn-acc h3{font:800 20px Sora,Inter,sans-serif;color:#0B1B4B;margin:0 0 6px;letter-spacing:-.02em;}</style>'
+        f'<div class="pn-acc"><h3>👤 {"Ο λογαριασμός μου" if el else "My account"}</h3>'
+        f'<div class="r"><span>Email</span><b>{_html.escape(email)}</b></div>'
+        f'<div class="r"><span>{"Πλάνο" if el else "Plan"}</span><b>{"✨ " if plus else ""}{plan_name}</b></div>'
+        + (f'<div class="r"><span>{"Κατάσταση" if el else "Status"}</span><b>{detail}</b></div>' if detail else "")
+        + f'<div class="r"><span>{"Κατοικίδια" if el else "Pets"}</span><b>{pets_n}</b></div></div>', unsafe_allow_html=True)
+    if plus and row and row.get("stripe_customer_id"):
+        if st.session_state.get("_portal_url"):
+            st.link_button(("Άνοιγμα διαχείρισης συνδρομής ↗" if el else "Open subscription manager ↗"), st.session_state["_portal_url"],
+                           type="primary", use_container_width=True)
+        elif st.button(("💳 Διαχείριση συνδρομής · τιμολόγια · ακύρωση" if el else "💳 Manage subscription · invoices · cancel"),
+                       type="primary", use_container_width=True, key="acc_portal"):
+            url = _stripe_portal_url(row["stripe_customer_id"])
+            if url:
+                st.session_state["_portal_url"] = url; st.rerun()
+            else:
+                st.warning("Δεν μπόρεσα να ανοίξω τη διαχείριση αυτή τη στιγμή. Γράψε μας στο info@chiinsurance.gr για ακύρωση ή αλλαγές." if el
+                           else "Could not open the manager right now. Write to info@chiinsurance.gr to cancel or change anything.")
+        st.caption("Ακύρωση όποτε θέλεις· η πρόσβαση συνεχίζεται μέχρι το τέλος της περιόδου που έχεις πληρώσει." if el
+                   else "Cancel any time; access continues until the end of the period you paid for.")
+    elif plus:
+        st.caption("Η πρόσβασή σου έχει δοθεί από την ομάδα μας. Για αλλαγές: info@chiinsurance.gr" if el
+                   else "Your access was granted by our team. For changes: info@chiinsurance.gr")
+    elif paywall_enabled():
+        if st.button(("✨ Ξεκλείδωσε όλες τις υπηρεσίες · " + PLUS_PRICE_MONTH + "/μήνα") if el else ("✨ Unlock every service · " + PLUS_PRICE_MONTH + "/month"),
+                     type="primary", use_container_width=True, key="acc_upgrade"):
+            _goto("plus")
+    st.markdown("---")
+    if st.button(("🚪 Αποσύνδεση" if el else "🚪 Log out"), use_container_width=True, key="acc_logout"):
+        logout(); st.rerun()
 
 
 def render_plan_banner(lang="el"):
@@ -6148,14 +6276,14 @@ def render_pet_nav(active):
         '<style>div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker){flex-wrap:nowrap !important;gap:6px !important;'
         'background:#fff;border:1px solid #D9DEF5;border-radius:999px;padding:5px;margin:0 0 14px;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]{min-width:0 !important;}'
-        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]:last-child{flex:0 0 64px !important;width:64px !important;}'
+        'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) > div[data-testid="stColumn"]:nth-last-child(-n+2){flex:0 0 52px !important;width:52px !important;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button{min-height:38px !important;padding:0 4px !important;'
         'border:none !important;box-shadow:none !important;font-size:12.5px !important;}'
         'div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button[kind="secondary"]{background:transparent !important;}'
         'div[data-testid="stElementContainer"]:has(.pn-nav-marker){display:none !important;}'
         '@media (max-width:520px){div[data-testid="stHorizontalBlock"]:has(.pn-nav-marker) button p{font-size:11px !important;}}</style>',
         unsafe_allow_html=True)
-    cols = st.columns(len(items) + 1, gap="small")
+    cols = st.columns(len(items) + 2, gap="small")
     for _ci, (col, (scr, ic, lbl, ok)) in enumerate(zip(cols, items)):
         with col:
             if _ci == 0:
@@ -6164,10 +6292,15 @@ def render_pet_nav(active):
                          type=("primary" if scr == active else "secondary")):
                 if scr != active:
                     _goto(scr)
-    with cols[-1]:
+    with cols[-2]:
         if st.button("EN" if el else "ΕΛ", key=f"pnav_{active or 'x'}_lang", use_container_width=True):
             st.session_state.lang = "en" if el else "el"
             st.rerun()
+    with cols[-1]:
+        if st.button("👤", key=f"pnav_{active or 'x'}_acc", use_container_width=True,
+                     type=("primary" if active == "account" else "secondary"), help=("Λογαριασμός" if el else "Account")):
+            if active != "account":
+                _goto("account")
 
 
 _PET_TOOLS = [
@@ -6302,18 +6435,18 @@ def render_plans_section(lang="el", gate=False, cta=None):
     _P = 'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .%s)'
     st.markdown(
         '<style>'
-        + (_P % "pn-plan-free") + '{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:22px 22px 14px;height:100%;}'
-        + (_P % "pn-plan-plus") + '{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);color:#fff;border-radius:24px;padding:22px 22px 14px;'
+        + (_P % "pn-plan-free") + '{background:#fff;border:1px solid #DDE2F8;border-radius:28px;padding:30px 28px 20px;height:100%;}'
+        + (_P % "pn-plan-plus") + '{background:linear-gradient(135deg,#2328BE 0%,#4B52E8 100%);color:#fff;border-radius:28px;padding:30px 28px 20px;'
         'box-shadow:0 12px 30px rgba(35,40,190,.25);height:100%;}'
         + (_P % "pn-plan-plus") + ' a.stLinkButton, ' + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"]{background:#fff !important;border:none !important;}'
         + (_P % "pn-plan-plus") + ' a[data-testid^="stBaseLinkButton"] p{color:#2328BE !important;font-weight:800 !important;}'
-        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:440px;}}'
+        '@media(min-width:760px){'+(_P % "pn-plan-free")+','+(_P % "pn-plan-plus")+'{min-height:500px;}}'
         + (_P % "pn-plan-plus") + ' .stButton button{background:#fff !important;color:#2328BE !important;border:none !important;font-weight:800 !important;border-radius:999px !important;}'
         '.pn-pl .eb{font:800 11px Inter,sans-serif;letter-spacing:.14em;opacity:.7;}'
-        '.pn-pl .pr{font:800 34px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
+        '.pn-pl .pr{font:800 42px Sora,Inter,sans-serif;letter-spacing:-.03em;margin:6px 0 2px;}'
         '.pn-pl .pr small{font:600 13px Inter,sans-serif;opacity:.75;letter-spacing:0;}'
         '.pn-pl ul{list-style:none;margin:14px 0 8px;padding:0;}'
-        '.pn-pl li{display:flex;gap:9px;font-size:13.5px;line-height:1.45;padding:6px 0;}'
+        '.pn-pl li{display:flex;gap:11px;font-size:15px;line-height:1.5;padding:8px 0;}'
         '.pn-pl li span{flex-shrink:0;}'
         '.pn-pl .tag{display:inline-block;background:#FF6B35;color:#fff;font:800 10px Inter,sans-serif;letter-spacing:.08em;padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;}'
         '.pn-cta,.pn-cta:hover,.pn-cta:visited{display:block;text-align:center;font-weight:800;padding:12px;border-radius:999px;text-decoration:none !important;margin:6px 0 8px;}'
@@ -7228,6 +7361,11 @@ if _page_param in CATEGORY_SLUGS:
     render_category_page(_page_param)
     st.stop()
 
+if st.query_params.get("paid") == "1":
+    st.session_state["_paid_return"] = True
+    st.session_state["_login_plan"] = "paid"
+    del st.query_params["paid"]
+
 if auth_enabled() and not is_logged_in():
     render_login_screen()
     st.stop()
@@ -7259,6 +7397,8 @@ def _ensure_pets_loaded():
 _ensure_pets_loaded()
 if st.session_state.pop("_login_plan", None) == "plus" and paywall_enabled() and not has_plus():
     st.session_state.screen = "plus"
+if st.session_state.pop("_paid_return", None):
+    st.session_state.screen = "paid"
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
@@ -7279,6 +7419,8 @@ elif screen == "intake":
         if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
             st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
     render_intake()
+elif screen == "paid": render_paid_page()
+elif screen == "account": render_pet_nav("account"); render_account_page()
 elif screen == "plus": render_paywall_page("plus")
 elif screen in PAID_SCREENS and not has_plus():
     render_paywall_page(screen)
