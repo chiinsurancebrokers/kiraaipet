@@ -1168,7 +1168,7 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 ΚΡΙΣΙΜΟ ΓΙΑ ΔΙΚΤΥΟ: Όταν κατευθύνεις σε κλινική, αναφέρε και άλλες επιλογές
 του δικτύου κοντά στην περιοχή του χρήστη.
 
-Απαντάς σύντομα, φιλικά, στη γλώσσα του χρήστη.
+Απαντάς σύντομα (έως 120 λέξεις), φιλικά, στη γλώσσα του χρήστη, σε απλό κείμενο χωρίς τίτλους (#) και ολοκληρώνεις πάντα την τελευταία πρόταση.
 ΣΤΕΙΡΩΣΗ/ΕΥΝΟΥΧΙΣΜΟΣ: Στο Προσάρτημα Α αναγράφονται συμμετοχές για ωοθηκυστερεκτομή και ευνουχισμό. Αν ρωτηθείς, δώσε αυτά τα ποσά (ανά είδος/βάρος) και πες καθαρά ότι αν η προγραμματισμένη (μη επείγουσα) στείρωση αποζημιώνεται το επιβεβαιώνει το Συντονιστικό 210 9303811 — μην το υποσχεθείς."""
 
     prompt = (
@@ -1180,8 +1180,8 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
     return claude(
         messages=[{"role": "user", "content": prompt}],
         system=system,
-        max_tokens=400,
-        timeout=30,
+        max_tokens=1200,
+        timeout=45,
     )
 
 
@@ -1387,7 +1387,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     # Εμφάνιση chat history
     for _msg in st.session_state[_chat_key]:
         _role_icon = "🧑" if _msg["role"] == "user" else "🤖"
-        st.markdown(f"{_role_icon} {_msg['content']}")
+        st.markdown(f"{_role_icon} " + _re_san.sub(r"(?m)^#{1,6}\s*", "", _msg['content']))
 
     # Quick reply buttons — εμφανίζονται πάντα για εύκολη πλοήγηση
     if len(st.session_state[_chat_key]) < 6:  # κρύβονται μόνο αν η συνομιλία έχει προχωρήσει
@@ -4296,10 +4296,10 @@ def render_triage():
     if not st.session_state.triage_chat:
         with st.chat_message("assistant", avatar=_hero_avatar(pet)):
             st.markdown(
-                (f"Γεια σου! Είμαι η **Pets’health**. Τι παρατήρησες στον/στην **{nm}**; "
+                (f"Γεια σου! Είμαι {'η' if mascot_for_pet(pet)=='cat' else 'ο'} **{MASCOT_NAMES.get(mascot_for_pet(pet) or 'dog', 'Pets’health')}**, {'η' if mascot_for_pet(pet)=='cat' else 'ο'} superhero της Pets’health. Τι παρατήρησες στον/στην **{nm}**; "
                  "Διάλεξε από τα γρήγορα συμπτώματα παρακάτω ή γράψε με δικά σου λόγια — θα σε ρωτώ **μία ερώτηση τη φορά**."
                  if lang=="el" else
-                 f"Hi! I'm **Pets’health**. What have you noticed about **{nm}**? "
+                 f"Hi! I'm **{MASCOT_NAMES.get(mascot_for_pet(pet) or 'dog', 'Pets’health')}**, Pets’health's superhero. What have you noticed about **{nm}**? "
                  "Pick from the quick symptoms below or write it in your own words — I'll ask **one question at a time**."))
 
     # Species-specific symptom chips
