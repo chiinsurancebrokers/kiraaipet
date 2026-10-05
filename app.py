@@ -1,5 +1,5 @@
 """
-PETAINURSE — AI Veterinary Nurse
+PETS’HEALTH — AI Veterinary Nurse
 Bilingual AI health assistant for pet (companion animal) owners in Greece.
 Standalone Streamlit app · Real data only · No placeholders.
 """
@@ -192,7 +192,7 @@ def _rate_limit_gate(action="ai_call"):
 
 
 st.set_page_config(
-    page_title="PetAiNurse · AI Vet Nurse",
+    page_title="Pets’health · AI Vet Nurse",
     page_icon="🐾",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -796,7 +796,7 @@ def claude_analyze_pet_lab(file_bytes, mime_type, pet, conversation, lang, file_
     file_b64 = _b64.b64encode(file_bytes).decode()
 
     convo_txt = "\n".join(
-        f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content'][:400]}"
+        f"{'Owner' if m['role']=='user' else 'Pets’health'}: {m['content'][:400]}"
         for m in (conversation or [])[-6:]
     ) if conversation else ("Δεν έχει καταγραφεί συνομιλία ακόμη." if lang=="el" else "No conversation yet.")
 
@@ -1046,7 +1046,7 @@ Grooming: Νοσοκομείο Ζώων Μοδέστος, ΤΟ ΠΑΠΙΓΙΟΝ 
 Grooming: 1 ΔΩΡΕΑΝ/ετος. Εκπαιδευση: 2 ΔΩΡΕΑΝ/ετος + 30% εκπτωση.
 Εκτος: εμβολια Λεϊσμανιασης/FIP/Kennel Cough."""
 
-_PET_INSURANCE_SYSTEM = """Εισαι η PetAiNurse, συμβουλος PetAiNurse για το προγραμμα Eurolife My Happy Pet.
+_PET_INSURANCE_SYSTEM = """Εισαι η Pets’health, συμβουλος Pets’health για το προγραμμα Eurolife My Happy Pet.
 Μιλας ΠΑΝΤΑ ως: "Με το προγραμμα σου...", "Δικαιουσαι...", "Το προγραμμα σου περιλαμβανει..."
 ΠΟΤΕ δεν εξηγεις εσωτερικη λειτουργια προγραμματος.
 ΚΑΝΟΝΑΣ: EMERGENCY=Νοσοκομειο 24ωρα πρωτα, URGENT/SELF_CARE=ΠΕΡΡΑΚΗ ΓΡΗΓΟΡΙΑ πρωτα.
@@ -1098,7 +1098,7 @@ def check_pet_coverage(triage_result, condition, pet_name="", species="σκύλ�
 def _hal_insurance_chat(question: str, triage_result: str, condition: str,
                         pet_name: str, species: str, lang: str) -> str:
     """HAL: απαντά σε ερώτηση για κάλυψη ασφαλιστηρίου."""
-    system = """Είσαι η PetAiNurse, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
+    system = """Είσαι η Pets’health, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet PLUS.
 Απαντάς σε ερωτήσεις πελατών για την κάλυψη του συμβολαίου τους.
 Μιλάς ΠΑΝΤΑ ως: "Με το πρόγραμμά σου...", "Δικαιούσαι...", "Το πρόγραμμά σου περιλαμβάνει..."
 ΠΟΤΕ δεν αναφέρεις πώς λειτουργεί εσωτερικά (ειδική τιμολόγηση κλπ).
@@ -1129,7 +1129,7 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
                                    species="σκύλος", details="", lang="el"):
-    """Streamlit card: κάλυψη ασφαλιστηρίου + PetAiNurse chat μετά από triage αποτέλεσμα."""
+    """Streamlit card: κάλυψη ασφαλιστηρίου + Pets’health chat μετά από triage αποτέλεσμα."""
     _provider_name = st.session_state.get("pet_insurance_provider", "")
     if _provider_name and _provider_name not in ("— Χωρίς ασφάλεια —", "— No insurance —"):
         _short_provider = _provider_name.split("—")[0].strip() if "—" in _provider_name else _provider_name
@@ -1172,8 +1172,8 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     # ── HAL Insurance Chat ────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(
-        "**💬 " + ("Ρώτησε την PetAiNurse για το συμβόλαιό σου" if lang == "el"
-                   else "Ask PetAiNurse about your policy") + "**"
+        "**💬 " + ("Ρώτησε την Pets’health για το συμβόλαιό σου" if lang == "el"
+                   else "Ask Pets’health about your policy") + "**"
     )
 
     # Quick reply buttons
@@ -1193,7 +1193,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     }
     _q_opts = _quick.get(lang, _quick["el"])
 
-    # Session state για PetAiNurse chat history
+    # Session state για Pets’health chat history
     _chat_key = "hal_insurance_chat"
     if _chat_key not in st.session_state:
         st.session_state[_chat_key] = []
@@ -1209,7 +1209,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         for _i, _q in enumerate(_q_opts):
             if _cols[_i % 2].button(_q, key=f"hal_quick_{_i}_{len(st.session_state[_chat_key])}"):
                 st.session_state[_chat_key].append({"role": "user", "content": _q})
-                with st.spinner("Η PetAiNurse σκέφτεται..." if lang == "el" else "PetAiNurse is thinking..."):
+                with st.spinner("Η Pets’health σκέφτεται..." if lang == "el" else "Pets’health is thinking..."):
                     _ans = _hal_insurance_chat(_q, triage_result, condition, pet_name, species, lang)
                 st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
                 st.rerun()
@@ -1219,7 +1219,7 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
     _user_q = st.chat_input(_placeholder, key="hal_insurance_input")
     if _user_q:
         st.session_state[_chat_key].append({"role": "user", "content": _user_q})
-        with st.spinner("Η PetAiNurse σκέφτεται..." if lang == "el" else "PetAiNurse is thinking..."):
+        with st.spinner("Η Pets’health σκέφτεται..." if lang == "el" else "Pets’health is thinking..."):
             _ans = _hal_insurance_chat(_user_q, triage_result, condition, pet_name, species, lang)
         st.session_state[_chat_key].append({"role": "assistant", "content": _ans})
         st.rerun()
@@ -2050,10 +2050,10 @@ def classify_pet_vitals(v, species="dog"):
 # ── TRANSLATIONS ──────────────────────────────────────────────────────────────
 T = {
     "el": {
-        "title":"PetAiNurse","subtitle":"Ο AI Κτηνιατρικός Νοσηλευτής σου",
+        "title":"Pets’health","subtitle":"Ο AI Κτηνιατρικός Νοσηλευτής σου",
         "tagline":"Για την υγεία του κατοικίδιού σου · Πάντα δίπλα σου",
         "start":"Ξεκίνα Εκτίμηση",
-        "disclaimer_main":"⚠️ Η PetAiNurse ΔΕΝ είναι ιατρικό ή κτηνιατρικό εργαλείο. Παρέχει πληροφορίες μόνο για ενημερωτικούς/εκπαιδευτικούς σκοπούς και δεν αντικαθιστά κτηνιατρική διάγνωση, εξέταση ή θεραπεία. Σε επείγον καλέστε άμεσα κτηνίατρο.",
+        "disclaimer_main":"⚠️ Η Pets’health ΔΕΝ είναι ιατρικό ή κτηνιατρικό εργαλείο. Παρέχει πληροφορίες μόνο για ενημερωτικούς/εκπαιδευτικούς σκοπούς και δεν αντικαθιστά κτηνιατρική διάγνωση, εξέταση ή θεραπεία. Σε επείγον καλέστε άμεσα κτηνίατρο.",
         "emergency_vet":"🚨 ΕΠΕΙΓΟΝ: Επικοινωνήστε με επείγον κτηνιατρείο ΑΜΕΣΑ",
         "pet_name":"Όνομα κατοικίδιου","species":"Είδος","breed":"Φυλή",
         "age_y":"Ηλικία (χρόνια)","age_m":"Μήνες","sex":"Φύλο",
@@ -2080,10 +2080,10 @@ T = {
         "insurance_btn":"Άνοιγμα pet.gov.gr →",
     },
     "en": {
-        "title":"PetAiNurse","subtitle":"Your AI Veterinary Nurse",
+        "title":"Pets’health","subtitle":"Your AI Veterinary Nurse",
         "tagline":"For your pet's health · Always by your side",
         "start":"Start Assessment",
-        "disclaimer_main":"⚠️ PetAiNurse is NOT a medical or veterinary device/tool. It provides information for informational/educational purposes only and does not replace veterinary diagnosis, examination, or treatment. In an emergency call a vet immediately.",
+        "disclaimer_main":"⚠️ Pets’health is NOT a medical or veterinary device/tool. It provides information for informational/educational purposes only and does not replace veterinary diagnosis, examination, or treatment. In an emergency call a vet immediately.",
         "emergency_vet":"🚨 EMERGENCY: Contact an emergency vet IMMEDIATELY",
         "pet_name":"Pet's name","species":"Species","breed":"Breed",
         "age_y":"Age (years)","age_m":"Months","sex":"Sex",
@@ -2211,7 +2211,7 @@ def render_doc_header(title_el, title_en, *, icon="📋",
     lang = st.session_state.lang
     title = title_el if lang == "el" else title_en
     sub = (sub_el if lang == "el" else sub_en) or ""
-    org = "PETAINURSE · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ" if lang == "el" else "PETAINURSE · AI VET NURSE"
+    org = "PETS’HEALTH · AI ΚΤΗΝΙΑΤΡΙΚΟΣ ΝΟΣΗΛΕΥΤΗΣ" if lang == "el" else "PETS’HEALTH · AI VET NURSE"
     date_str = datetime.now().strftime("%d.%m.%Y")
     date_lbl = "ΗΜΕΡ." if lang == "el" else "DATE"
     date_html = (
@@ -2556,10 +2556,10 @@ def render_output_language_picker(lang, *, key_suffix="", label_override=None):
         format_func=lambda c: OUTPUT_LANGUAGES[c][0],
         key=f"output_lang_picker_{key_suffix}",
         help=("Το UI παραμένει στα ελληνικά/αγγλικά. Αυτή είναι η γλώσσα που "
-              "θα χρησιμοποιήσει η PetAiNurse στις απαντήσεις, στην ανάλυση "
+              "θα χρησιμοποιήσει η Pets’health στις απαντήσεις, στην ανάλυση "
               "εξετάσεων και στην τελική αναφορά."
               if lang == "el" else
-              "The UI stays in Greek/English. This is the language PetAiNurse "
+              "The UI stays in Greek/English. This is the language Pets’health "
               "will use for its responses, lab analyses, and the final report."),
     )
     if choice != current:
@@ -2575,7 +2575,7 @@ def render_output_language_picker(lang, *, key_suffix="", label_override=None):
         st.rerun()
 
 
-PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νοσηλευτής για κατοικίδια στην Ελλάδα.
+PETAINURSE_EL = """Είσαι η Pets’health — AI κτηνιατρικός νοσηλευτής για κατοικίδια στην Ελλάδα.
 Είσαι κλινικά ακριβής, άμεση και υποστηρικτική για ιδιοκτήτες κατοικίδιων.
 
 Ρόλος:
@@ -2590,7 +2590,7 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
 - Γάτες: ΕΞΑΙΡΕΤΙΚΑ ευαίσθητες σε ανθρώπινα φάρμακα — ΠΑΝΤΑ προειδοποίηση
 - Μία ερώτηση κάθε φορά
-- ΣΥΣΤΑΣΗ/INTRO: Στο πρώτο σου μήνυμα (καλωσόρισμα), ΜΗΝ πεις «Είμαι η PetAiNurse». Συστήσου ως ο/η {hero_name}, ο/η superhero της PetAiNurse και {hero_role}. Π.χ. «Είμαι ο/η {hero_name} — ο/η superhero της PetAiNurse και {hero_role}! Είμαι εδώ για να βοηθήσω εσένα και τον/την {{pet_name}}.» (προσάρμοσε γένος ανάλογα με το όνομα του ήρωα).
+- ΣΥΣΤΑΣΗ/INTRO: Στο πρώτο σου μήνυμα (καλωσόρισμα), ΜΗΝ πεις «Είμαι η Pets’health». Συστήσου ως ο/η {hero_name}, ο/η superhero της Pets’health και {hero_role}. Π.χ. «Είμαι ο/η {hero_name} — ο/η superhero της Pets’health και {hero_role}! Είμαι εδώ για να βοηθήσω εσένα και τον/την {{pet_name}}.» (προσάρμοσε γένος ανάλογα με το όνομα του ήρωα).
 - ΜΟΡΦΗ ΕΡΩΤΗΣΕΩΝ: ΠΟΤΕ μη γράφεις τίτλους όπως «Ερώτηση Τριάζ #1» ή «Ερώτηση #2». Μίλα απευθείας, σαν να ρωτάει ο/η {hero_name} (ο/η νοσηλευτής/τρια-ήρωας του κατοικιδίου) — π.χ. ξεκίνα φυσικά με «Για να σε βοηθήσω καλύτερα...» ή κατευθείαν με την ερώτηση, χωρίς αριθμημένους τίτλους ή ετικέτες "Τριάζ".
 - ΓΛΩΣΣΑ: Γράφε ΑΠΟΚΛΕΙΣΤΙΚΑ στα Ελληνικά. ΠΟΤΕ μη χρησιμοποιείς κινέζικους/ιαπωνικούς/κορεάτικους ή άλλους μη-ελληνικούς/λατινικούς χαρακτήρες (π.χ. όχι «腹水»). Αν χρειαστείς ιατρικό όρο, γράψ' τον στα Ελληνικά ή Λατινικά.
 - ΥΦΟΣ: Χρησιμοποίησε «Πηγαίνετε» (όχι «Πάντε») και σωστά ελληνικά προστακτικής.
@@ -2614,7 +2614,7 @@ PETAINURSE_EL = """Είσαι η PetAiNurse — AI κτηνιατρικός νο
   • Σωστή ορθογραφία: «εμβολιασμός» (όχι «εμβολιαζμός»), «αιμοδιάγραμμα» (όχι «αιμοδιάγραμα»), «κρεατινίνη» (όχι «κρεατίνη»).
 - Όταν έχεις αρκετά: "Έχω αρκετά στοιχεία — μπορούμε να δημιουργήσουμε κτηνιατρική αναφορά." """
 
-PETAINURSE_EN = """You are PetAiNurse — an AI veterinary nurse for pets in Greece.
+PETAINURSE_EN = """You are Pets’health — an AI veterinary nurse for pets in Greece.
 Clinically accurate, direct, supportive for pet owners.
 
 Role:
@@ -2629,7 +2629,7 @@ Rules:
 - Never give medication doses without vet supervision
 - Cats: EXTREMELY sensitive to human medications — always warn
 - One question at a time
-- INTRO: In your first (welcome) message, do NOT say "I am PetAiNurse". Introduce yourself as {hero_name}, PetAiNurse's superhero and {hero_role}. E.g. "I'm {hero_name} — PetAiNurse's superhero and {hero_role}! I'm here to help you and {{pet_name}}."
+- INTRO: In your first (welcome) message, do NOT say "I am Pets’health". Introduce yourself as {hero_name}, Pets’health's superhero and {hero_role}. E.g. "I'm {hero_name} — Pets’health's superhero and {hero_role}! I'm here to help you and {{pet_name}}."
 - QUESTION FORMAT: NEVER write headings like "Triage Question #1" or "Question #2". Speak directly, as if {hero_name} (the pet's nurse-hero) is asking — e.g. start naturally with "To help you better..." or go straight into the question, with no numbered titles or "Triage" labels.
 - LANGUAGE: Write ONLY in English. NEVER use Chinese/Japanese/Korean or any non-Latin characters (e.g. no «腹水»). Use Latin medical terms if needed.
 - When ready: "I have enough information — we can generate a veterinary report." """
@@ -2650,7 +2650,7 @@ HERO_ROLES_EN = {
 def petainurse_system(pet=None):
     base = PETAINURSE_EL if st.session_state.lang=="el" else PETAINURSE_EN
     sp = (pet or {}).get("species_key","dog")
-    hero_name = MASCOT_NAMES.get(sp, "PetAiNurse")
+    hero_name = MASCOT_NAMES.get(sp, "Pets’health")
     hero_roles = HERO_ROLES_EL if st.session_state.lang=="el" else HERO_ROLES_EN
     hero_role = hero_roles.get(sp, hero_roles["dog"])
     prompt = base.replace("{hero_name}", hero_name).replace("{hero_role}", hero_role)
@@ -2679,7 +2679,7 @@ def render_mascot(species_key="dog", size=72, style="", circle=False):
     if circle:
         img_style = "width:100%;height:100%;object-fit:cover;border-radius:50%;display:block"
     if b64:
-        name = MASCOT_NAMES.get(species_key, "PetAiNurse")
+        name = MASCOT_NAMES.get(species_key, "Pets’health")
         return (f'<span style="display:inline-block;{base_style}">'
                 f'<img src="data:image/jpeg;base64,{b64}" alt="{name}" style="{img_style}"/></span>')
     # unknown species or missing image → show all available heroes side by side
@@ -2725,10 +2725,10 @@ def render_hero_group(size=110, show_names=True, bg="white", gap=14, caption=Fal
 
     if caption and len(keys) == 4:
         lang = st.session_state.get("lang", "el")
-        intro = ("Είμαστε η ομάδα των ηρώων της PetAiNurse: "
+        intro = ("Είμαστε η ομάδα των ηρώων της Pets’health: "
                  "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
                  if lang == "el" else
-                 "We are the PetAiNurse hero squad: "
+                 "We are the Pets’health hero squad: "
                  "<strong>Perro, Gata, Gaz and Ave</strong> — here to look after your pets.")
         html += (f'<div style="font-size:13.5px;color:#374151;text-align:center;'
                  f'line-height:1.5;max-width:560px;margin:8px auto 0">{intro}</div>')
@@ -2737,7 +2737,7 @@ def render_hero_group(size=110, show_names=True, bg="white", gap=14, caption=Fal
 
 def _hero_avatar(pet=None):
     """Return the species-appropriate superhero image (raw bytes) to use as
-    the chat avatar for PetAiNurse's replies — Perro for dogs, Gata for cats,
+    the chat avatar for Pets’health's replies — Perro for dogs, Gata for cats,
     Gaz for rabbits, Ave for birds — falling back to the 🐾 emoji if no
     artwork is available for this species."""
     key = mascot_for_pet(pet) or "dog"
@@ -3307,7 +3307,7 @@ def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_find
 
     return f"""<!DOCTYPE html><html lang="{lang}"><head><meta charset="UTF-8">
 
-<title>PetAiNurse Report — {name}</title>
+<title>Pets’health Report — {name}</title>
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:'Inter',sans-serif;font-size:13px;color:#1A1A2E;max-width:820px;margin:0 auto;padding:32px 40px}}
 .hdr{{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #059669;padding-bottom:14px;margin-bottom:20px}}
 .hdr-logo{{font-size:22px;font-weight:800;color:#059669}}.hdr-date{{font-size:11px;color:#6B7280;text-align:right}}
@@ -3338,7 +3338,7 @@ table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 .recs-refs ul{{list-style:none;padding:0;margin:0}}.recs-refs li{{font-size:10.5px;line-height:1.4;margin-bottom:3px}}
 @media print{{.recs-box{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.recs-grid{{grid-template-columns:1fr 1fr 1fr !important}}}}
 @media print{{body{{padding:16px}}.pet-card,.emergency{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@page{{margin:15mm}}}}</style></head><body>
-<div class="hdr"><div class="hdr-logo">🐾 PetAiNurse</div><div class="hdr-date">Κτηνιατρική Εκτίμηση<br>{ts}</div></div>
+<div class="hdr"><div class="hdr-logo">🐾 Pets’health</div><div class="hdr-date">Κτηνιατρική Εκτίμηση<br>{ts}</div></div>
 <div class="pet-card"><div class="pet-name">{name} {species}</div><div class="pet-meta">{breed} · {age} · {sex} · {weight}kg</div>
 <div class="pet-detail"><strong>Κτηνίατρος:</strong> {vet}<br><strong>Παθήσεις/Αλλεργίες:</strong> {cond}<br><strong>Φάρμακα:</strong> {meds}{('<br><strong>Συμπληρώθηκε από:</strong> ' + filled_by) if filled_by and filled_by not in ('Ιδιοκτήτης','Owner') else ''}</div></div>
 {vitals_sec}<h2>Κτηνιατρική Αξιολόγηση</h2>{md2h(report_text or "")}{lab_html}{recs_html}{refs_html}
@@ -3985,7 +3985,7 @@ def render_intake():
             f'padding:10px 14px;margin-top:6px;font-size:13px;color:#065F46">'
             f'✅ <strong>{"Κάλυψη ενεργοποιημένη" if lang=="el" else "Coverage activated"}</strong><br>'
             f'<span style="font-size:12px;color:#047857">'
-            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και chat με την PetAiNurse για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and PetAiNurse chat for policy questions."}'
+            f'{"Μετά την αξιολόγηση συμπτωμάτων θα δεις: κόστος συμμετοχής, κλινική δικτύου και chat με την Pets’health για ερωτήσεις συμβολαίου." if lang=="el" else "After the symptom assessment you will see: co-payment cost, network clinic and Pets’health chat for policy questions."}'
             f'</span></div>',
             unsafe_allow_html=True
         )
@@ -4062,14 +4062,14 @@ def render_triage():
     _render_disclaimer_strip()
 
     def _send_to_petainurse(user_text):
-        """Append a user message to the triage chat and get PetAiNurse's
+        """Append a user message to the triage chat and get Pets’health's
         response — shared by both the chat input and the quick-select chips,
         so picking a chip actually produces a visible reply instead of
         silently doing nothing."""
         if not _rate_limit_gate("triage_chat"):
             return
         st.session_state.triage_chat.append({"role":"user","content":user_text})
-        with st.spinner("PetAiNurse..."):
+        with st.spinner("Pets’health..."):
             p = pet
             photo_ctx = ""
             if st.session_state.get("photo_scan_findings"):
@@ -4093,10 +4093,10 @@ def render_triage():
     if not st.session_state.triage_chat:
         with st.chat_message("assistant", avatar=_hero_avatar(pet)):
             st.markdown(
-                (f"Γεια σου! Είμαι η **PetAiNurse**. Τι παρατήρησες στον/στην **{nm}**; "
+                (f"Γεια σου! Είμαι η **Pets’health**. Τι παρατήρησες στον/στην **{nm}**; "
                  "Διάλεξε από τα γρήγορα συμπτώματα παρακάτω ή γράψε με δικά σου λόγια — θα σε ρωτώ **μία ερώτηση τη φορά**."
                  if lang=="el" else
-                 f"Hi! I'm **PetAiNurse**. What have you noticed about **{nm}**? "
+                 f"Hi! I'm **Pets’health**. What have you noticed about **{nm}**? "
                  "Pick from the quick symptoms below or write it in your own words — I'll ask **one question at a time**."))
 
     # Species-specific symptom chips
@@ -4367,7 +4367,7 @@ def render_report():
                           unsafe_allow_html=True)
 
         conversation = "\n".join(
-            f"{'Owner' if m['role']=='user' else 'PetAiNurse'}: {m['content']}"
+            f"{'Owner' if m['role']=='user' else 'Pets’health'}: {m['content']}"
             for m in st.session_state.triage_chat)
         vitals_text = ("\n".join(f"- {k}: {v}" for k,v in st.session_state.vitals.items())
                        if st.session_state.vitals else "Not provided")
@@ -4602,7 +4602,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                             "dog, cat, rabbit, or bird). This is an educational review, NOT a "
                             "diagnosis and NOT human medical advice. The pet owner will discuss "
                             "all findings with a licensed veterinarian before any treatment.\n\n"
-                            "Your job: read the PetAiNurse AI summary below and provide a "
+                            "Your job: read the Pets’health AI summary below and provide a "
                             "constructive peer review — note what the summary handles well, "
                             "flag anything you would add or reconsider, suggest alternative "
                             "differentials the veterinarian might want to rule out, and call "
@@ -4647,7 +4647,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                         _is_error = _gr_low.startswith("gpt-4o unavailable")
                         # If the model produced a triage-style intro (mascot
                         # name + "superhero" wording + asking follow-up
-                        # questions) it's role-playing PetAiNurse instead of
+                        # questions) it's role-playing Pets’health instead of
                         # reviewing the report — discard and ask the admin
                         # to retry. This happens when an old/cached prompt
                         # bleeds into the GPT call.
@@ -4771,7 +4771,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         import re as _re_wa
         v = st.session_state.vitals or {}
         wa_lines = [
-            "🐾 PetAiNurse",
+            "🐾 Pets’health",
             f"{('Κατοικίδιο' if lang=='el' else 'Pet')}: {pet.get('name','')} "
             f"{pet.get('species_label','')} ({pet.get('breed','')}), "
             f"{pet.get('age_y',0)}y {pet.get('age_m',0)}m · {pet.get('sex','')}",
@@ -5049,7 +5049,7 @@ def render_insurance_promo(lang: str = "el"):
     if lang == "el":
         badge    = "✨ Νέο feature"
         title    = "Έλεγχος ασφαλιστικής κάλυψης κατοικιδίου"
-        sub      = ("Μετά από κάθε αξιολόγηση συμπτωμάτων, η PetAiNurse ελέγχει αυτόματα "
+        sub      = ("Μετά από κάθε αξιολόγηση συμπτωμάτων, η Pets’health ελέγχει αυτόματα "
                     "αν η κατάσταση του κατοικιδίου σου καλύπτεται από το ασφαλιστήριό σου.")
         feats = [
             ("🩺", "Αρχικός έλεγχος κάλυψης",
@@ -5057,8 +5057,8 @@ def render_insurance_promo(lang: str = "el"):
             ("💰", "Ακριβές κόστος συμμετοχής",
              "Πόσο θα πληρώσεις ανά επίσκεψη, εξέταση ή επέμβαση — με βάση τον τιμοκατάλογο του προγράμματός σου."),
             ("🏥", "Πληροφορίες δικτύου κλινικών",
-             "Αν το συμβόλαιό σου έχει αποκλειστικά συμβεβλημένο δίκτυο κτηνιάτρων και κλινικών, η PetAiNurse σε κατευθύνει στη σωστή."),
-            ("💬", "Ερωτήσεις στην PetAiNurse",
+             "Αν το συμβόλαιό σου έχει αποκλειστικά συμβεβλημένο δίκτυο κτηνιάτρων και κλινικών, η Pets’health σε κατευθύνει στη σωστή."),
+            ("💬", "Ερωτήσεις στην Pets’health",
              "Ρώτα οτιδήποτε για το συμβόλαιό σου — απεριόριστες ερωτήσεις, καλύπτει και προϋπάρχουσες παθήσεις."),
         ]
         mo_lbl  = "ΜΗΝΙΑΙΑ"
@@ -5075,7 +5075,7 @@ def render_insurance_promo(lang: str = "el"):
     else:
         badge    = "✨ New feature"
         title    = "Pet insurance coverage check"
-        sub      = ("After every symptom assessment, PetAiNurse automatically checks whether "
+        sub      = ("After every symptom assessment, Pets’health automatically checks whether "
                     "your pet's condition is covered by your insurance policy.")
         feats = [
             ("🩺", "Initial coverage check",
@@ -5083,8 +5083,8 @@ def render_insurance_promo(lang: str = "el"):
             ("💰", "Exact co-payment per case",
              "How much you'll pay per visit, test or procedure — based on your programme's price list."),
             ("🏥", "Network clinic information",
-             "If your policy has an exclusive network of vets and clinics, PetAiNurse directs you to the right one."),
-            ("💬", "Ask PetAiNurse anything",
+             "If your policy has an exclusive network of vets and clinics, Pets’health directs you to the right one."),
+            ("💬", "Ask Pets’health anything",
              "Ask any question about your policy — unlimited queries, covers pre-existing conditions too."),
         ]
         mo_lbl  = "MONTHLY"
@@ -5354,7 +5354,7 @@ ADMIN_USER = _secret("ADMIN_USER", "petainurse")
 ADMIN_PASS = _secret("ADMIN_PASS", "YouM@tt3r!")
 
 def render_admin_page():
-    st.markdown("## 🛠️ PetAiNurse — Admin Settings")
+    st.markdown("## 🛠️ Pets’health — Admin Settings")
 
     if not st.session_state.get("admin_logged_in"):
         st.caption("Πρόσβαση μόνο για διαχειριστές.")
@@ -5639,7 +5639,7 @@ def render_pet_tool_card(key, screen, eb, title, body, cta, where):
 
 
 def render_pet_nurse_card():
-    """The main event: ask PetAiNurse. Shows the three-step plot and the way in."""
+    """The main event: ask Pets’health. Shows the three-step plot and the way in."""
     lang = st.session_state.lang
     el = lang == "el"
     pet = st.session_state.pet or {}
@@ -5663,7 +5663,7 @@ def render_pet_nurse_card():
             f'<div class="{mk}"><div class="pn-nurse"><div>'
             f'<span class="pn-eyebrow dark">{"ΑΙ ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>'
             f'<div style="font-family:Sora,Inter,sans-serif;color:#fff;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:12px 0 8px;">'
-            f'{("Ρώτα την PetAiNurse για τον/την " if el else "Ask PetAiNurse about ")}{nm}</div>'
+            f'{("Ρώτα την Pets’health για τον/την " if el else "Ask Pets’health about ")}{nm}</div>'
             f'<div style="color:#D5DCFF;font-size:14.5px;line-height:1.6;">'
             f'{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD — σε λίγα λεπτά, πριν ή αντί για το ιατρείο." if el else "A structured symptom assessment with MSD references — in minutes, before or instead of a vet visit."}</div>'
             f'</div><div class="art">{_pn_feat_art("nurse", _sp, raw=True)}</div></div>'
@@ -5680,7 +5680,7 @@ def render_pet_nurse_card():
 
 
 def render_pet_landing(gate=False):
-    """Hero / landing: what PetAiNurse does + the other services."""
+    """Hero / landing: what Pets’health does + the other services."""
     from petify_ui import landing_parts as _lp
     lang = st.session_state.lang
     el = lang == "el"
@@ -5688,7 +5688,7 @@ def render_pet_landing(gate=False):
     st.markdown(_PETIFY_THEME, unsafe_allow_html=True)
     _t1, _t2 = st.columns([6, 1])
     with _t1:
-        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetAiNurse</div>',
+        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 Pets’health</div>',
                     unsafe_allow_html=True)
     with _t2:
         if st.button("EN" if el else "ΕΛ", key="land_lang"):
@@ -5779,7 +5779,7 @@ def render_pet_home():
     if S.get("result"):
         st.markdown('<div class="pn-sec">' + ("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK") + '</div>', unsafe_allow_html=True)
         render_pet_longevity_result(S["result"], lang, compact=True)
-    if st.button(("ℹ️ Τι μπορεί να κάνει η PetAiNurse;" if el else "ℹ️ What can PetAiNurse do?"), key="home_open_landing",
+    if st.button(("ℹ️ Τι μπορεί να κάνει η Pets’health;" if el else "ℹ️ What can Pets’health do?"), key="home_open_landing",
                  use_container_width=True):
         st.session_state.screen = "landing"; st.rerun()
     _render_disclaimer_strip()
@@ -6033,7 +6033,7 @@ def render_pet_longevity():
 
 
 # ── NURSE-FIRST STRUCTURE ─────────────────────────────────────────────────────
-# Plot: Profile -> PetAiNurse chat -> Vet report.  Everything else is a separate
+# Plot: Profile -> Pets’health chat -> Vet report.  Everything else is a separate
 # tool with its own screen; tools feed evidence into the nurse chat and report.
 def _need_pet():
     if not (st.session_state.get("pet") or {}).get("name"):
@@ -6425,7 +6425,7 @@ elif screen == "home":
 elif screen == "intake":
     _top1, _top2 = st.columns([6, 1])
     with _top1:
-        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetAiNurse</div>',
+        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 Pets’health</div>',
                     unsafe_allow_html=True)
     with _top2:
         if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
