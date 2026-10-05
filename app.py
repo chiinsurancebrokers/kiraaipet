@@ -1761,7 +1761,8 @@ def delete_pets(email):
 # HISTORY_MONTHS months and is then permanently deleted (daily pg_cron job + purge on every read).
 HISTORY_MONTHS = 6
 _HIST_KINDS = {"report": ("📋", "Αναφορά", "Report"), "lab": ("🧪", "Εξέταση", "Lab result"),
-               "photo": ("📷", "Φωτογραφία", "Photo"), "vitals": ("🫀", "Ζωτικά", "Vitals")}
+               "photo": ("📷", "Φωτογραφία", "Photo"), "vitals": ("🫀", "Ζωτικά", "Vitals"),
+               "diary": ("📓", "Ημερολόγιο", "Diary")}
 
 
 def _pet_key(email, pet=None):
@@ -1922,6 +1923,8 @@ def _record_brief(r, limit=600):
         t = p.get("analysis", "")
     elif k == "photo":
         t = f"{p.get('scan_label','')}: {p.get('analysis','')}"
+    elif k == "diary":
+        t = f"{p.get('symptom','')} (level {p.get('level') or 'n/a'}, severity {p.get('sev','')}/10). {p.get('notes','')}"
     else:
         t = ", ".join(f"{a}={b}" for a, b in (p or {}).items())
     t = " ".join(str(t).split())
@@ -3662,11 +3665,14 @@ PETAINURSE_EL = """Είσαι η PetsAIHealth — AI κτηνιατρικός ν
      • κατάποση τοξικής ουσίας (ξυλιτόλη, ποντικοφάρμακο, αντιψυχρικό, παρακεταμόλη/ιβουπροφαίνη, σταφύλια/σταφίδες, μεγάλη ποσότητα σοκολάτας, κρίνος σε γάτα)
      • μεγάλη αιμορραγία που δεν σταματά, τροχαίο ή πτώση από ύψος, θερμοπληξία, δυστοκία με παρατεταμένες ωδίνες
      • ξαφνική παράλυση ή απώλεια αισθητικότητας στα πίσω άκρα, ξαφνική τύφλωση ή έντονη νευρολογική σύγχυση, διαβητικό ζώο με σύγχυση/τρέμουλο/πτώση, ξαφνική κλίση κεφαλής με κύλισμα/ανικανότητα στάσης και επαναλαμβανόμενους εμετούς, έξοδος βολβού από την κόγχη (πρόπτωση)
-     Σε αυτή την περίπτωση ΣΤΑΜΑΤΑ το τριάζ — ΜΗΝ κάνεις άλλη ερώτηση. Γράψε με μία σαφή, σύντομη πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ» και τελείωσε με την ετικέτα [TRIAGE: EMERGENCY].
+     Σε αυτή την περίπτωση ΣΤΑΜΑΤΑ το τριάζ — ΜΗΝ κάνεις άλλη ερώτηση. Απάντησε με τη μορφή «ΜΗΝΥΜΑ EMERGENCY» (παρακάτω) και τελείωσε με την ετικέτα [TRIAGE: EMERGENCY].
   2) URGENT — να το δει κτηνίατρος εντός 24 ωρών (σήμερα ή αύριο το πρωί), αλλά ΔΕΝ είναι «τρέξτε τώρα». Παραδείγματα: εμετός/διάρροια που επιμένει >24 ώρες με ζωηρό ζώο που πίνει νερό, κούτσαμα με πόνο χωρίς καταρράκωση, ερεθισμένο/κόκκινο μάτι χωρίς απώλεια όρασης, πόνος στο αυτί, πληγή που μολύνεται, δεν τρώει >24 ώρες, αυξημένη δίψα/ούρηση, ύποπτη λοίμωξη ούρων με ούρηση που γίνεται, νέος όγκος, βήχας που επιδεινώνεται χωρίς δύσπνοια ηρεμίας.
      Ολοκλήρωσε το τριάζ με ΚΑΘΑΡΗ σύσταση «να το δει κτηνίατρος σήμερα ή αύριο το πρωί», ΧΩΡΙΣ τη φράση «πηγαίνετε αμέσως» και ΧΩΡΙΣ το 🚨. Πες ποια σημάδια θα το έκαναν επείγον (π.χ. «αν δείτε δύσπνοια, κατάρρευση ή ούλα χλωμά, πηγαίνετε αμέσως»). Κλείσε με τη φράση για την αναφορά και την ετικέτα [TRIAGE: URGENT].
   3) SELF_CARE — ήπιο, σταθερό, ζωηρό ζώο που τρώει και πίνει. Δώσε οδηγίες παρακολούθησης στο σπίτι και πες πότε να επικοινωνήσει με κτηνίατρο. Κλείσε με τη φράση για την αναφορά και την ετικέτα [TRIAGE: SELF_CARE].
-- ΠΡΙΝ ανεβάσεις σε EMERGENCY ένα μη κλασικό περιστατικό, κάνε 1–2 στοχευμένες ερωτήσεις (είναι ζωηρό ή άτονο; τρώει/πίνει; χρώμα ούλων; αναπνέει φυσιολογικά σε ηρεμία; πόση ώρα;). Αν οι απαντήσεις καθησυχάζουν → URGENT ή SELF_CARE. Η αβεβαιότητα από μόνη της ΔΕΝ είναι λόγος για EMERGENCY. Αν όμως ταιριάζει σαφής κόκκινη σημαία από τη λίστα, ΜΗΝ καθυστερείς με ερωτήσεις.
+- ΕΡΩΤΗΣΕΙΣ: ΜΙΑ ερώτηση ανά μήνυμα, ΠΟΤΕ δύο μαζί (όχι «σκληρή κοιλιά ΚΑΙ προσπαθεί να κάνει εμετό;»). Κάθε ερώτηση πρέπει να είναι σύντομη και να απαντιέται με ΝΑΙ/ΟΧΙ ή μία λέξη. Αν η απάντηση είναι ασαφής («ναι» σε σύνθετη ερώτηση), ξαναρώτα μόνο το κρίσιμο μέρος.
+- ΧΡΗΣΗ ΠΡΟΦΙΛ: Πριν ρωτήσεις και πριν αποφασίσεις επίπεδο, αξιολόγησε από το προφίλ το είδος, τη ράτσα, την ηλικία, το βάρος, τις παθήσεις και τα φάρμακα. Αυτά αλλάζουν ΠΟΙΕΣ ερωτήσεις κάνεις και την πιθανότητα (π.χ. η στρέψη στομάχου είναι συχνότερη σε βαθύθωρακες μεγαλόσωμους σκύλους αλλά συμβαίνει και σε μεσαίου μεγέθους· ένα γέρικο ζώο, ή με νεφρική/καρδιακή πάθηση ή διαβήτη, έχει χαμηλότερο όριο για άμεση εξέταση· ένα νεαρό κουτάβι/γατάκι αφυδατώνεται πιο γρήγορα). Το προφίλ ΔΕΝ ακυρώνει ποτέ κλασική κόκκινη σημαία: αν το είδος εικόνας ταιριάζει, είναι EMERGENCY ακόμη κι αν η ράτσα/μέγεθος το κάνει λιγότερο πιθανό.
+- ΠΡΙΝ ανεβάσεις σε EMERGENCY ένα ύποπτο αλλά όχι σαφές περιστατικό (φούσκωμα κοιλιάς, εμετοί, λήθαργος, γρήγορη αναπνοή, κούτσαμα μετά από πτώση), κάνε 1–3 γρήγορες ερωτήσεις, μία τη φορά, διαλεγμένες ώστε να ξεχωρίσεις το επείγον από το επιτακτικό: πότε ξεκίνησε, είναι σκληρή η κοιλιά, ο έμετος βγάζει περιεχόμενο ή είναι άκαρπος, χρώμα ούλων, αναπνέει φυσιολογικά σε ηρεμία, πρόσφατο γεύμα/άσκηση/νερό, πιθανό ξένο σώμα ή τοξικό. Μόλις μια απάντηση ταιριάσει με σαφή κόκκινη σημαία → EMERGENCY αμέσως, χωρίς άλλες ερωτήσεις. Αν οι απαντήσεις καθησυχάζουν → URGENT ή SELF_CARE. Η αβεβαιότητα από μόνη της ΔΕΝ είναι λόγος για EMERGENCY.
+- ΜΗΝΥΜΑ EMERGENCY: μία σαφής πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ», μετά ΜΙΑ σύντομη πρόταση με το ΓΙΑΤΙ (τα ευρήματα και, αν ισχύει, ο παράγοντας του προφίλ, π.χ. «σκληρή φουσκωμένη κοιλιά με άκαρπο έμετο — μπορεί να είναι στρέψη στομάχου, που χρειάζεται επέμβαση μέσα σε ώρες, και δεν αποκλείεται ούτε σε σκύλο 20 κιλών»), και τι να κάνει στον δρόμο (π.χ. να μην φάει/πιει). Μετά την ετικέτα.
 - ΕΛΑΧΙΣΤΟ ΙΣΤΟΡΙΚΟ πριν από τελικό URGENT ή SELF_CARE (δεν ισχύει όταν υπάρχει σαφής κόκκινη σημαία → EMERGENCY αμέσως): ρώτα, ΜΙΑ ερώτηση κάθε φορά, ΤΟΥΛΑΧΙΣΤΟΝ 3 στοχευμένες ερωτήσεις συνολικά (όχι μόνο για τα ούλα), που να καλύπτουν ό,τι δεν είπε ήδη ο ιδιοκτήτης: διάρκεια και εξέλιξη, όρεξη και νερό, εμετός / διάρροια / ούρηση / κόπρανα, πιθανή κατάποση τοξικού ή ξένου σώματος, γενική κατάσταση και χρώμα ούλων. ΠΟΤΕ μην αφήνεις μια κρίσιμη πληροφορία ως οδηγία παρακολούθησης («σημείωσε αν έκανε εμετό») όταν μπορείς να τη ρωτήσεις ΤΩΡΑ. Μην ρωτάς κάτι που έχει ήδη απαντηθεί. Μέγιστο 6 ερωτήσεις.
 - ΕΤΙΚΕΤΑ ΕΠΙΠΕΔΟΥ: Όταν δίνεις τελικό επίπεδο (και ΜΟΝΟ τότε), πρόσθεσε στο τέλος του μηνύματος, σε δική της γραμμή, ΑΚΡΙΒΩΣ μία από: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Στα ενδιάμεσα μηνύματα με ερώτηση ΜΗΝ βάζεις ετικέτα. Η ετικέτα δεν εμφανίζεται στον ιδιοκτήτη· μην την αναφέρεις και μην τη μεταφράσεις.
 - ΠΟΤΕ δεν δίνεις δόσεις φαρμάκων χωρίς κτηνιατρική επίβλεψη
@@ -3708,10 +3714,13 @@ Role:
 Rules:
 - Always recommend a vet for diagnosis/treatment
 - THREE TRIAGE LEVELS. Choose the level FROM THE FACTS, not from fear. Sending a stable, bright pet to the ER is a mistake (stress, cost, lost trust); delaying a real emergency is the worse mistake.
-  1) EMERGENCY — life-threatening within hours. ONLY for clear red flags: laboured breathing / open-mouth breathing (cats), blue or very pale gums; collapse, unconsciousness, seizures >5 min or recurring; bloated hard abdomen with unproductive retching (possible GDV); unable to urinate despite straining (esp. male cat); ingestion of a toxin (xylitol, rat poison, antifreeze, paracetamol/ibuprofen, grapes/raisins, large chocolate amount, lilies in cats); major bleeding, road accident or fall from height, heatstroke, prolonged labour; sudden hindlimb paralysis or loss of sensation, sudden blindness or marked neurological confusion; diabetic pet that is confused/trembling/collapsing; sudden head tilt with rolling / unable to stand and repeated vomiting; eye out of the socket (proptosis). Then STOP the triage — no more questions. One clear, short sentence "🚨 GO TO A VET CLINIC IMMEDIATELY" and end with the tag [TRIAGE: EMERGENCY].
+  1) EMERGENCY — life-threatening within hours. ONLY for clear red flags: laboured breathing / open-mouth breathing (cats), blue or very pale gums; collapse, unconsciousness, seizures >5 min or recurring; bloated hard abdomen with unproductive retching (possible GDV); unable to urinate despite straining (esp. male cat); ingestion of a toxin (xylitol, rat poison, antifreeze, paracetamol/ibuprofen, grapes/raisins, large chocolate amount, lilies in cats); major bleeding, road accident or fall from height, heatstroke, prolonged labour; sudden hindlimb paralysis or loss of sensation, sudden blindness or marked neurological confusion; diabetic pet that is confused/trembling/collapsing; sudden head tilt with rolling / unable to stand and repeated vomiting; eye out of the socket (proptosis). Then STOP the triage — no more questions. Answer in the "EMERGENCY MESSAGE" format (below) and end with the tag [TRIAGE: EMERGENCY].
   2) URGENT — a vet should see the pet within 24 hours (today or tomorrow morning) but it is NOT "rush now": e.g. vomiting/diarrhoea >24h in a bright pet that drinks, limping with pain but not collapsing, red irritated eye with normal vision, ear pain, an infected wound, not eating >24h, increased thirst/urination, suspected urinary infection with urine being passed, new lump, worsening cough without breathing difficulty at rest. Finish the triage with a CLEAR recommendation "see a vet today or tomorrow morning", WITHOUT "go immediately" and WITHOUT 🚨. Say which signs would turn it into an emergency. Close with the report phrase and the tag [TRIAGE: URGENT].
   3) SELF_CARE — mild, stable, bright pet that eats and drinks. Give home-monitoring advice and when to contact a vet. Close with the report phrase and the tag [TRIAGE: SELF_CARE].
-- BEFORE escalating a non-classic case to EMERGENCY, ask 1–2 targeted questions (bright or dull? eating/drinking? gum colour? breathing normally at rest? how long?). Reassuring answers → URGENT or SELF_CARE. Uncertainty alone is NOT a reason for EMERGENCY. If a clear red flag from the list matches, do NOT delay with questions.
+- QUESTIONS: ONE question per message, NEVER two together (not "is the abdomen hard AND is he retching?"). Keep each short and answerable with yes/no or one word. If the answer is ambiguous ("yes" to a compound question), re-ask only the critical part.
+- USE THE PROFILE: before asking and before choosing a level, weigh species, breed, age, weight, conditions and medication from the profile. They change WHICH questions you ask and the likelihood (e.g. GDV is commoner in deep-chested large dogs but also occurs in medium-sized ones; an old pet, or one with kidney/heart disease or diabetes, has a lower threshold for an immediate exam; a young puppy/kitten dehydrates faster). The profile NEVER cancels a classic red flag: if the picture matches, it is EMERGENCY even when breed/size makes it less likely.
+- BEFORE escalating a suspicious but not clear case (bloated abdomen, vomiting, lethargy, fast breathing, limping after a fall) to EMERGENCY, ask 1–3 quick questions, one at a time, chosen to separate emergency from urgent: when it started, is the abdomen hard, is the vomiting productive or unproductive retching, gum colour, breathing normally at rest, recent meal/exercise/water, possible foreign body or toxin. As soon as an answer matches a clear red flag → EMERGENCY immediately, no more questions. Reassuring answers → URGENT or SELF_CARE. Uncertainty alone is NOT a reason for EMERGENCY.
+- EMERGENCY MESSAGE: one clear sentence "🚨 GO TO A VET CLINIC IMMEDIATELY", then ONE short sentence with the WHY (the findings and, if relevant, the profile factor, e.g. "hard bloated abdomen with unproductive retching — possible gastric torsion, which needs surgery within hours, and it is not ruled out in a 20 kg dog"), and what to do on the way (e.g. no food/water). Then the tag.
 - MINIMUM HISTORY before a final URGENT or SELF_CARE (does not apply when a clear red flag → EMERGENCY right away): ask, ONE question at a time, AT LEAST 3 targeted questions in total (not only about gum colour), covering whatever the owner has not already said: duration and progression, appetite and water, vomiting / diarrhoea / urination / stool, possible toxin or foreign-body ingestion, general state and gum colour. NEVER leave a key fact as a monitoring instruction ("note whether he vomits") when you can ask it NOW. Do not ask what was already answered. Maximum 6 questions.
 - LEVEL TAG: when you give a final level (and ONLY then), add on its own line at the very end exactly one of: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Do NOT put a tag on intermediate question messages. The tag is hidden from the owner; never mention or translate it.
 - Never give medication doses without vet supervision
@@ -4443,194 +4452,140 @@ table.vtbl tbody tr:nth-child(even){{background:#F0FDF4}}
 </body></html>""".encode("utf-8")
 
 
+_DIARY_SEV = {"EMERGENCY": 9, "URGENT": 6, "SELF_CARE": 3}
+
+_PN_DIARY_CSS = """<style>
+.pn-dnote{display:flex;gap:12px;align-items:flex-start;background:var(--pn-lav,#EEF1FF);border:1px solid var(--pn-lav2,#D0D6F5);border-radius:18px;
+  padding:14px 18px;margin:4px 0 14px;font-size:13.5px;line-height:1.55;color:var(--pn-ink,#0F1530)}
+.pn-dcard{background:#fff;border:1px solid var(--pn-line,#DDE2F8);border-radius:18px;padding:14px 18px;margin:0 0 10px}
+.pn-dcard .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.pn-dcard .dt{font-size:12px;color:var(--pn-muted,#5B6385)}
+.pn-dcard .sy{font:700 15px/1.35 Sora,Inter,sans-serif;color:var(--pn-ink,#0F1530);margin:6px 0 2px}
+.pn-dcard .nt{font-size:13px;line-height:1.55;color:#2A3050;margin-top:4px}
+.pn-dchip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700}
+.pn-dchip.e{background:#FEE9E7;color:#B42318}.pn-dchip.u{background:#FFF1E6;color:#B54708}.pn-dchip.s{background:#E8F7EF;color:#067647}.pn-dchip.m{background:var(--pn-lav,#EEF1FF);color:var(--pn-blue,#1237C9)}
+.pn-dsrc{font-size:11px;color:var(--pn-muted,#5B6385);margin-left:6px}
+</style>"""
+
+
+def _diary_archive(entry, pet):
+    """Plus + history ON: keep the entry in the encrypted archive. Silent no-op otherwise."""
+    try:
+        save_record("diary", entry.get("symptom", "")[:100], dict(entry), pet)
+    except Exception:
+        pass
+
+
+def diary_add(pet, kind, symptom, level=None, sev=None, notes="", chat_key=None):
+    """Add a diary entry. Chat entries are one per conversation (chat_key) and are updated, not duplicated."""
+    pet = pet if isinstance(pet, dict) else (st.session_state.get("pet") or {})
+    store = st.session_state.setdefault("symptom_diary", [])
+    nm = pet.get("name", "")
+    if chat_key:
+        for e in store:
+            if e.get("chat_key") == chat_key and e.get("pet") == nm:
+                e.update(level=level, sev=sev, notes=(notes or "")[:600])
+                _diary_archive(e, pet)
+                return e
+    now = datetime.now()
+    e = {"id": hashlib.sha1(f"{now.isoformat()}|{nm}|{symptom}".encode()).hexdigest()[:12],
+         "ts": now.strftime("%Y-%m-%d %H:%M"), "pet": nm, "kind": kind, "symptom": (symptom or "")[:160],
+         "level": level, "sev": sev, "notes": (notes or "")[:600], "chat_key": chat_key}
+    store.append(e)
+    _diary_archive(e, pet)
+    return e
+
+
+def diary_log_chat(pet, level, reply):
+    """Called when the nurse gives a final level: the conversation becomes a diary entry automatically."""
+    chat = st.session_state.get("triage_chat") or []
+    first = next((m["content"] for m in chat if m.get("role") == "user"), "")
+    if not first:
+        return
+    ck = hashlib.sha1(first.encode()).hexdigest()[:10]
+    plain = " ".join((reply or "").replace("🚨", "").split())
+    diary_add(pet, "chat", first.strip().replace("\n", " "), level, _DIARY_SEV.get(level), plain[:420], chat_key=ck)
+
+
+def _diary_entries(pet):
+    """Session entries + archived ones (Plus, history ON) for this pet, newest first, de-duplicated by id."""
+    nm = (pet or {}).get("name", "")
+    seen, out = set(), []
+    for e in st.session_state.get("symptom_diary", []):
+        if e.get("pet") == nm:
+            seen.add(e["id"]); out.append(dict(e))
+    try:
+        if history_enabled():
+            for r in load_records(pet):
+                if r.get("kind") != "diary":
+                    continue
+                d = dict(r.get("payload") or {})
+                if not d.get("id"):
+                    continue
+                if d["id"] in seen:
+                    continue
+                seen.add(d["id"]); d["_rec"] = r.get("id"); out.append(d)
+    except Exception:
+        pass
+    out.sort(key=lambda e: e.get("ts", ""), reverse=True)
+    return out
+
+
 def _render_pet_symptom_tracker(lang):
-    """Browser-only symptom log for the pet. All data in localStorage — nothing
-    sent to our servers. Self-contained HTML/JS component."""
-    _title = "📅 Ημερολόγιο Συμπτωμάτων Κατοικίδιου" if lang=="el" else "📅 Pet Symptom Log"
-    _privacy = ("Αποθηκεύεται μόνο στον browser σου — δεν αποστέλλεται πουθενά."
-                if lang=="el" else
-                "Stored only in your browser — never sent anywhere.")
-    with st.expander(f"{_title} — {_privacy}", expanded=False):
-        if lang == "el":
-            tx = {
-                "add_title":   "Προσθήκη σημερινού συμπτώματος",
-                "symptom_ph":  "π.χ. δεν τρώει, εμετός, κνησμός",
-                "sev_lbl":     "Βαρύτητα (1–10)",
-                "notes_ph":    "Επιπλέον παρατηρήσεις (προαιρετικό)",
-                "add_btn":     "➕ Καταχώρηση",
-                "history":     "Ιστορικό",
-                "no_entries":  "Κανένα σύμπτωμα ακόμη.",
-                "clear_btn":   "🗑️ Διαγραφή όλων",
-                "export_btn":  "📋 Αντιγραφή ιστορικού",
-                "exported":    "✅ Αντιγράφηκε!",
-                "sev_prefix":  "Βαρύτητα",
-                "confirm_clear":"Διαγραφή ΟΛΩΝ των συμπτωμάτων; Δεν αναιρείται.",
-            }
-        else:
-            tx = {
-                "add_title":   "Log today's symptom",
-                "symptom_ph":  "e.g. not eating, vomiting, itching",
-                "sev_lbl":     "Severity (1–10)",
-                "notes_ph":    "Additional notes (optional)",
-                "add_btn":     "➕ Add entry",
-                "history":     "History",
-                "no_entries":  "No symptoms logged yet.",
-                "clear_btn":   "🗑️ Clear all",
-                "export_btn":  "📋 Copy log",
-                "exported":    "✅ Copied!",
-                "sev_prefix":  "Severity",
-                "confirm_clear":"Delete ALL symptom entries? Cannot be undone.",
-            }
-        st.markdown(f"""<div style="height:1px"></div>
-<style>
-*{{box-sizing:border-box;font-family:system-ui,sans-serif}}
-.pan-st-card{{background:white;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-bottom:12px}}
-.pan-st-card h3{{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7280;margin-bottom:12px}}
-.pan-st input[type=text],.pan-st textarea{{width:100%;border:1px solid #D1D5DB;border-radius:8px;padding:8px 10px;font-size:13px;color:#1F2937;background:white}}
-.pan-st input[type=text]:focus,.pan-st textarea:focus{{outline:none;border-color:#059669;box-shadow:0 0 0 2px rgba(5,150,105,.10)}}
-.pan-st textarea{{resize:vertical;min-height:48px}}
-.pan-st input[type=range]{{width:100%;accent-color:#059669}}
-.pan-sev-row{{display:flex;align-items:center;gap:8px}}
-.pan-sev-label{{font-size:11px;color:#6B7280;white-space:nowrap}}
-.pan-sev-val{{font-size:18px;font-weight:700;color:#059669;min-width:24px;text-align:right}}
-.pan-btn{{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;transition:all .15s}}
-.pan-btn-primary{{background:#059669;color:white}}.pan-btn-primary:hover{{background:#047857}}
-.pan-btn-ghost{{background:#F3F4F6;color:#374151;border:1px solid #E5E7EB}}.pan-btn-ghost:hover{{background:#E5E7EB}}
-.pan-btn-danger{{background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5}}.pan-btn-danger:hover{{background:#FEE2E2}}
-.pan-entry{{border-bottom:1px solid #F3F4F6;padding:10px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}}
-.pan-entry:last-child{{border-bottom:none}}
-.pan-entry-main{{flex:1}}
-.pan-entry-date{{font-size:11px;color:#9CA3AF;margin-bottom:2px}}
-.pan-entry-symptom{{font-size:14px;font-weight:600;color:#111827}}
-.pan-entry-sev{{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-left:6px}}
-.pan-entry-notes{{font-size:12px;color:#6B7280;margin-top:3px}}
-.pan-del-btn{{background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:16px;padding:2px 4px;flex-shrink:0}}.pan-del-btn:hover{{color:#DC2626}}
-.pan-empty{{text-align:center;padding:24px;color:#9CA3AF;font-size:13px}}
-.pan-tools{{display:flex;gap:8px;margin-top:8px}}
-</style>
+    """Symptom diary. Entries are created automatically from the nurse chat (final level + complaint + advice)
+    and the owner can add their own. Session-only; Plus users with the archive ON also keep it for 6 months."""
+    import html as _h
+    el = lang == "el"
+    pet = st.session_state.get("pet") or {}
+    st.markdown(_PN_DIARY_CSS, unsafe_allow_html=True)
+    st.markdown('<div class="pn-dnote"><span>📅</span><div>'
+                + ("<b>Γεμίζει αυτόματα.</b> Κάθε συζήτηση με τη νοσηλεύτρια καταγράφεται εδώ με την ημερομηνία, το σύμπτωμα και το επίπεδο επείγοντος. "
+                   "Μπορείς να προσθέσεις και δικές σου παρατηρήσεις."
+                   if el else
+                   "<b>Fills itself.</b> Every chat with the nurse is logged here with the date, the symptom and the urgency level. You can add your own notes too.")
+                + '</div></div>', unsafe_allow_html=True)
 
-<div class="pan-st">
-<div class="pan-st-card">
-  <h3>{tx['add_title']}</h3>
-  <input type="text" id="pan_symp" placeholder="{tx['symptom_ph']}" />
-  <div style="margin-top:10px">
-    <div class="pan-sev-row">
-      <span class="pan-sev-label">{tx['sev_lbl']}</span>
-      <input type="range" id="pan_sev" min="1" max="10" value="5"
-             oninput="document.getElementById('pan_sev_val').textContent=this.value" />
-      <span class="pan-sev-val" id="pan_sev_val">5</span>
-    </div>
-  </div>
-  <textarea id="pan_notes" placeholder="{tx['notes_ph']}" style="margin-top:10px"></textarea>
-  <div style="margin-top:10px">
-    <button class="pan-btn pan-btn-primary" onclick="panAddEntry()">{tx['add_btn']}</button>
-  </div>
-</div>
+    with st.form("diary_add_form", clear_on_submit=True, border=False):
+        _sy = st.text_input("Σύμπτωμα" if el else "Symptom",
+                            placeholder="π.χ. δεν τρώει, εμετός, κνησμός" if el else "e.g. not eating, vomiting, itching")
+        _sv = st.slider("Βαρύτητα (1–10)" if el else "Severity (1–10)", 1, 10, 5)
+        _nt = st.text_area("Επιπλέον παρατηρήσεις (προαιρετικό)" if el else "Additional notes (optional)", height=70)
+        _ok = st.form_submit_button("➕ " + ("Καταχώρηση" if el else "Add entry"), type="primary", use_container_width=True)
+    if _ok and (_sy or "").strip():
+        diary_add(pet, "manual", _sy.strip(), None, int(_sv), (_nt or "").strip())
+        st.rerun()
 
-<div class="pan-st-card">
-  <h3>{tx['history']}</h3>
-  <div id="pan_list"></div>
-  <div class="pan-tools" id="pan_tools" style="display:none">
-    <button class="pan-btn pan-btn-ghost" onclick="panExportLog()">{tx['export_btn']}</button>
-    <button class="pan-btn pan-btn-danger" onclick="panClearAll()">{tx['clear_btn']}</button>
-  </div>
-</div>
-</div>
-
-<script>
-var PAN_STORE_KEY = "petainurse_pet_symptoms_v1";
-
-function panLoad() {{
-  try {{ return JSON.parse(localStorage.getItem(PAN_STORE_KEY) || "[]"); }}
-  catch(e) {{ return []; }}
-}}
-function panSave(entries) {{
-  localStorage.setItem(PAN_STORE_KEY, JSON.stringify(entries));
-}}
-function panSevColor(s) {{
-  if(s<=3) return "#ECFDF5;color:#065F46";
-  if(s<=6) return "#FFFBEB;color:#92400E";
-  return "#FEF2F2;color:#991B1B";
-}}
-function panEscapeHtml(s) {{
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}}
-function panRenderList() {{
-  var entries = panLoad();
-  var el = document.getElementById("pan_list");
-  var tools = document.getElementById("pan_tools");
-  if(!entries.length) {{
-    el.innerHTML = '<div class="pan-empty">{tx['no_entries']}</div>';
-    tools.style.display = "none";
-    return;
-  }}
-  tools.style.display = "flex";
-  var html = "";
-  for(var i=entries.length-1; i>=0; i--) {{
-    var e = entries[i];
-    var sc = panSevColor(e.sev);
-    var sc_parts = sc.split(";color:");
-    var bg = sc_parts[0];
-    var fg = sc_parts[1] || "#111";
-    html += '<div class="pan-entry">';
-    html += '<div class="pan-entry-main">';
-    html += '<div class="pan-entry-date">'+e.date+'</div>';
-    html += '<div class="pan-entry-symptom">'+panEscapeHtml(e.symptom);
-    html += ' <span class="pan-entry-sev" style="background:'+bg+';color:'+fg+'">'+e.sev+'/10</span></div>';
-    if(e.notes) html += '<div class="pan-entry-notes">'+panEscapeHtml(e.notes)+'</div>';
-    html += '</div>';
-    html += '<button class="pan-del-btn" onclick="panDeleteEntry('+i+')" title="Delete">✕</button>';
-    html += '</div>';
-  }}
-  el.innerHTML = html;
-}}
-function panAddEntry() {{
-  var symp = document.getElementById("pan_symp").value.trim();
-  if(!symp) {{ document.getElementById("pan_symp").focus(); return; }}
-  var sev  = parseInt(document.getElementById("pan_sev").value);
-  var notes= document.getElementById("pan_notes").value.trim();
-  var now  = new Date();
-  var date = now.toLocaleDateString("{('el-GR' if lang=='el' else 'en-GB')}",
-    {{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}});
-  var entries = panLoad();
-  entries.push({{date:date, symptom:symp, sev:sev, notes:notes}});
-  panSave(entries);
-  document.getElementById("pan_symp").value="";
-  document.getElementById("pan_notes").value="";
-  document.getElementById("pan_sev").value=5;
-  document.getElementById("pan_sev_val").textContent="5";
-  panRenderList();
-}}
-function panDeleteEntry(idx) {{
-  var entries = panLoad();
-  entries.splice(idx,1);
-  panSave(entries);
-  panRenderList();
-}}
-function panClearAll() {{
-  if(confirm("{tx['confirm_clear']}")) {{
-    localStorage.removeItem(PAN_STORE_KEY);
-    panRenderList();
-  }}
-}}
-function panExportLog() {{
-  var entries = panLoad();
-  if(!entries.length) return;
-  var txt = entries.map(function(e){{
-    var line = e.date+" | "+e.symptom+" | {tx['sev_prefix']}: "+e.sev+"/10";
-    if(e.notes) line += " | "+e.notes;
-    return line;
-  }}).join("\\n");
-  navigator.clipboard.writeText(txt).then(function(){{
-    var b = document.querySelector(".pan-btn-ghost");
-    var orig = b.textContent;
-    b.textContent="{tx['exported']}";
-    setTimeout(function(){{b.textContent=orig;}},2000);
-  }});
-}}
-panRenderList();
-</script>
-""", unsafe_allow_html=True)
+    entries = _diary_entries(pet)
+    st.markdown('<div class="pn-sec">' + ("Ιστορικό" if el else "History") + '</div>', unsafe_allow_html=True)
+    if not entries:
+        st.markdown('<div class="pn-dcard" style="text-align:center;color:#5B6385">'
+                    + ("Δεν υπάρχουν καταχωρήσεις ακόμα. Μόλις ολοκληρωθεί μια συζήτηση με τη νοσηλεύτρια, θα εμφανιστεί εδώ."
+                       if el else "No entries yet. As soon as a chat with the nurse finishes, it will appear here.")
+                    + '</div>', unsafe_allow_html=True)
+        return
+    lv_lbl = ({"EMERGENCY": "🚨 Επείγον", "URGENT": "🟠 Εντός 24 ωρών", "SELF_CARE": "🟢 Παρακολούθηση"} if el else
+              {"EMERGENCY": "🚨 Emergency", "URGENT": "🟠 Within 24 h", "SELF_CARE": "🟢 Monitor"})
+    lv_cls = {"EMERGENCY": "e", "URGENT": "u", "SELF_CARE": "s"}
+    for e in entries:
+        lv = e.get("level")
+        chip = (f'<span class="pn-dchip {lv_cls.get(lv, "m")}">{lv_lbl[lv]}</span>' if lv in lv_lbl
+                else f'<span class="pn-dchip m">{e.get("sev", "")}/10</span>')
+        src = ("από τη συζήτηση" if el else "from the chat") if e.get("kind") == "chat" else ("δική σου καταχώρηση" if el else "your note")
+        st.markdown(
+            f'<div class="pn-dcard"><div class="top"><span class="dt">{_h.escape(e.get("ts", ""))}<span class="pn-dsrc">· {src}</span></span>{chip}</div>'
+            f'<div class="sy">{_h.escape(e.get("symptom", ""))}</div>'
+            + (f'<div class="nt">{_h.escape(e.get("notes", ""))}</div>' if e.get("notes") else "") + '</div>',
+            unsafe_allow_html=True)
+        if st.button("🗑️ " + ("Διαγραφή" if el else "Delete"), key=f"diary_del_{e['id']}"):
+            st.session_state["symptom_diary"] = [x for x in st.session_state.get("symptom_diary", []) if x.get("id") != e["id"]]
+            if e.get("_rec"):
+                delete_record(e["_rec"])
+            st.rerun()
+    _txt = "\n".join(f"{e.get('ts','')} | {e.get('symptom','')} | "
+                     f"{(lv_lbl.get(e.get('level')) or str(e.get('sev','')) + '/10')}"
+                     + (f" | {e.get('notes','')}" if e.get("notes") else "") for e in entries)
+    st.download_button("📋 " + ("Λήψη ιστορικού (TXT)" if el else "Download log (TXT)"), data=_txt,
+                       file_name=f"symptom_diary_{pet.get('name', 'pet')}.txt", mime="text/plain", use_container_width=True)
 
 
 # ── 2-PILLAR PET HEALTH PROFILE (Vitals + Symptom burden) ─────────────────────
@@ -5218,6 +5173,11 @@ def render_triage():
                 st.session_state["triage_emergency"] = True
             else:
                 st.session_state["triage_emergency"] = False
+            if _lvl:
+                try:
+                    diary_log_chat(pet, _lvl, reply)
+                except Exception:
+                    pass
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
