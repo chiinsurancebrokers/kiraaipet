@@ -956,6 +956,12 @@ def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="record
         return None, f"⚠️ {e}"
 
 
+# Models (override with env vars on Railway without a deploy).
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")          # nurse chat, report, recommendations
+SECOND_OPINION_MODEL = os.environ.get("SECOND_OPINION_MODEL", "gpt-5.5")     # OpenAI peer review
+SECOND_OPINION_LABEL = SECOND_OPINION_MODEL.upper()
+
+
 def gpt4o(prompt, system="", max_tokens=3000):
     """Call OpenAI's chat completions with GPT-4o. Returns the assistant text
     on success, or a "GPT-4o unavailable: <reason>" string on any failure —
@@ -968,14 +974,17 @@ def gpt4o(prompt, system="", max_tokens=3000):
         if not oai:
             log_event("gpt4o", ok=False, error="missing_api_key")
             return "GPT-4o unavailable: OPENAI_API_KEY is not configured"
-        body = json.dumps({"model":"gpt-4o","max_tokens":max_tokens,
+        _legacy = SECOND_OPINION_MODEL.startswith(("gpt-4", "gpt-3"))
+        # gpt-5.x: `max_completion_tokens` (includes hidden reasoning tokens) instead of `max_tokens`
+        _tok = {"max_tokens": max_tokens} if _legacy else {"max_completion_tokens": max(4096, max_tokens * 2)}
+        body = json.dumps({"model":SECOND_OPINION_MODEL, **_tok,
             "messages":[{"role":"system","content":system},{"role":"user","content":prompt}] if system
                         else [{"role":"user","content":prompt}]}).encode()
         req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=body,
             headers={"Content-Type":"application/json","Authorization":f"Bearer {oai}"})
         try:
-            with urllib.request.urlopen(req, timeout=25) as r:
-                out = json.loads(r.read())["choices"][0]["message"]["content"]
+            with urllib.request.urlopen(req, timeout=25 if _legacy else 120) as r:
+                out = json.loads(r.read())["choices"][0]["message"]["content"] or ""
                 log_event("gpt4o", ok=True, ms=(time.time()-_t0)*1000)
                 return out
         except urllib.error.HTTPError as he:
@@ -999,13 +1008,14 @@ def claude(messages, system="", max_tokens=3000, timeout=60):
     if not key:
         log_event("claude_chat", ok=False, error="missing_api_key")
         return "⚠️ Claude API key not set."
-    body = json.dumps({"model":"claude-sonnet-4-6","max_tokens":max_tokens,
+    body = json.dumps({"model":CLAUDE_MODEL,"max_tokens":max_tokens,
         "system":system,"messages":messages}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            out = json.loads(r.read())["content"][0]["text"]
+            # newer models may return non-text blocks (thinking) first: join the text blocks
+            out = "".join(b.get("text", "") for b in json.loads(r.read())["content"] if b.get("type") == "text")
             log_event("claude_chat", ok=True, ms=(time.time()-_t0)*1000)
             return out
     except urllib.error.URLError as e:
@@ -3098,7 +3108,7 @@ T = {
         "triage_placeholder":"Π.χ. Ο σκύλος μου δεν τρώει από χθες και έχει εμετό...",
         "generate_report":"Δημιουργία Κτηνιατρικής Αναφοράς",
         "report_title":"Κτηνιατρική Εκτίμηση",
-        "second_opinion":"Δεύτερη Γνώμη GPT-4o",
+        "second_opinion":f"Δεύτερη Γνώμη {SECOND_OPINION_LABEL}",
         "msdvet":"MSD Κτηνιατρικές Αναφορές",
         "insurance_cta":"Επίσημες Υπηρεσίες pet.gov.gr",
         "insurance_sub":"Ηλεκτρονικό βιβλιάριο υγείας, δήλωση απώλειας/εύρεσης, υιοθεσία ζώου συντροφιάς",
@@ -3128,7 +3138,7 @@ T = {
         "triage_placeholder":"E.g. My dog hasn't eaten since yesterday and is vomiting...",
         "generate_report":"Generate Veterinary Report",
         "report_title":"Veterinary Assessment",
-        "second_opinion":"GPT-4o Second Opinion",
+        "second_opinion":f"{SECOND_OPINION_LABEL} Second Opinion",
         "msdvet":"MSD Veterinary References",
         "insurance_cta":"Official pet.gov.gr Services",
         "insurance_sub":"Digital pet health booklet, lost/found reports, companion animal adoption",
@@ -5549,12 +5559,12 @@ def render_report():
         "report",
         "Πώς να χρησιμοποιήσεις την αναφορά",
         "Αυτή είναι μια **δομημένη σύνοψη** που μπορείς να μοιραστείς με τον κτηνίατρό σου. "
-        "Μπορείς να την **κατεβάσεις** σε TXT/HTML/PDF, ή να ζητήσεις **δεύτερη γνώμη GPT-4o**. "
+        "Μπορείς να την **κατεβάσεις** σε TXT/HTML/PDF, ή να ζητήσεις **δεύτερη γνώμη AI (GPT)**. "
         "Η αναφορά **δεν είναι διάγνωση** — απλώς εξοικονομεί χρόνο στο ραντεβού. "
         "Για νέα εκτίμηση πάτησε «Νέα Εκτίμηση»· για επιστροφή στη συζήτηση «Πίσω στη συζήτηση».",
         title_en="How to use this report",
         body_en="This is a **structured summary** you can share with your vet. "
-                "You can **download** it as TXT/HTML/PDF, or request a **GPT-4o second opinion**. "
+                "You can **download** it as TXT/HTML/PDF, or request a **GPT second opinion**. "
                 "The report is **not a diagnosis** — it just saves time at the appointment. "
                 "Tap “New Assessment” to start over, or “Back to chat” to return to triage.",
     )
@@ -5742,15 +5752,15 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
                 ' <span style="background:#2328BE;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;'
                 'vertical-align:middle;letter-spacing:.06em;">' + ("ΕΠΙΠΛΕΟΝ ΥΠΗΡΕΣΙΑ" if lang == "el" else "EXTRA SERVICE") + '</span></div>'
                 '<div style="font-size:12.5px;color:#5B6794;margin-top:2px;">'
-                + ("Ανεξάρτητος έλεγχος της εκτίμησης από δεύτερο μοντέλο AI (GPT-4o)" if lang == "el"
-                   else "An independent check of the assessment by a second AI model (GPT-4o)") +
+                + ("Ανεξάρτητος έλεγχος της εκτίμησης από δεύτερο μοντέλο AI (GPT)" if lang == "el"
+                   else "An independent check of the assessment by a second AI model (GPT)") +
                 '</div></div></div>', unsafe_allow_html=True)
             if not st.session_state.get("report_gpt"):
                 st.caption("Δεν είναι διαθέσιμη ακόμη." if lang == "el" else "Not available yet.")
                 if st.button(("🔄 Ζήτα δεύτερη γνώμη" if lang == "el" else "🔄 Request second opinion"),
                              type="primary", key="pet_gpt_request"):
                     if _rate_limit_gate("gpt4o_second_opinion"):
-                        with st.spinner("GPT-4o…"):
+                        with st.spinner(f"{SECOND_OPINION_LABEL}…"):
                             _so, _so_err = _second_opinion_generate(pet, lang)
                         if _so:
                             st.session_state.report_gpt = _so
