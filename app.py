@@ -1868,11 +1868,13 @@ def has_insurance_subscription(email: str) -> bool:
         return False
     # Cache per session to avoid repeated DB calls
     cache_key = f"_insurance_sub_{email}"
-    if cache_key in st.session_state:
+    # Short cache: a refund/cancellation must take effect within a couple of minutes, not at next login.
+    if cache_key in st.session_state and time.time() - st.session_state.get(cache_key + "_ts", 0) < 120:
         return st.session_state[cache_key]
     sb = _supabase_client()
     if not sb:
         st.session_state[cache_key] = False
+        st.session_state[cache_key + "_ts"] = time.time()
         return False
     _t0 = time.time()
     try:
@@ -1885,6 +1887,7 @@ def has_insurance_subscription(email: str) -> bool:
         rows = res.data or []
         if not rows:
             st.session_state[cache_key] = False
+            st.session_state[cache_key + "_ts"] = time.time()
             log_event("subscription_check", ok=True, ms=(time.time()-_t0)*1000,
                       result="no_row")
             return False
@@ -1893,6 +1896,7 @@ def has_insurance_subscription(email: str) -> bool:
         if valid_until is None:
             # Lifetime subscription
             st.session_state[cache_key] = True
+            st.session_state[cache_key + "_ts"] = time.time()
             log_event("subscription_check", ok=True, ms=(time.time()-_t0)*1000,
                       result="lifetime")
             return True
@@ -1904,6 +1908,7 @@ def has_insurance_subscription(email: str) -> bool:
         except Exception:
             active = False
         st.session_state[cache_key] = active
+        st.session_state[cache_key + "_ts"] = time.time()
         log_event("subscription_check", ok=True, ms=(time.time()-_t0)*1000,
                   result="active" if active else "expired")
         return active
@@ -1911,6 +1916,7 @@ def has_insurance_subscription(email: str) -> bool:
         log_event("subscription_check", ok=False, ms=(time.time()-_t0)*1000,
                   error=str(e))
         st.session_state[cache_key] = False
+        st.session_state[cache_key + "_ts"] = time.time()
         return False
 
 
@@ -2091,6 +2097,8 @@ def render_paywall_page(screen_key):
     if st.button("← " + ("Πίσω" if lang == "el" else "Back"), key="pw_back"):
         _goto("triage" if screen_key == "report" else "dashboard")
     render_plus_paywall(lang, nm)
+    st.markdown("---")
+    render_billing_agent(lang, False, None)
 
 
 def get_subscription_row(email: str = ""):

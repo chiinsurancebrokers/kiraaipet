@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Stripe -> PetsAIHealth Plus. Authenticated by the Stripe signature (STRIPE_WEBHOOK_SECRET), not a JWT (verify_jwt=false).
 // Events: checkout.session.completed (link app email <-> Stripe customer), invoice.paid (extend access),
-// customer.subscription.deleted (end access).
+// customer.subscription.deleted / .updated(canceled) and charge.refunded (end access).
 const enc = new TextEncoder();
 const GRACE_SECONDS = 3 * 86400;
 
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     if (event.type === "checkout.session.completed") {
       const email = String(obj.client_reference_id || obj.customer_details?.email || "").toLowerCase();
       if (email && obj.customer) {
-        const { data: existing } = await sb.from("subscriptions").select("user_email").ilike("user_email", email).limit(1);
+        const { data: existing } = await sb.from("subscriptions").select("user_email").eq("user_email", email).limit(1);
         const ids = { stripe_customer_id: obj.customer, stripe_subscription_id: obj.subscription ?? null };
         if (existing && existing.length) {
           await sb.from("subscriptions").update(ids).eq("user_email", existing[0].user_email);
@@ -85,6 +85,17 @@ Deno.serve(async (req) => {
           stripe_customer_id: obj.customer ?? null, stripe_subscription_id: obj.subscription ?? null,
           notes: `stripe invoice ${obj.id}`,
         }, { onConflict: "user_email" });
+      }
+    } else if (event.type === "charge.refunded") {
+      // Fully refunded payment -> end access now (partial refunds keep access).
+      if (obj.refunded === true && obj.customer) {
+        await sb.from("subscriptions").update({ valid_until: new Date().toISOString(), notes: `stripe refund ${obj.id}` })
+          .eq("stripe_customer_id", obj.customer);
+      }
+    } else if (event.type === "customer.subscription.updated") {
+      if (["canceled", "unpaid", "incomplete_expired"].includes(obj.status)) {
+        await sb.from("subscriptions").update({ valid_until: new Date().toISOString(), notes: `stripe subscription ${obj.status}` })
+          .eq("stripe_subscription_id", obj.id);
       }
     } else if (event.type === "customer.subscription.deleted") {
       await sb.from("subscriptions").update({ valid_until: new Date().toISOString(), notes: "stripe subscription ended" })
