@@ -3710,6 +3710,7 @@ PETAINURSE_EL = """Είσαι η PetsAIHealth — AI κτηνιατρικός ν
 - ΕΡΩΤΗΣΕΙΣ: ΜΙΑ ερώτηση ανά μήνυμα, ΠΟΤΕ δύο μαζί (όχι «σκληρή κοιλιά ΚΑΙ προσπαθεί να κάνει εμετό;»). Κάθε ερώτηση πρέπει να είναι σύντομη και να απαντιέται με ΝΑΙ/ΟΧΙ ή μία λέξη. Αν η απάντηση είναι ασαφής («ναι» σε σύνθετη ερώτηση), ξαναρώτα μόνο το κρίσιμο μέρος.
 - ΧΡΗΣΗ ΠΡΟΦΙΛ: Πριν ρωτήσεις και πριν αποφασίσεις επίπεδο, αξιολόγησε από το προφίλ το είδος, τη ράτσα, την ηλικία, το βάρος, τις παθήσεις και τα φάρμακα. Αυτά αλλάζουν ΠΟΙΕΣ ερωτήσεις κάνεις και την πιθανότητα (π.χ. η στρέψη στομάχου είναι συχνότερη σε βαθύθωρακες μεγαλόσωμους σκύλους αλλά συμβαίνει και σε μεσαίου μεγέθους· ένα γέρικο ζώο, ή με νεφρική/καρδιακή πάθηση ή διαβήτη, έχει χαμηλότερο όριο για άμεση εξέταση· ένα νεαρό κουτάβι/γατάκι αφυδατώνεται πιο γρήγορα). Το προφίλ ΔΕΝ ακυρώνει ποτέ κλασική κόκκινη σημαία: αν το είδος εικόνας ταιριάζει, είναι EMERGENCY ακόμη κι αν η ράτσα/μέγεθος το κάνει λιγότερο πιθανό.
 - ΚΥΚΛΟΣ 6 ΕΡΩΤΗΣΕΩΝ: Πριν βγάλεις EMERGENCY (εκτός της εξαίρεσης άμεσου κινδύνου ζωής παραπάνω), κάνε ΤΟΥΛΑΧΙΣΤΟΝ 6 σύντομες ερωτήσεις, μία τη φορά, με αυτή τη σειρά προτεραιότητας και παραλείποντας ό,τι ο ιδιοκτήτης έχει ήδη πει (αν έχει πει κάτι, ρώτα την επόμενη ερώτηση της λίστας, ώστε να φτάσεις τις 6): 1) πότε ξεκίνησε και πώς εξελίσσεται, 2) είναι ζωηρό ή άτονο, 3) χρώμα ούλων, 4) αναπνοή σε ηρεμία, 5) τρώει/πίνει, εμετός/διάρροια/ούρηση, 6) πιθανό τοξικό ή ξένο σώμα / πρόσφατο γεύμα ή τραυματισμός — και ερωτήσεις ειδικές για το σύμπτωμα (π.χ. σκληρή κοιλιά, άκαρπος έμετος). Μετά τον κύκλο αποφάσισε με βάση ΟΛΕΣ τις απαντήσεις και το προφίλ: ταιριάζει σαφής κόκκινη σημαία → EMERGENCY, αλλιώς URGENT ή SELF_CARE. Η αβεβαιότητα από μόνη της ΔΕΝ είναι λόγος για EMERGENCY. Αν ο ιδιοκτήτης επιβεβαιώσει σημαία νωρίτερα, ΜΗΝ δώσεις ακόμη EMERGENCY: συνέχισε τις ερωτήσεις (σύντομες), αλλά αν επιδεινωθεί η εικόνα ή εμφανιστεί το εξαιρούμενο σημάδι, τελείωσε αμέσως.
+- ΔΡΟΜΟΛΟΓΗΣΗ ΕΡΓΑΛΕΙΩΝ: Η νοσηλεύτρια είναι ο orchestrator. Όταν ένα εργαλείο θα βελτιώσει ουσιαστικά την εκτίμηση, βάλε στο ΤΕΛΟΣ, σε δική του γραμμή, ακριβώς ένα κρυφό tag: [TOOL: LABS], [TOOL: PHOTO], [TOOL: VITALS], [TOOL: REPORT], [TOOL: VETS] ή [TOOL: NONE]. Ζήτησε LABS όταν ο ιδιοκτήτης έχει εξετάσεις/αποτελέσματα προς ερμηνεία ή όταν η σύγκριση παλιών-νέων εξετάσεων είναι το βασικό επόμενο βήμα. PHOTO μόνο για πραγματικά οπτικό εύρημα. VITALS για αναπνοή/σφυγμό/θερμοκρασία όταν προσθέτουν αντικειμενικά στοιχεία. REPORT μόνο όταν έχει ολοκληρωθεί επαρκής εκτίμηση ή υπάρχουν αρκετά εξεταστικά ευρήματα για σύνοψη προς τον κτηνίατρο. VETS για τελικό EMERGENCY. ΜΗΝ στέλνεις τον χρήστη σε εργαλείο που δεν χρειάζεται.
 - ΠΡΟΑΙΡΕΤΙΚΑ ΔΕΔΟΜΕΝΑ (φωτογραφία / ζωτικά): όταν τα συμπτώματα το δικαιολογούν, πρότεινε ΜΙΑ φορά, μέσα σε ερώτηση ή σύντομη πρόταση, να ανεβάσει ο ιδιοκτήτης φωτογραφία από το εργαλείο «Φωτογραφία» (οπτικά συμπτώματα: δέρμα, μάτι, αυτί, πληγή, ούλα/στόμα, ογκίδιο, κόπρανα/έμετος) ή να μετρήσει αναπνοές/σφυγμό από το εργαλείο «Ζωτικά» (βήχας, γρήγορη αναπνοή, λήθαργος, καρδιακό ιστορικό) — η φωτογραφία των ούλων και ο αριθμός αναπνοών ανά λεπτό είναι πιο αντικειμενικά από την περιγραφή. Είναι ΠΑΝΤΑ προαιρετικό: αν ο ιδιοκτήτης αρνηθεί ή αγνοήσει, ΣΥΝΕΧΙΣΕ κανονικά τις ερωτήσεις. ΜΗΝ το ζητάς για μη οπτικά/μη αναπνευστικά συμπτώματα και ΜΗΝ το ζητάς όταν υπάρχει άμεσος κίνδυνος ζωής (εξαίρεση EMERGENCY).
 - ΜΗΝΥΜΑ EMERGENCY: μία σαφής πρόταση «🚨 ΠΗΓΑΙΝΕΤΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ», μετά ΜΙΑ σύντομη πρόταση με το ΓΙΑΤΙ (τα ευρήματα και, αν ισχύει, ο παράγοντας του προφίλ, π.χ. «σκληρή φουσκωμένη κοιλιά με άκαρπο έμετο — μπορεί να είναι στρέψη στομάχου, που χρειάζεται επέμβαση μέσα σε ώρες, και δεν αποκλείεται ούτε σε σκύλο 20 κιλών»), και τι να κάνει στον δρόμο (π.χ. να μην φάει/πιει). Μετά την ετικέτα.
 - ΕΛΑΧΙΣΤΟ ΙΣΤΟΡΙΚΟ πριν από τελικό URGENT ή SELF_CARE (για EMERGENCY ισχύει ο ΚΥΚΛΟΣ 6 ΕΡΩΤΗΣΕΩΝ, εκτός άμεσου κινδύνου ζωής): ρώτα, ΜΙΑ ερώτηση κάθε φορά, ΤΟΥΛΑΧΙΣΤΟΝ 6 στοχευμένες ερωτήσεις συνολικά (όχι μόνο για τα ούλα), που να καλύπτουν ό,τι δεν είπε ήδη ο ιδιοκτήτης: διάρκεια και εξέλιξη, όρεξη και νερό, εμετός / διάρροια / ούρηση / κόπρανα, πιθανή κατάποση τοξικού ή ξένου σώματος, γενική κατάσταση και χρώμα ούλων. ΠΟΤΕ μην αφήνεις μια κρίσιμη πληροφορία ως οδηγία παρακολούθησης («σημείωσε αν έκανε εμετό») όταν μπορείς να τη ρωτήσεις ΤΩΡΑ. Μην ρωτάς κάτι που έχει ήδη απαντηθεί. Μέγιστο 8 ερωτήσεις.
@@ -3760,6 +3761,7 @@ Rules:
 - USE THE PROFILE: before asking and before choosing a level, weigh species, breed, age, weight, conditions and medication from the profile. They change WHICH questions you ask and the likelihood (e.g. GDV is commoner in deep-chested large dogs but also occurs in medium-sized ones; an old pet, or one with kidney/heart disease or diabetes, has a lower threshold for an immediate exam; a young puppy/kitten dehydrates faster). The profile NEVER cancels a classic red flag: if the picture matches, it is EMERGENCY even when breed/size makes it less likely.
 - 6-QUESTION CYCLE: Before giving EMERGENCY (except the immediate-danger exception above), ask AT LEAST 6 short questions, one at a time, in this priority order and skipping what the owner already said (if something was said, move to the next item so you still reach 6): 1) when it started and how it is progressing, 2) bright or lethargic, 3) gum colour, 4) breathing at rest, 5) eating/drinking, vomiting/diarrhoea/urination, 6) possible toxin or foreign body / recent meal or trauma — plus symptom-specific questions (e.g. hard abdomen, unproductive retching). After the cycle decide using ALL answers and the profile: a clear red flag matches → EMERGENCY, otherwise URGENT or SELF_CARE. Uncertainty alone is NOT a reason for EMERGENCY. If a red flag is confirmed earlier, do NOT give EMERGENCY yet: keep asking (briefly), unless the picture worsens or the exception sign appears, then finish immediately.
 - EMERGENCY MESSAGE: one clear sentence "🚨 GO TO A VET CLINIC IMMEDIATELY", then ONE short sentence with the WHY (the findings and, if relevant, the profile factor, e.g. "hard bloated abdomen with unproductive retching — possible gastric torsion, which needs surgery within hours, and it is not ruled out in a 20 kg dog"), and what to do on the way (e.g. no food/water). Then the tag.
+- TOOL ROUTING: the nurse is the orchestrator. When a tool would materially improve the assessment, put exactly one hidden tag on its own final line: [TOOL: LABS], [TOOL: PHOTO], [TOOL: VITALS], [TOOL: REPORT], [TOOL: VETS], or [TOOL: NONE]. Use LABS when the owner has results to interpret or comparing old/new tests is the key next step. Use PHOTO only for genuinely visual findings. Use VITALS for breathing/pulse/temperature when objective measurements add value. Use REPORT only after adequate assessment or when enough examination evidence exists for a vet-ready summary. Use VETS for a final EMERGENCY. Do not route to a tool that is not needed.
 - OPTIONAL DATA (photo / vitals): when the symptoms justify it, suggest ONCE, inside a question or a short sentence, that the owner uploads a photo with the «Photo» tool (visual symptoms: skin, eye, ear, wound, gums/mouth, lump, stool/vomit) or measures breathing/pulse with the «Vitals» tool (cough, fast breathing, lethargy, heart history) — a gum photo and a breaths-per-minute count are more objective than a description. It is ALWAYS optional: if the owner declines or ignores it, CONTINUE the questions normally. Do NOT ask for it for non-visual / non-respiratory symptoms, and do NOT ask when there is immediate danger to life (EMERGENCY exception).
 - MINIMUM HISTORY before a final URGENT or SELF_CARE (for EMERGENCY the 6-QUESTION CYCLE applies, except immediate danger to life): ask, ONE question at a time, AT LEAST 6 targeted questions in total (not only about gum colour), covering whatever the owner has not already said: duration and progression, appetite and water, vomiting / diarrhoea / urination / stool, possible toxin or foreign-body ingestion, general state and gum colour. NEVER leave a key fact as a monitoring instruction ("note whether he vomits") when you can ask it NOW. Do not ask what was already answered. Maximum 8 questions.
 - LEVEL TAG: when you give a final level (and ONLY then), add on its own line at the very end exactly one of: [TRIAGE: EMERGENCY], [TRIAGE: URGENT], [TRIAGE: SELF_CARE]. Do NOT put a tag on intermediate question messages. The tag is hidden from the owner; never mention or translate it.
@@ -5165,6 +5167,29 @@ def render_vitals_summary():
             st.markdown(st.session_state.vitals_analysis)
 
 
+_TOOL_TAG_RE = _re_san.compile(r"(?im)^\\s*\\[TOOL:\\s*(LABS|PHOTO|VITALS|REPORT|VETS|NONE)\\]\\s*$")
+
+
+def parse_tool_request(text):
+    """Strip hidden nurse routing tags and return (clean_text, tool)."""
+    if not text:
+        return "", None
+    found = _TOOL_TAG_RE.findall(text)
+    tool = found[-1].lower() if found else None
+    clean = _TOOL_TAG_RE.sub("", text)
+    clean = _re_san.sub(r"\\n{3,}", "\\n\\n", clean).strip()
+    return clean, (None if tool in (None, "none") else tool)
+
+
+def _nurse_route(tool):
+    """Route the user from the Nurse to the evidence/report tool she requested."""
+    if tool not in {"labs", "photo", "vitals", "report", "vets"}:
+        return
+    st.session_state["_nurse_requested_tool"] = tool
+    st.session_state["_return_to_nurse"] = tool in {"labs", "photo", "vitals"}
+    st.session_state.screen = tool
+
+
 def render_triage():
     render_stepper("triage")
     pet  = st.session_state.pet
@@ -5217,6 +5242,7 @@ def render_triage():
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
             reply, _lvl = parse_triage_tag(reply)
+            reply, _tool = parse_tool_request(reply)
             reply = sanitize_ai_text(reply)
             if _lvl is None:
                 if not reply.rstrip().endswith(("?", ";")):   # a question mid-cycle is never an emergency verdict
@@ -5234,6 +5260,9 @@ def render_triage():
                 reply = reply.rstrip() + " ..."
         reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
         st.session_state.triage_chat.append({"role":"assistant","content":reply,"level":_lvl})
+        if _tool:
+            _nurse_route(_tool)
+            st.rerun()
 
     _pn_evidence_bar()
     if not st.session_state.triage_chat:
@@ -7102,14 +7131,29 @@ def render_pet_home():
     render_plan_banner(lang)
     render_pet_nurse_card()
 
-    st.markdown('<div class="pn-sec">' + ("ΕΡΓΑΛΕΙΑ — ΚΑΘΕΝΑ ΛΕΙΤΟΥΡΓΕΙ ΜΟΝΟ ΤΟΥ ΚΑΙ ΤΡΟΦΟΔΟΤΕΙ ΤΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el
-                                          else "TOOLS — EACH WORKS ON ITS OWN AND FEEDS THE NURSE") + '</div>', unsafe_allow_html=True)
-    for r in range(0, len(_PET_TOOLS), 2):
-        cols = st.columns(2, gap="small", vertical_alignment="top")
-        for col, tool in zip(cols, _PET_TOOLS[r:r + 2]):
-            with col:
-                key, screen, eb, title, body, cta = tool
-                render_pet_tool_card(key, screen, eb, title, body, cta, "home")
+    st.markdown('<div class="pn-sec">' + ("ΕΞΕΤΑΣΕΙΣ → ΣΥΝΟΨΗ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ" if el else "TEST RESULTS → VET SUMMARY") + '</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(
+            '<div style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;color:#0B1B4B;">'
+            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ." if el else "🧪 Have test results? Upload them here.")
+            + '</div><div style="color:#5B6794;font-size:14px;line-height:1.6;margin-top:6px;">'
+            + ("Αιματολογικές, βιοχημικές, ούρων ή άλλα αποτελέσματα. Η PetsAIHealth τα διαβάζει μαζί, "
+               "τα συγκρίνει με το προηγούμενο αρχείο και δημιουργεί μία καθαρή σύνοψη για τον κτηνίατρο."
+               if el else
+               "Blood, biochemistry, urine or other results. PetsAIHealth reads them together, compares them "
+               "with the previous record and creates one clean summary for your vet.")
+            + '</div>', unsafe_allow_html=True)
+        if st.button(("Ανέβασε εξετάσεις →" if el else "Upload results →"),
+                     key="home_primary_labs", type="primary", use_container_width=True):
+            _goto("labs")
+
+    with st.expander(("Περισσότερα εργαλεία" if el else "More tools")):
+        for r in range(0, len(_PET_TOOLS), 2):
+            cols = st.columns(2, gap="small", vertical_alignment="top")
+            for col, tool in zip(cols, _PET_TOOLS[r:r + 2]):
+                with col:
+                    key, screen, eb, title, body, cta = tool
+                    render_pet_tool_card(key, screen, eb, title, body, cta, "home")
 
     st.markdown('<div class="pn-sec">' + ("ΑΣΦΑΛΙΣΗ" if el else "INSURANCE") + '</div>', unsafe_allow_html=True)
     render_pet_tool_card("insurance", "insurance", ("ΑΣΦΑΛΙΣΗ", "INSURANCE"),
@@ -7715,6 +7759,59 @@ def render_pet_labs():
     if st.session_state.lab_findings:
         st.caption(("Καταχωρημένες εξετάσεις: " if lang=="el" else "Logged lab results: ")
                    + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
+
+    findings = st.session_state.get("lab_findings") or []
+    if findings:
+        st.markdown("---")
+        st.markdown("### " + ("📄 Σύνοψη εξετάσεων για τον κτηνίατρο" if lang=="el" else "📄 Vet-ready exam summary"))
+        st.caption(("Όλες οι εξετάσεις σε ένα σύντομο, κλινικά οργανωμένο έγγραφο."
+                    if lang=="el" else
+                    "All uploaded results in one concise, clinically organised document."))
+        if st.button(("Δημιουργία ενιαίας σύνοψης" if lang=="el" else "Create consolidated summary"),
+                     type="primary", use_container_width=True, key="labs_make_summary"):
+            if _rate_limit_gate("lab_summary"):
+                joined = "\n\n".join(
+                    f"FILE: {x.get('file_name','')}\nANALYSIS:\n{x.get('analysis','')}" for x in findings
+                )
+                old_ctx = history_context(pet)
+                sys = (("Είσαι κτηνιατρικός βοηθός. Δημιούργησε σύντομη, κλινικά οργανωμένη σύνοψη για γρήγορη ανάγνωση από τον κτηνίατρο. "
+                        "Μην κάνεις διάγνωση. Δομή: 1) εξετάσεις/ημερομηνίες αν φαίνονται, 2) σημαντικά παθολογικά ή οριακά ευρήματα, "
+                        "3) τάσεις σε σχέση με προηγούμενα αποτελέσματα, 4) φυσιολογικά/καθησυχαστικά ευρήματα, "
+                        "5) σύντομα σημεία ή ερωτήσεις για τον κτηνίατρο. Απόφυγε επαναλήψεις.")
+                       if lang=="el" else
+                       ("You are a veterinary assistant. Create a concise, clinically organised summary a veterinarian can scan quickly. "
+                        "Do not diagnose. Structure: 1) tests/dates if visible, 2) important abnormal or borderline findings, "
+                        "3) trends versus previous results, 4) normal/reassuring findings, 5) concise points or questions for the vet. Avoid repetition."))
+                if old_ctx:
+                    sys += "\n\n" + old_ctx
+                with st.spinner("Σύνθεση..." if lang=="el" else "Summarising..."):
+                    summary = sanitize_ai_text(claude([{"role":"user","content":joined}], system=sys, max_tokens=3000))
+                st.session_state["lab_consolidated_summary"] = summary
+                save_record("report", "Exam summary",
+                            {"complaint":"Uploaded examinations", "report":summary, "second_opinion":"",
+                             "source_kind":"exam_summary"}, pet)
+
+        if st.session_state.get("lab_consolidated_summary"):
+            _sum = st.session_state["lab_consolidated_summary"]
+            st.markdown(_sum)
+            st.download_button(("⬇️ Λήψη σύνοψης (.txt)" if lang=="el" else "⬇️ Download summary (.txt)"),
+                               data=_sum.encode("utf-8"),
+                               file_name=f"{pet.get('name','pet')}_exam_summary.txt",
+                               mime="text/plain", use_container_width=True, key="labs_summary_download")
+            if st.button(("Στείλε τη σύνοψη στη Νοσηλεύτρια →" if lang=="el" else "Send summary to Nurse →"),
+                         use_container_width=True, key="labs_summary_to_nurse"):
+                st.session_state.triage_chat.append({
+                    "role":"user",
+                    "content":(("ΣΥΝΟΨΗ ΕΞΕΤΑΣΕΩΝ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ:\n\n" if lang=="el"
+                                else "VET-READY EXAM SUMMARY:\n\n") + _sum)
+                })
+                st.session_state["_return_to_nurse"] = False
+                _goto("triage")
+
+    if st.session_state.get("_nurse_requested_tool") == "labs":
+        st.caption(("Η Νοσηλεύτρια σε έφερε εδώ γιατί οι εξετάσεις μπορούν να αλλάξουν ουσιαστικά την εκτίμηση."
+                    if lang=="el" else
+                    "The Nurse brought you here because the test results can materially improve the assessment."))
 
     _tool_footer()
 
