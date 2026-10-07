@@ -10,7 +10,7 @@ import json
 import io
 import urllib.request
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import io as _io, base64 as _b64
 import hmac, hashlib, time, unicodedata
 import logging as _logging
@@ -1605,13 +1605,38 @@ def _strip_accents(s):
 # Graceful degradation: if SUPABASE_URL / SUPABASE_ANON_KEY are not set (or the
 # supabase package is missing), auth stays OFF and the whole app is open.
 def _supabase_client():
+    """Return a per-Streamlit-session Supabase client.
+
+    When the user has authenticated, restore the real Supabase session onto
+    the client so PostgREST requests carry the user's JWT and RLS evaluates
+    them as that user (rather than as anon).
+    """
     url = _secret("SUPABASE_URL", "")
     key = _secret("SUPABASE_ANON_KEY", "")
     if not url or not key:
         return None
     try:
+        cached = st.session_state.get("_supabase_client")
+        if cached is not None:
+            return cached
+
         from supabase import create_client
-        return create_client(url, key)
+        sb = create_client(url, key)
+        access = st.session_state.get("_sb_access_token", "")
+        refresh = st.session_state.get("_sb_refresh_token", "")
+        if access and refresh:
+            try:
+                auth_res = sb.auth.set_session(access, refresh)
+                sess = getattr(auth_res, "session", None)
+                if sess:
+                    st.session_state["_sb_access_token"] = sess.access_token
+                    st.session_state["_sb_refresh_token"] = sess.refresh_token
+            except Exception as e:
+                log_event("supabase_session_restore", ok=False, error=type(e).__name__)
+                st.session_state.pop("_sb_access_token", None)
+                st.session_state.pop("_sb_refresh_token", None)
+        st.session_state["_supabase_client"] = sb
+        return sb
     except Exception:
         return None
 
@@ -1630,30 +1655,51 @@ def _cookie_secret():
             or "petainurse-dev-cookie-secret")
 
 def _make_token(email, days=14):
-    exp = int(time.time()) + days*86400
-    body = f"{email}|{exp}"
-    sig = hmac.new(_cookie_secret().encode(), body.encode(), hashlib.sha256).hexdigest()[:32]
-    return _b64.urlsafe_b64encode(f"{body}|{sig}".encode()).decode()
+    """Encrypt the real Supabase session for persistent sign-in.
+
+    The browser cookie is opaque ciphertext; the access/refresh tokens are
+    never stored in plaintext in the cookie. Legacy email-only cookies are
+    intentionally not accepted, because an email alone is not a Supabase
+    authenticated session and cannot safely satisfy RLS.
+    """
+    if not _ENC_OK:
+        return ""
+    access = st.session_state.get("_sb_access_token", "")
+    refresh = st.session_state.get("_sb_refresh_token", "")
+    if not (email and access and refresh):
+        return ""
+    payload = {
+        "email": email,
+        "exp": int(time.time()) + days * 86400,
+        "access_token": access,
+        "refresh_token": refresh,
+    }
+    return _fernet().encrypt(json.dumps(payload, separators=(",", ":")).encode()).decode()
 
 def _read_token(tok):
-    try:
-        raw = _b64.urlsafe_b64decode(str(tok).encode()).decode()
-        email, exp, sig = raw.rsplit("|", 2)
-        if int(exp) < time.time():
-            return None
-        good = hmac.new(_cookie_secret().encode(), f"{email}|{exp}".encode(), hashlib.sha256).hexdigest()[:32]
-        if hmac.compare_digest(sig, good):
-            return email
-    except Exception:
+    if not (_ENC_OK and tok):
         return None
-    return None
+    try:
+        payload = json.loads(_fernet().decrypt(str(tok).encode()).decode())
+        if int(payload.get("exp", 0)) < time.time():
+            return None
+        if not payload.get("email") or not payload.get("access_token") or not payload.get("refresh_token"):
+            return None
+        return payload
+    except Exception:
+        # Old email-only HMAC cookies are deliberately rejected. The user
+        # signs in once more and receives the encrypted Supabase-session cookie.
+        return None
 
 def _save_login_cookie(email):
     cm = globals().get("CM")
     if not cm:
         return
     try:
-        cm.set(COOKIE_NAME, _make_token(email), key="pan_set_auth",
+        token = _make_token(email)
+        if not token:
+            return
+        cm.set(COOKIE_NAME, token, key="pan_set_auth",
                expires_at=datetime.now()+timedelta(days=14))
     except Exception:
         pass
@@ -1726,7 +1772,7 @@ def save_pets(email, pets, active=0):
         return
     try:
         blob = _fernet().encrypt(json.dumps({"pets": pets, "active": active}, ensure_ascii=False).encode()).decode()
-        sb.table("user_pets").upsert({"user_email": email, "data": blob, "updated_at": datetime.utcnow().isoformat()},
+        sb.table("user_pets").upsert({"user_email": email, "data": blob, "updated_at": datetime.now(timezone.utc).isoformat()},
                                      on_conflict="user_email").execute()
         log_event("supabase_write", ok=True, table="user_pets")
     except Exception as e:
@@ -1839,7 +1885,7 @@ def save_record(kind, title, payload, pet=None):
         _ins = sb.table("pet_records").insert({
             "user_email": email, "pet_key": _pet_key(email, pet), "kind": kind,
             "data": _fernet().encrypt(raw.encode()).decode(),
-            "expires_at": (datetime.utcnow() + timedelta(days=30 * HISTORY_MONTHS + 1)).isoformat() + "Z",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30 * HISTORY_MONTHS + 1)).isoformat(),
         }).execute()
         try:
             st.session_state.setdefault("_hist_ids", set()).add((_ins.data or [{}])[0].get("id"))
@@ -1857,7 +1903,7 @@ def purge_expired_records(email):
     if not (sb and email):
         return
     try:
-        sb.table("pet_records").delete().eq("user_email", email).lt("expires_at", datetime.utcnow().isoformat() + "Z").execute()
+        sb.table("pet_records").delete().eq("user_email", email).lt("expires_at", datetime.now(timezone.utc).isoformat() + "Z").execute()
     except Exception as e:
         log_event("supabase_delete", ok=False, error=str(e)[:120], table="pet_records")
 
@@ -2033,9 +2079,15 @@ def verify_otp(email, token):
         try:
             res = sb.auth.verify_otp({"email": email, "token": token, "type": otp_type})
             if getattr(res, "user", None):
+                sess = getattr(res, "session", None)
+                if not sess:
+                    return False, "Authentication succeeded without a Supabase session."
                 st.session_state["auth_user"] = email
+                st.session_state["_sb_access_token"] = sess.access_token
+                st.session_state["_sb_refresh_token"] = sess.refresh_token
+                st.session_state["_supabase_client"] = sb
                 # Restore the user's saved output_lang (and any future prefs)
-                # so their choice survives across devices / sessions.
+                # using the authenticated client so RLS sees auth.uid()/email.
                 st.session_state["_output_lang_loaded"] = False
                 _ensure_output_lang_loaded()
                 return True, ""
@@ -6278,16 +6330,31 @@ if _STX_OK and auth_enabled():
         _tok = CM.get(COOKIE_NAME)
     except Exception:
         pass
-    _email = _read_token(_tok) if _tok else None
+    _auth_cookie = _read_token(_tok) if _tok else None
 
-    if _email:
-        # Valid cookie present → always trust it (covers cases where
-        # session_state lost auth_user due to a fresh browser session).
-        st.session_state["auth_user"] = _email
-        st.session_state["_cookie_check_tries"] = 0
-        # Lazy-load the user's saved AI-output language once per session.
-        # The flag guards against repeated Supabase round-trips on every rerun.
-        _ensure_output_lang_loaded()
+    if _auth_cookie and not is_logged_in():
+        # Restore the encrypted Supabase access/refresh tokens, then verify the
+        # user with Supabase before treating the browser as authenticated.
+        st.session_state["_sb_access_token"] = _auth_cookie["access_token"]
+        st.session_state["_sb_refresh_token"] = _auth_cookie["refresh_token"]
+        st.session_state.pop("_supabase_client", None)
+        try:
+            _sb_restore = _supabase_client()
+            _user_res = _sb_restore.auth.get_user() if _sb_restore else None
+            _user = getattr(_user_res, "user", None)
+            _verified_email = getattr(_user, "email", "") if _user else ""
+            if _verified_email and _verified_email.lower() == _auth_cookie["email"].lower():
+                st.session_state["auth_user"] = _verified_email
+                st.session_state["_cookie_check_tries"] = 0
+                _ensure_output_lang_loaded()
+            else:
+                raise ValueError("Supabase session user mismatch")
+        except Exception as e:
+            log_event("supabase_session_restore", ok=False, error=type(e).__name__)
+            st.session_state.pop("_sb_access_token", None)
+            st.session_state.pop("_sb_refresh_token", None)
+            st.session_state.pop("_supabase_client", None)
+            _clear_login_cookie()
     elif not is_logged_in() and _past_marketing_screens:
         if _tok is None:
             # CookieManager's underlying component is async: on early runs of
