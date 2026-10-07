@@ -4511,20 +4511,9 @@ _PN_DIARY_CSS = """<style>
 
 
 def _diary_archive(entry, pet):
-    """Persist diary observations without hitting the legacy DB kind constraint."""
+    """Keep the diary observation in the encrypted Pet Health Record."""
     try:
-        symptom = str(entry.get("symptom", "") or "").strip()
-        level = entry.get("level") or "n/a"
-        sev = entry.get("sev")
-        notes = str(entry.get("notes", "") or "").strip()
-        body = f"Diary observation: {symptom}. Triage level: {level}."
-        if sev not in (None, ""):
-            body += f" Severity: {sev}/10."
-        if notes:
-            body += f" Notes: {notes}"
-        save_record("report", ("Diary · " + symptom)[:100] or "Diary",
-                    {"complaint": symptom, "report": body, "second_opinion": "",
-                     "source_kind": "diary", "entry": dict(entry)}, pet)
+        save_record("diary", entry.get("symptom", "")[:100], dict(entry), pet)
     except Exception:
         pass
 
@@ -6848,7 +6837,7 @@ def render_pet_nurse_card():
             f'<div style="font-family:Sora,Inter,sans-serif;color:#fff;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:12px 0 8px;">'
             f'{("Ρώτα την PetsAIHealth για τον/την " if el else "Ask PetsAIHealth about ")}{nm}</div>'
             f'<div style="color:#D5DCFF;font-size:14.5px;line-height:1.6;">'
-            f'{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD — σε λίγα λεπτά, πριν ή αντί για το ιατρείο." if el else "A structured symptom assessment with MSD references — in minutes, before or instead of a vet visit."}</div>'
+            f'{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD — σε λίγα λεπτά, πριν από το ραντεβού ή όταν αποφασίζεις το επόμενο βήμα." if el else "A structured symptom assessment with MSD references — in minutes, before a vet visit or when deciding the next step."}</div>'
             f'</div><div class="art">{_pn_feat_art("nurse", _sp, raw=True)}</div></div>'
             f'<div class="pn-steps">{steps_html}</div></div>', unsafe_allow_html=True)
         c1, c2 = st.columns([2, 1], gap="small")
