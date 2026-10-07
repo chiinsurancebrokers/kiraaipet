@@ -2194,14 +2194,14 @@ def invalidate_subscription_cache(email: str):
 # ── PETSAIHEALTH PLUS — one subscription (4,99€/μήνα) for every service ───────
 # Free tier: ONLY FREE_TRIAGE_PER_MONTH basic symptom checks (nurse chat) per calendar month,
 # one pet profile, and vet/emergency lookup. No clinical history is persisted for Free users.
-# Every premium clinical service — report, second opinion, vitals, photo, labs, timeline,
+# Premium clinical services — report, second opinion, vitals, photo, multi-file labs, timeline,
 # longitudinal comparison, Vet Brief, longevity, diary, insurance tools and Pet Health Record —
 # requires an active plan ('plus', or legacy 'insurance') in `subscriptions`.
 # Usage is counted in Supabase table `usage_events` (user_email, kind, created_at).
 FREE_TRIAGE_PER_MONTH = 3
 PLUS_PRICE_MONTH = "4,99€"
 PLUS_PRICE_YEAR = "49,99€"
-PAID_SCREENS = {"vitals", "scan", "photo", "labs", "longevity", "diary", "insurance", "report", "history"}
+PAID_SCREENS = {"vitals", "scan", "photo", "longevity", "diary", "insurance", "report", "history"}
 
 _PLUS_SERVICES = [
     ("💬", ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
@@ -2215,7 +2215,7 @@ _PLUS_SERVICES = [
     ("📷", ("Ανάλυση φωτογραφιών", "Photo analysis"),
            ("Μάτια, δέρμα, αυτιά, ούλα — περιγραφή από AI.", "Eyes, skin, ears, gums — described by AI.")),
     ("🧪", ("Εργαστηριακές εξετάσεις", "Lab results"),
-           ("Πολλαπλές εξετάσεις, timeline, σύγκριση μεταβολών και one-page Vet Brief.", "Multiple exams, timeline, change comparison and a one-page Vet Brief.")),
+           ("1 βασική ανάλυση εξέτασης στο Free· πολλαπλές εξετάσεις, timeline, σύγκριση μεταβολών και Vet Brief στο Plus.", "1 basic exam analysis on Free; multiple exams, timeline, change comparison and Vet Brief on Plus.")),
     ("🧬", ("Έλεγχος μακροζωίας", "Longevity check"),
            ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, πλάνο.", "Age in human years, wellness score, plan.")),
     ("🐾", ("Απεριόριστα κατοικίδια", "Unlimited pets"),
@@ -2327,8 +2327,8 @@ def render_plus_paywall(lang="el", feature_label="", full=True):
                   for ic, ti, de in _PLUS_SERVICES)
         + '</div>'
         '<div class="pn-free">🎁 <b>' + ("Δωρεάν για πάντα" if el else "Free, always") + '</b> · '
-        + (f"{FREE_TRIAGE_PER_MONTH} βασικοί έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και επείγοντα. Χωρίς αποθήκευση κλινικού ιστορικού."
-           if el else f"{FREE_TRIAGE_PER_MONTH} basic symptom checks a month ({left} left this month) for 1 pet, find a vet near you and emergencies. No clinical history is saved.")
+        + (f"{FREE_TRIAGE_PER_MONTH} βασικοί έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left}), 1 βασική ανάλυση εξέτασης, 1 κατοικίδιο, κτηνίατρος κοντά σου και επείγοντα. Χωρίς αποθήκευση κλινικού ιστορικού."
+           if el else f"{FREE_TRIAGE_PER_MONTH} basic symptom checks a month ({left} left), 1 basic exam analysis, 1 pet, find a vet and emergency guidance. No clinical history is saved.")
         + '</div>', unsafe_allow_html=True)
     import urllib.parse as _up
     _em = st.session_state.get("auth_user", "")
@@ -7136,13 +7136,11 @@ def render_pet_home():
     with st.container(border=True):
         st.markdown(
             '<div style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;color:#0B1B4B;">'
-            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ. · PLUS" if el else "🧪 Have test results? Upload them here. · PLUS")
+            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ." if el else "🧪 Have test results? Upload them here.")
             + '</div><div style="color:#5B6794;font-size:14px;line-height:1.6;margin-top:6px;">'
-            + ("Αιματολογικές, βιοχημικές, ούρων ή άλλα αποτελέσματα. Η PetsAIHealth τα διαβάζει μαζί, "
-               "τα συγκρίνει με το προηγούμενο αρχείο και δημιουργεί μία καθαρή σύνοψη για τον κτηνίατρο."
+            + (("FREE: μία βασική ανάλυση εξέτασης. PLUS: πολλαπλές εξετάσεις, ιστορικό, timeline, σύγκριση μεταβολών και Vet Brief."
                if el else
-               "Blood, biochemistry, urine or other results. PetsAIHealth reads them together, compares them "
-               "with the previous record and creates one clean summary for your vet.")
+               "FREE: one basic exam analysis. PLUS: multiple exams, history, timeline, change comparison and Vet Brief."))
             + '</div>', unsafe_allow_html=True)
         if st.button(("Ανέβασε εξετάσεις →" if el else "Upload results →"),
                      key="home_primary_labs", type="primary", use_container_width=True):
@@ -7756,24 +7754,34 @@ def _render_exam_timeline(rows, lang="el"):
 
 def render_pet_labs():
     lang = st.session_state.lang
-    if paywall_enabled() and not has_plus():
-        render_plus_paywall(lang, "Εξετάσεις, timeline & Vet Brief" if lang=="el" else "Exams, timeline & Vet Brief")
-        return
+    _plus = has_plus()
     _tool_screen("🧪", "Εργαστηριακές εξετάσεις", "Lab results",
                  "Ανέβασε εξετάσεις αίματος/ούρων για {nm} — εντάσσονται στην εκτίμηση",
                  "Upload blood/urine results for {nm} — they join the assessment")
     pet = st.session_state.pet or {}
     st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
                else "PDF or photo of blood/urine test results, etc.")
+    if not _plus:
+        st.info(("FREE: 1 βασική ανάλυση εξέτασης χωρίς αποθήκευση ιστορικού. Για πολλαπλές εξετάσεις, timeline, σύγκριση μεταβολών και Vet Brief χρειάζεται Plus."
+                 if lang=="el" else
+                 "FREE: 1 basic exam analysis with no saved history. Multiple exams, timeline, change comparison and Vet Brief require Plus."))
     lab_files = st.file_uploader(
-        ("Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else "Upload lab results (multiple files)"),
+        ("Ανέβασμα εξέτασης" if (lang=="el" and not _plus) else
+         "Upload exam" if (lang!="el" and not _plus) else
+         "Ανέβασμα εξετάσεων (πολλαπλά αρχεία)" if lang=="el" else
+         "Upload lab results (multiple files)"),
         type=["pdf","jpg","jpeg","png","webp","heic","heif"],
         key="pet_lab_upload",
-        accept_multiple_files=True,
-        help=("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
-              if lang=="el" else
-              "Upload more than one file at once — e.g. CBC + biochemistry + serology."),
+        accept_multiple_files=_plus,
+        help=(("Ανέβασε ένα PDF ή μία φωτογραφία εξέτασης."
+               if lang=="el" else "Upload one PDF or one image of an exam.")
+              if not _plus else
+              ("Μπορείς να ανεβάσεις περισσότερα από ένα αρχείο μαζί — π.χ. αιμοδιάγραμμα + βιοχημικό + ορολογικός έλεγχος."
+               if lang=="el" else
+               "Upload more than one file at once — e.g. CBC + biochemistry + serology.")),
     )
+    if lab_files and not isinstance(lab_files, list):
+        lab_files = [lab_files]
     if lab_files:
         # Show a list of what's queued before the user commits to analysis
         st.caption((f"📎 {len(lab_files)} αρχεία προς ανάλυση: " if lang=="el"
@@ -7784,6 +7792,9 @@ def render_pet_labs():
                               if lang=="el" else
                               (f"Analyse {len(lab_files)} Results" if len(lab_files) > 1 else "Analyse Lab Result")),
                      type="primary", use_container_width=True, key="analyse_lab"):
+            if not _plus and st.session_state.get("_free_lab_used", False):
+                render_plus_paywall(lang, "Περισσότερες αναλύσεις εξετάσεων" if lang=="el" else "More exam analyses", full=False)
+                st.stop()
             if not _rate_limit_gate("lab_scan"):
                 st.stop()
 
@@ -7840,9 +7851,12 @@ def render_pet_labs():
                             "file_name": lab_file.name, "analysis": analysis,
                             "exam_date": exam_date, "created_at": _created,
                         })
-                        save_record("lab", lab_file.name,
-                                    {"file_name": lab_file.name, "analysis": analysis,
-                                     "exam_date": exam_date}, pet)
+                        if _plus:
+                            save_record("lab", lab_file.name,
+                                        {"file_name": lab_file.name, "analysis": analysis,
+                                         "exam_date": exam_date}, pet)
+                        else:
+                            st.session_state["_free_lab_used"] = True
                         finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
                                        if lang=="el" else
                                        f"Lab result ({lab_file.name}):\n\n{analysis}")
@@ -7862,9 +7876,16 @@ def render_pet_labs():
                    + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
 
     findings = st.session_state.get("lab_findings") or []
-    timeline = _collect_exam_timeline(pet)
+    timeline = _collect_exam_timeline(pet) if _plus else []
 
-    if timeline:
+    if not _plus and findings:
+        st.markdown("---")
+        st.success(("Η βασική ανάλυση ολοκληρώθηκε. Στο Plus η PetsAIHealth αποθηκεύει τις εξετάσεις, τις βάζει σε timeline, δείχνει τι άλλαξε και δημιουργεί one-page Vet Brief για τον κτηνίατρο."
+                    if lang=="el" else
+                    "Basic analysis complete. Plus saves exams, builds a timeline, shows what changed and creates a one-page Vet Brief for your veterinarian."))
+        render_plus_paywall(lang, "Timeline, What changed & Vet Brief" if lang=="el" else "Timeline, What changed & Vet Brief", full=False)
+
+    if _plus and timeline:
         st.markdown("---")
         st.markdown('<div style="font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#6A70A0;">PETSAIHEALTH PLUS · LONGITUDINAL EXAM INTELLIGENCE</div>',
                     unsafe_allow_html=True)
