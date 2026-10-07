@@ -851,7 +851,8 @@ def claude_analyze_pet_lab(file_bytes, mime_type, pet, conversation, lang, file_
 Τι θα ρωτούσε ο κτηνίατρος. Επιπλέον εξετάσεις που ίσως χρειάζονται. Πότε είναι επείγον.
 
 ΣΗΜΑΝΤΙΚΟ: ΜΗΝ κάνεις τελική διάγνωση. Πάντα συστήνεις επίσκεψη σε κτηνίατρο για ερμηνεία.
-Αναφέρε ΜΟΝΟ τα ευρήματα που πραγματικά βλέπεις στο έγγραφο — μην εφεύρεις δείκτες."""
+Αναφέρε ΜΟΝΟ τα ευρήματα που πραγματικά βλέπεις στο έγγραφο — μην εφεύρεις δείκτες.
+Στο ΤΕΛΟΣ βάλε σε ξεχωριστή γραμμή ακριβώς [EXAM_DATE: YYYY-MM-DD] αν φαίνεται καθαρά η ημερομηνία λήψης/εξέτασης στο έγγραφο. Αν δεν φαίνεται, βάλε [EXAM_DATE: UNKNOWN]. Η γραμμή αυτή είναι μηχανική μετα-πληροφορία και δεν χρειάζεται εξήγηση."""
     else:
         system = ("You are an expert veterinary nurse interpreting pet lab results. "
                   "Be precise, clear, and tie findings to the pet's reported symptoms. "
@@ -882,7 +883,8 @@ Consistent with what the owner describes? Supports or changes the current assess
 What the vet would ask. Additional tests possibly needed. When this is urgent.
 
 IMPORTANT: Do NOT make a final diagnosis. Always recommend seeing a vet for interpretation.
-Only findings you actually see in the document — don't invent indicators."""
+Only findings you actually see in the document — don't invent indicators.
+At the END, add exactly one separate metadata line: [EXAM_DATE: YYYY-MM-DD] if the specimen/test date is clearly visible in the document. If it is not visible, write [EXAM_DATE: UNKNOWN]. Do not explain this metadata line."""
 
     if mime_type == "application/pdf":
         content_block = {"type":"document","source":{"type":"base64","media_type":"application/pdf","data":file_b64}}
@@ -2209,7 +2211,7 @@ _PLUS_SERVICES = [
     ("📷", ("Ανάλυση φωτογραφιών", "Photo analysis"),
            ("Μάτια, δέρμα, αυτιά, ούλα — περιγραφή από AI.", "Eyes, skin, ears, gums — described by AI.")),
     ("🧪", ("Εργαστηριακές εξετάσεις", "Lab results"),
-           ("PDF ή φωτογραφία αιματολογικών σε απλά λόγια.", "PDF or photo of blood tests in plain words.")),
+           ("Πολλαπλές εξετάσεις, timeline, σύγκριση μεταβολών και one-page Vet Brief.", "Multiple exams, timeline, change comparison and a one-page Vet Brief.")),
     ("🧬", ("Έλεγχος μακροζωίας", "Longevity check"),
            ("Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας, πλάνο.", "Age in human years, wellness score, plan.")),
     ("🐾", ("Απεριόριστα κατοικίδια", "Unlimited pets"),
@@ -7124,7 +7126,7 @@ def render_pet_home():
     with st.container(border=True):
         st.markdown(
             '<div style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;color:#0B1B4B;">'
-            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ." if el else "🧪 Have test results? Upload them here.")
+            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ. · PLUS" if el else "🧪 Have test results? Upload them here. · PLUS")
             + '</div><div style="color:#5B6794;font-size:14px;line-height:1.6;margin-top:6px;">'
             + ("Αιματολογικές, βιοχημικές, ούρων ή άλλα αποτελέσματα. Η PetsAIHealth τα διαβάζει μαζί, "
                "τα συγκρίνει με το προηγούμενο αρχείο και δημιουργεί μία καθαρή σύνοψη για τον κτηνίατρο."
@@ -7652,12 +7654,96 @@ def render_pet_photo():
     _tool_footer()
 
 
+_EXAM_DATE_TAG_RE = _re_san.compile(r"(?im)^\\s*\\[EXAM_DATE:\\s*(UNKNOWN|\\d{4}-\\d{2}-\\d{2})\\]\\s*$")
+
+
+def _extract_exam_date(text):
+    """Return AI analysis without its hidden date tag plus ISO exam date or ''."""
+    if not text:
+        return "", ""
+    m = _EXAM_DATE_TAG_RE.search(text)
+    exam_date = ""
+    if m and m.group(1) != "UNKNOWN":
+        exam_date = m.group(1)
+        try:
+            datetime.strptime(exam_date, "%Y-%m-%d")
+        except Exception:
+            exam_date = ""
+    clean = _EXAM_DATE_TAG_RE.sub("", text).strip()
+    return clean, exam_date
+
+
+def _exam_display_date(exam_date, created_at=""):
+    """Prefer the clinical exam date; otherwise use upload/archive date."""
+    raw = str(exam_date or "").strip()
+    if _re_san.match(r"^\\d{4}-\\d{2}-\\d{2}$", raw):
+        return raw, True
+    return str(created_at or "")[:10] or datetime.now().strftime("%Y-%m-%d"), False
+
+
+def _collect_exam_timeline(pet):
+    """Merge this session's lab analyses with the encrypted Pet Health Record."""
+    rows, seen = [], set()
+    email = st.session_state.get("auth_user", "")
+    if email and history_enabled(email):
+        for r in load_records(pet, email):
+            if r.get("kind") != "lab":
+                continue
+            p = r.get("payload") or {}
+            analysis = str(p.get("analysis", "") or "")
+            fname = str(p.get("file_name") or r.get("title") or "Lab result")
+            d, exact = _exam_display_date(p.get("exam_date"), r.get("created_at"))
+            sig = hashlib.sha256((d + fname + analysis[:500]).encode()).hexdigest()
+            if sig in seen:
+                continue
+            seen.add(sig)
+            rows.append({"date":d, "date_exact":exact, "file_name":fname, "analysis":analysis,
+                         "source":"record", "created_at":r.get("created_at","")})
+    for x in st.session_state.get("lab_findings") or []:
+        analysis = str(x.get("analysis", "") or "")
+        fname = str(x.get("file_name", "Lab result"))
+        d, exact = _exam_display_date(x.get("exam_date"), x.get("created_at"))
+        sig = hashlib.sha256((d + fname + analysis[:500]).encode()).hexdigest()
+        if sig in seen:
+            continue
+        seen.add(sig)
+        rows.append({"date":d, "date_exact":exact, "file_name":fname, "analysis":analysis,
+                     "source":"session", "created_at":x.get("created_at","")})
+    rows.sort(key=lambda x: (x.get("date",""), x.get("file_name","")))
+    return rows
+
+
+def _exam_timeline_text(rows):
+    parts = []
+    for r in rows:
+        marker = "EXAM DATE" if r.get("date_exact") else "UPLOAD/ARCHIVE DATE"
+        parts.append(f"{r.get('date')} [{marker}] {r.get('file_name')}\n{r.get('analysis','')}")
+    return "\n\n---\n\n".join(parts)
+
+
+def _render_exam_timeline(rows, lang="el"):
+    if not rows:
+        return
+    el = lang == "el"
+    st.markdown("### " + ("🗓️ Timeline εξετάσεων" if el else "🗓️ Examination timeline"))
+    st.caption(("Η ημερομηνία με ✓ προέρχεται από την ίδια την εξέταση. Όπου δεν αναγνωρίστηκε, εμφανίζεται η ημερομηνία upload/αρχειοθέτησης."
+                if el else
+                "Dates marked ✓ were read from the examination itself. Otherwise the upload/archive date is shown."))
+    for r in rows:
+        badge = "✓" if r.get("date_exact") else "≈"
+        with st.expander(f"{badge} {r.get('date')} · {r.get('file_name')}"):
+            st.markdown(r.get("analysis",""))
+
+
 def render_pet_labs():
+    lang = st.session_state.lang
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(lang, "Εξετάσεις, timeline & Vet Brief" if lang=="el" else "Exams, timeline & Vet Brief")
+        return
     _tool_screen("🧪", "Εργαστηριακές εξετάσεις", "Lab results",
                  "Ανέβασε εξετάσεις αίματος/ούρων για {nm} — εντάσσονται στην εκτίμηση",
                  "Upload blood/urine results for {nm} — they join the assessment")
     pet = st.session_state.pet or {}
-    lang = st.session_state.lang
     st.caption("PDF ή φωτογραφία αποτελεσμάτων αίματος/ούρων κ.λπ." if lang=="el"
                else "PDF or photo of blood/urine test results, etc.")
     lab_files = st.file_uploader(
@@ -7725,12 +7811,19 @@ def render_pet_labs():
                             st.error(f"⚠️ {lab_file.name}: {e}")
                             continue
 
+                        analysis, exam_date = _extract_exam_date(analysis)
                         st.markdown(f"#### 📄 {lab_file.name}")
+                        if exam_date:
+                            st.caption(("Ημερομηνία εξέτασης: " if lang=="el" else "Exam date: ") + exam_date)
                         st.markdown(analysis)
+                        _created = datetime.now(timezone.utc).isoformat()
                         st.session_state.lab_findings.append({
                             "file_name": lab_file.name, "analysis": analysis,
+                            "exam_date": exam_date, "created_at": _created,
                         })
-                        save_record("lab", lab_file.name, {"file_name": lab_file.name, "analysis": analysis}, pet)
+                        save_record("lab", lab_file.name,
+                                    {"file_name": lab_file.name, "analysis": analysis,
+                                     "exam_date": exam_date}, pet)
                         finding_msg = (f"Αποτέλεσμα εργαστηριακής εξέτασης ({lab_file.name}):\n\n{analysis}"
                                        if lang=="el" else
                                        f"Lab result ({lab_file.name}):\n\n{analysis}")
@@ -7750,49 +7843,89 @@ def render_pet_labs():
                    + ", ".join(lf["file_name"] for lf in st.session_state.lab_findings))
 
     findings = st.session_state.get("lab_findings") or []
-    if findings:
-        st.markdown("---")
-        st.markdown("### " + ("📄 Σύνοψη εξετάσεων για τον κτηνίατρο" if lang=="el" else "📄 Vet-ready exam summary"))
-        st.caption(("Όλες οι εξετάσεις σε ένα σύντομο, κλινικά οργανωμένο έγγραφο."
-                    if lang=="el" else
-                    "All uploaded results in one concise, clinically organised document."))
-        if st.button(("Δημιουργία ενιαίας σύνοψης" if lang=="el" else "Create consolidated summary"),
-                     type="primary", use_container_width=True, key="labs_make_summary"):
-            if _rate_limit_gate("lab_summary"):
-                joined = "\n\n".join(
-                    f"FILE: {x.get('file_name','')}\nANALYSIS:\n{x.get('analysis','')}" for x in findings
-                )
-                old_ctx = history_context(pet)
-                sys = (("Είσαι κτηνιατρικός βοηθός. Δημιούργησε σύντομη, κλινικά οργανωμένη σύνοψη για γρήγορη ανάγνωση από τον κτηνίατρο. "
-                        "Μην κάνεις διάγνωση. Δομή: 1) εξετάσεις/ημερομηνίες αν φαίνονται, 2) σημαντικά παθολογικά ή οριακά ευρήματα, "
-                        "3) τάσεις σε σχέση με προηγούμενα αποτελέσματα, 4) φυσιολογικά/καθησυχαστικά ευρήματα, "
-                        "5) σύντομα σημεία ή ερωτήσεις για τον κτηνίατρο. Απόφυγε επαναλήψεις.")
-                       if lang=="el" else
-                       ("You are a veterinary assistant. Create a concise, clinically organised summary a veterinarian can scan quickly. "
-                        "Do not diagnose. Structure: 1) tests/dates if visible, 2) important abnormal or borderline findings, "
-                        "3) trends versus previous results, 4) normal/reassuring findings, 5) concise points or questions for the vet. Avoid repetition."))
-                if old_ctx:
-                    sys += "\n\n" + old_ctx
-                with st.spinner("Σύνθεση..." if lang=="el" else "Summarising..."):
-                    summary = sanitize_ai_text(claude([{"role":"user","content":joined}], system=sys, max_tokens=3000))
-                st.session_state["lab_consolidated_summary"] = summary
-                save_record("report", "Exam summary",
-                            {"complaint":"Uploaded examinations", "report":summary, "second_opinion":"",
-                             "source_kind":"exam_summary"}, pet)
+    timeline = _collect_exam_timeline(pet)
 
-        if st.session_state.get("lab_consolidated_summary"):
-            _sum = st.session_state["lab_consolidated_summary"]
-            st.markdown(_sum)
-            st.download_button(("⬇️ Λήψη σύνοψης (.txt)" if lang=="el" else "⬇️ Download summary (.txt)"),
-                               data=_sum.encode("utf-8"),
-                               file_name=f"{pet.get('name','pet')}_exam_summary.txt",
-                               mime="text/plain", use_container_width=True, key="labs_summary_download")
-            if st.button(("Στείλε τη σύνοψη στη Νοσηλεύτρια →" if lang=="el" else "Send summary to Nurse →"),
-                         use_container_width=True, key="labs_summary_to_nurse"):
+    if timeline:
+        st.markdown("---")
+        st.markdown('<div style="font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#6A70A0;">PETSAIHEALTH PLUS · LONGITUDINAL EXAM INTELLIGENCE</div>',
+                    unsafe_allow_html=True)
+        _render_exam_timeline(timeline, lang)
+
+        if len(timeline) >= 2:
+            st.markdown("### " + ("🔄 Τι άλλαξε;" if lang=="el" else "🔄 What changed?"))
+            st.caption(("Σύγκριση παλαιότερων και νεότερων εξετάσεων με έμφαση σε τάσεις, βελτίωση, επιδείνωση και νέα ευρήματα."
+                        if lang=="el" else
+                        "Compares older and newer results for trends, improvement, deterioration and newly appearing findings."))
+            if st.button(("Ανάλυση μεταβολών" if lang=="el" else "Analyse changes"),
+                         type="primary", use_container_width=True, key="labs_what_changed"):
+                if _rate_limit_gate("lab_longitudinal_compare"):
+                    evidence = _exam_timeline_text(timeline)
+                    sys = (("Είσαι κτηνιατρικός βοηθός που συγκρίνει διαδοχικές εξετάσεις ενός κατοικιδίου. "
+                            "Δεν κάνεις διάγνωση και δεν εφευρίσκεις τιμές. Βασίσου μόνο στα δεδομένα. "
+                            "Δώσε σύντομη σύγκριση με: 1) Βελτιώθηκε, 2) Επιδεινώθηκε, 3) Νέο/εμφανίστηκε, "
+                            "4) Σταθερό, 5) Τι αξίζει να συζητηθεί με τον κτηνίατρο. "
+                            "Αν οι εξετάσεις δεν είναι άμεσα συγκρίσιμες, πες το καθαρά. "
+                            "Χρησιμοποίησε τις ημερομηνίες και ξεχώρισε την πραγματική ημερομηνία εξέτασης από fallback upload date.")
+                           if lang=="el" else
+                           ("You are a veterinary assistant comparing serial examinations for one pet. "
+                            "Do not diagnose and do not invent values. Use only the supplied evidence. "
+                            "Give a concise comparison under: 1) Improved, 2) Worsened, 3) New, 4) Stable, "
+                            "5) Points to discuss with the veterinarian. If tests are not directly comparable, say so. "
+                            "Use dates and distinguish true exam dates from fallback upload/archive dates."))
+                    with st.spinner("Σύγκριση..." if lang=="el" else "Comparing..."):
+                        changed = sanitize_ai_text(claude([{"role":"user","content":evidence}], system=sys, max_tokens=2600))
+                    st.session_state["lab_what_changed"] = changed
+            if st.session_state.get("lab_what_changed"):
+                st.markdown(st.session_state["lab_what_changed"])
+
+        st.markdown("### " + ("📄 One-page Vet Brief" if lang=="el" else "📄 One-page Vet Brief"))
+        st.caption(("Μία σελίδα για γρήγορη ανάγνωση από τον κτηνίατρο: ιστορικό εξετάσεων, βασικές μεταβολές και σημεία προς συζήτηση."
+                    if lang=="el" else
+                    "A one-page handoff for the veterinarian: examination history, key changes and focused discussion points."))
+        if st.button(("Δημιουργία Vet Brief" if lang=="el" else "Create Vet Brief"),
+                     type="primary", use_container_width=True, key="labs_make_vet_brief"):
+            if _rate_limit_gate("lab_vet_brief"):
+                evidence = _exam_timeline_text(timeline)
+                if st.session_state.get("lab_what_changed"):
+                    evidence += "\n\nLONGITUDINAL COMPARISON:\n" + st.session_state["lab_what_changed"]
+                p = pet or {}
+                profile = (f"PET: {p.get('name','')} | {p.get('species_label','')} | {p.get('breed','')} | "
+                           f"{p.get('age_y',0)}y {p.get('age_m',0)}m | {p.get('weight','')} kg\n"
+                           f"KNOWN CONDITIONS: {p.get('conditions','—')}\nMEDICATIONS: {p.get('meds_raw','—')}")
+                sys = (("Δημιούργησε ONE-PAGE VET BRIEF στα Ελληνικά, πολύ εύκολο για γρήγορη ανάγνωση από κτηνίατρο. "
+                        "Στόχος είναι να εξοικονομήσει χρόνο στο ραντεβού, όχι να αντικαταστήσει τον κτηνίατρο. "
+                        "Μέγιστο περίπου 550 λέξεις. Μόνο όσα υπάρχουν στα δεδομένα. Δομή ακριβώς: "
+                        "1. PET SNAPSHOT, 2. EXAM TIMELINE (μία γραμμή ανά ημερομηνία), "
+                        "3. KEY ABNORMAL / BORDERLINE FINDINGS, 4. WHAT CHANGED, "
+                        "5. CURRENT QUESTIONS FOR THE VET. "
+                        "Στο WHAT CHANGED χρησιμοποίησε ↑ ↓ → όπου έχει νόημα. "
+                        "Μην δώσεις τελική διάγνωση, δοσολογία ή θεραπεία.")
+                       if lang=="el" else
+                       ("Create a ONE-PAGE VET BRIEF in English that a veterinarian can scan quickly. "
+                        "Its purpose is to save appointment time, not replace the vet. Keep it to roughly 550 words maximum. "
+                        "Use only supplied data. Use exactly these sections: 1. PET SNAPSHOT, 2. EXAM TIMELINE (one line per date), "
+                        "3. KEY ABNORMAL / BORDERLINE FINDINGS, 4. WHAT CHANGED, 5. CURRENT QUESTIONS FOR THE VET. "
+                        "Use ↑ ↓ → in WHAT CHANGED where useful. Do not give a final diagnosis, medication dose or treatment."))
+                with st.spinner("Δημιουργία Vet Brief..." if lang=="el" else "Creating Vet Brief..."):
+                    brief = sanitize_ai_text(claude([{"role":"user","content":profile+"\n\n"+evidence}],
+                                                    system=sys, max_tokens=3200))
+                st.session_state["lab_vet_brief"] = brief
+                save_record("report", "Vet Brief",
+                            {"complaint":"Serial examinations", "report":brief, "second_opinion":"",
+                             "source_kind":"vet_brief"}, pet)
+
+        if st.session_state.get("lab_vet_brief"):
+            brief = st.session_state["lab_vet_brief"]
+            st.markdown(brief)
+            safe_name = _re_san.sub(r"[^A-Za-z0-9_-]+", "_", str(pet.get("name","pet"))) or "pet"
+            st.download_button(("⬇️ Λήψη Vet Brief (.txt)" if lang=="el" else "⬇️ Download Vet Brief (.txt)"),
+                               data=brief.encode("utf-8"), file_name=f"{safe_name}_Vet_Brief.txt",
+                               mime="text/plain", use_container_width=True, key="labs_vet_brief_download")
+            if st.button(("Στείλε το Vet Brief στη Νοσηλεύτρια →" if lang=="el" else "Send Vet Brief to Nurse →"),
+                         use_container_width=True, key="labs_brief_to_nurse"):
                 st.session_state.triage_chat.append({
                     "role":"user",
-                    "content":(("ΣΥΝΟΨΗ ΕΞΕΤΑΣΕΩΝ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ:\n\n" if lang=="el"
-                                else "VET-READY EXAM SUMMARY:\n\n") + _sum)
+                    "content":(("VET BRIEF ΓΙΑ ΤΟ ΚΑΤΟΙΚΙΔΙΟ:\n\n" if lang=="el" else "PET VET BRIEF:\n\n") + brief)
                 })
                 st.session_state["_return_to_nurse"] = False
                 _goto("triage")
