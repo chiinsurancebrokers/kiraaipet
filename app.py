@@ -1901,8 +1901,10 @@ def purge_expired_records(email):
 
 
 def load_records(pet=None, email=""):
-    """Decrypted, non-expired records for a pet, newest first: [{id, kind, created_at, expires_at, title, payload}]."""
+    """Decrypted, non-expired Plus Pet Health Record entries, newest first."""
     email = email or st.session_state.get("auth_user", "")
+    if not history_available(email):
+        return []
     sb = _supabase_client()
     if not (sb and email and _ENC_OK):
         return []
@@ -2190,9 +2192,11 @@ def invalidate_subscription_cache(email: str):
 
 
 # ── PETSAIHEALTH PLUS — one subscription (4,99€/μήνα) for every service ───────
-# Free tier: FREE_TRIAGE_PER_MONTH symptom checks (nurse chat) per calendar month.
-# Everything else (report, second opinion, vitals, photo, labs, longevity, diary,
-# insurance) needs an active plan ('plus', or legacy 'insurance') in `subscriptions`.
+# Free tier: ONLY FREE_TRIAGE_PER_MONTH basic symptom checks (nurse chat) per calendar month,
+# one pet profile, and vet/emergency lookup. No clinical history is persisted for Free users.
+# Every premium clinical service — report, second opinion, vitals, photo, labs, timeline,
+# longitudinal comparison, Vet Brief, longevity, diary, insurance tools and Pet Health Record —
+# requires an active plan ('plus', or legacy 'insurance') in `subscriptions`.
 # Usage is counted in Supabase table `usage_events` (user_email, kind, created_at).
 FREE_TRIAGE_PER_MONTH = 3
 PLUS_PRICE_MONTH = "4,99€"
@@ -2201,7 +2205,7 @@ PAID_SCREENS = {"vitals", "scan", "photo", "labs", "longevity", "diary", "insura
 
 _PLUS_SERVICES = [
     ("💬", ("Απεριόριστοι έλεγχοι συμπτωμάτων", "Unlimited symptom checks"),
-           ("Στο δωρεάν πλάνο: 3 τον μήνα.", "Free plan: 3 per month.")),
+           ("Στο δωρεάν πλάνο: 3 βασικοί έλεγχοι τον μήνα, χωρίς αποθήκευση ιστορικού.", "Free plan: 3 basic checks per month, with no saved health history.")),
     ("📋", ("Κτηνιατρική αναφορά", "Veterinary report"),
            ("Δομημένη αναφορά για τον κτηνίατρο — PDF, HTML, WhatsApp.", "A structured report for your vet — PDF, HTML, WhatsApp.")),
     ("🩺", ("Δεύτερη κτηνιατρική γνώμη", "Second veterinary opinion"),
@@ -2323,8 +2327,8 @@ def render_plus_paywall(lang="el", feature_label="", full=True):
                   for ic, ti, de in _PLUS_SERVICES)
         + '</div>'
         '<div class="pn-free">🎁 <b>' + ("Δωρεάν για πάντα" if el else "Free, always") + '</b> · '
-        + (f"{FREE_TRIAGE_PER_MONTH} έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και επείγοντα."
-           if el else f"{FREE_TRIAGE_PER_MONTH} symptom checks a month ({left} left this month) for 1 pet, find a vet near you and emergencies.")
+        + (f"{FREE_TRIAGE_PER_MONTH} βασικοί έλεγχοι συμπτωμάτων τον μήνα (σου απομένουν {left} αυτόν τον μήνα) για 1 κατοικίδιο, κτηνίατρος κοντά σου και επείγοντα. Χωρίς αποθήκευση κλινικού ιστορικού."
+           if el else f"{FREE_TRIAGE_PER_MONTH} basic symptom checks a month ({left} left this month) for 1 pet, find a vet near you and emergencies. No clinical history is saved.")
         + '</div>', unsafe_allow_html=True)
     import urllib.parse as _up
     _em = st.session_state.get("auth_user", "")
@@ -2526,6 +2530,9 @@ def render_billing_agent(lang, plus, row):
 
 
 def render_history_page():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Αρχείο Υγείας" if st.session_state.get("lang","el")=="el" else "Pet Health Record")
+        return
     """Pet Health Record for the active pet (Plus): encrypted findings, comparison context and user-controlled deletion."""
     lang = st.session_state.lang
     el = lang == "el"
@@ -5622,6 +5629,9 @@ _PN_REPORT_TAIL_CSS = """<style>
 
 
 def render_report():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Κτηνιατρική αναφορά" if st.session_state.get("lang","el")=="el" else "Veterinary report")
+        return
     render_stepper("report")
     pet  = st.session_state.pet
     lang = st.session_state.lang
@@ -7182,6 +7192,9 @@ def render_pet_longevity_result(res, lang, compact=False):
 
 
 def render_pet_scan():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Ζωτικά & αναπνοές" if st.session_state.get("lang","el")=="el" else "Vitals & breathing")
+        return
     """Breathing (camera or tap) + pulse (tap) — results feed vitals, triage and the longevity check."""
     lang = st.session_state.lang
     el = lang == "el"
@@ -7291,6 +7304,9 @@ def render_pet_scan():
 
 
 def render_pet_longevity():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Έλεγχος μακροζωίας" if st.session_state.get("lang","el")=="el" else "Longevity check")
+        return
     lang = st.session_state.lang
     el = lang == "el"
     pet = st.session_state.pet or {}
@@ -7462,6 +7478,9 @@ def _pn_evidence_bar():
 
 
 def render_pet_photo():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Ανάλυση φωτογραφιών" if st.session_state.get("lang","el")=="el" else "Photo analysis")
+        return
     _tool_screen("📷", "Έλεγχος με φωτογραφία", "Photo check",
                  "Μάτια, δέρμα, αυτιά, ούλα — η AI περιγράφει όσα βλέπει για {nm}",
                  "Eyes, skin, ears, gums — the AI describes what it sees for {nm}")
@@ -7939,6 +7958,9 @@ def render_pet_labs():
 
 
 def render_pet_diary():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Ημερολόγιο συμπτωμάτων" if st.session_state.get("lang","el")=="el" else "Symptom diary")
+        return
     _tool_screen("📅", "Ημερολόγιο συμπτωμάτων", "Symptom diary",
                  "Κατάγραψε τι συμβαίνει στο χρόνο για {nm}", "Track what happens over time for {nm}")
     _render_pet_symptom_tracker(st.session_state.lang)
@@ -8015,6 +8037,9 @@ def render_programme_overview(provider, lang="el"):
 
 
 def render_pet_insurance():
+    if paywall_enabled() and not has_plus():
+        render_plus_paywall(st.session_state.get("lang","el"), "Ασφάλιση κατοικιδίου" if st.session_state.get("lang","el")=="el" else "Pet insurance")
+        return
     lang = st.session_state.lang
     el = lang == "el"
     _tool_screen("🛡️", "Ασφάλιση κατοικιδίου", "Pet insurance",
