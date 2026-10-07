@@ -1805,7 +1805,7 @@ def delete_pets(email):
 # Text findings only (report + second opinion, lab analysis text, photo analysis text, vitals) —
 # never the uploaded files/photos. Fernet-encrypted in `pet_records`; every record expires after
 # HISTORY_MONTHS months and is then permanently deleted (daily pg_cron job + purge on every read).
-HISTORY_MONTHS = 6
+HISTORY_MONTHS = 24
 _HIST_KINDS = {"report": ("📋", "Αναφορά", "Report"), "lab": ("🧪", "Εξέταση", "Lab result"),
                "photo": ("📷", "Φωτογραφία", "Photo"), "vitals": ("🫀", "Ζωτικά", "Vitals"),
                "diary": ("📓", "Ημερολόγιο", "Diary")}
@@ -1818,52 +1818,42 @@ def _pet_key(email, pet=None):
 
 
 def history_available(email=""):
+    """Pet Health Record is available to signed-in Plus users.
+
+    Pet clinical information is not human health data. Account identifiers and
+    records linked to the owner are still protected as personal data.
+    """
     email = email or st.session_state.get("auth_user", "")
     return bool(email and _ENC_OK and paywall_enabled() and _supabase_client() and has_plus(email))
 
 
 def history_consent(email=""):
-    """None = not asked yet, True = consented, False = declined. Opt-in: nothing is stored until True."""
-    email = email or st.session_state.get("auth_user", "")
-    if "_hist_on" not in st.session_state:
-        st.session_state["_hist_on"] = load_user_pref(email, "history_consent", None)
-    return st.session_state["_hist_on"]
+    """Compatibility shim: no separate medical-consent gate for pet records."""
+    return True if history_available(email) else False
 
 
 def history_enabled(email=""):
     email = email or st.session_state.get("auth_user", "")
-    return history_available(email) and history_consent(email) is True
+    return history_available(email)
 
 
 def set_history_enabled(email, on):
-    st.session_state["_hist_on"] = bool(on)
-    save_user_pref(email, "history_consent", bool(on))
+    """Legacy compatibility. Pet Health Record follows Plus availability."""
     st.session_state.pop("_hist_ctx", None)
 
 
 def render_history_consent(lang="el", key="hc"):
-    """Explicit opt-in card. Shown to Plus users who have not decided yet."""
+    """Explain automatic Pet Health Record storage without a redundant consent gate."""
     el = lang == "el"
-    st.markdown(
-        '<div style="background:#EEF1FF;border:1px solid #D0D6F5;border-radius:20px;padding:16px 18px;margin:8px 0 8px;">'
-        f'<div style="font:800 16px Sora,Inter,sans-serif;color:#0B1B4B;">📁 {"Να κρατάμε το ιστορικό του κατοικιδίου σου;" if el else "Keep your pet’s history?"}</div>'
-        '<div style="font-size:13px;color:#2B3566;line-height:1.6;margin-top:6px;">'
-        + (f"Αν συμφωνείς, κρατάμε <b>μόνο το γραπτό συμπέρασμα της AI</b> (π.χ. «η ALT είναι αυξημένη», «ερυθρότητα στο μάτι») από τις αναφορές, τις εξετάσεις, τις φωτογραφίες και τα ζωτικά, κρυπτογραφημένο, "
-           f"ώστε η νοσηλεύτρια, η αναφορά και η δεύτερη γνώμη να το έχουν ως αναφορά και να συγκρίνεις νέες εξετάσεις. "
-           f"<b>Το ίδιο το PDF ή η φωτογραφία σου δεν αποθηκεύεται ποτέ</b>· μένει μόνο το κείμενο της ανάλυσης. "
-           f"<b>Διαγράφεται οριστικά μετά από {HISTORY_MONTHS} μήνες.</b> Μπορείς να αλλάξεις γνώμη ή να σβήσεις τα πάντα όποτε θέλεις."
-           if el else
-           f"If you agree, we keep <b>only the AI’s written conclusion</b> (e.g. “ALT is elevated”, “redness in the eye”) from reports, labs, photos and vitals, encrypted, so the nurse, the report and the second opinion can use it as reference and you can compare new results. "
-           f"<b>Your actual PDF or photo is never stored</b>; only the analysis text remains. "
-           f"<b>It is permanently deleted after {HISTORY_MONTHS} months.</b> You can change your mind or delete everything at any time.")
-        + '</div></div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button(("Ναι, αποθήκευσε" if el else "Yes, save it"), type="primary", use_container_width=True, key=f"{key}_yes"):
-            set_history_enabled(st.session_state.get("auth_user", ""), True); st.rerun()
-    with c2:
-        if st.button(("Όχι, ευχαριστώ" if el else "No thanks"), use_container_width=True, key=f"{key}_no"):
-            set_history_enabled(st.session_state.get("auth_user", ""), False); st.rerun()
+    st.info(
+        ("Το Αρχείο Υγείας αποθηκεύει αυτόματα για χρήστες Plus τα γραπτά συμπεράσματα της AI, "
+         "ώστε να συγκρίνονται παλιές και νέες εξετάσεις. Τα αρχικά PDF/φωτογραφίες δεν αποθηκεύονται "
+         "στο ιστορικό. Μπορείς να διαγράψεις οποιοδήποτε εύρημα ή όλο το αρχείο οποτεδήποτε.")
+        if el else
+        ("The Pet Health Record automatically keeps AI-written findings for Plus users so old and new "
+         "results can be compared. Original PDFs/photos are not stored in the record. You can delete "
+         "any finding or the whole record at any time.")
+    )
 
 
 def save_record(kind, title, payload, pet=None):
@@ -1978,7 +1968,7 @@ def _record_brief(r, limit=600):
 
 
 def history_context(pet=None, max_chars=3600):
-    """Plain-text digest of the pet's archived records (last 6 months) for the prompts. '' if none/disabled.
+    """Plain-text digest of the pet's archived records (last 24 months) for the prompts. '' if none/disabled.
     Records created in this very session are skipped (they are already in the live evidence)."""
     email = st.session_state.get("auth_user", "")
     if not history_enabled(email):
@@ -1998,7 +1988,7 @@ def history_context(pet=None, max_chars=3600):
         parts.append(line); total += len(line)
     txt = ""
     if parts:
-        txt = ("PET HISTORY FROM PREVIOUS SESSIONS (archive, at most 6 months old). Use only as REFERENCE: note trends or "
+        txt = ("PET HISTORY FROM PREVIOUS SESSIONS (archive, at most 24 months old). Use only as REFERENCE: note trends or "
                "changes versus earlier results when relevant, never present old results as current, and never repeat them "
                "verbatim:\n" + "\n".join(parts))
     st.session_state["_hist_ctx"] = (ck, time.time(), txt)
@@ -2534,7 +2524,7 @@ def render_billing_agent(lang, plus, row):
 
 
 def render_history_page():
-    """Archive of the active pet's findings (Plus). 6-month retention, delete one / all, on/off switch."""
+    """Pet Health Record for the active pet (Plus): encrypted findings, comparison context and user-controlled deletion."""
     lang = st.session_state.lang
     el = lang == "el"
     email = st.session_state.get("auth_user", "")
@@ -2552,16 +2542,12 @@ def render_history_page():
            f"The AI’s written conclusions for {_html.escape(nm)} (reports, labs, photos, vitals) are kept here so the nurse, the report and the second opinion can use them as reference, "
            f"and so you can upload new results to compare. <b>They are kept for {HISTORY_MONTHS} months and then permanently deleted.</b> We never store your actual PDF or photo, only the analysis text, encrypted.")
         + '</p></div>', unsafe_allow_html=True)
-    consent = history_consent(email)
-    if consent is None:
-        render_history_consent(lang, key="hc_page")
+    if not history_available(email):
+        st.info(("Το Αρχείο Υγείας είναι διαθέσιμο στο Plus." if el else "Pet Health Record is available on Plus."))
     else:
-        new_on = st.toggle(("Αποθήκευση ιστορικού" if el else "Save history"), value=bool(consent), key="hist_toggle")
-        if new_on != bool(consent):
-            set_history_enabled(email, new_on); st.rerun()
-        if not new_on:
-            st.info("Το ιστορικό είναι απενεργοποιημένο: δεν αποθηκεύεται τίποτα νέο και δεν χρησιμοποιείται ως αναφορά. Τα υπάρχοντα μένουν μέχρι να λήξουν ή να τα διαγράψεις." if el
-                    else "History is off: nothing new is saved or used as reference. Existing records stay until they expire or you delete them.")
+        st.caption(("✓ Αυτόματη αποθήκευση γραπτών ευρημάτων · κρυπτογραφημένα · διαγραφή οποτεδήποτε"
+                    if el else
+                    "✓ Automatic written findings · encrypted · delete any time"))
     c1, c2 = st.columns(2)
     with c1:
         if st.button(("➕ Νέες εξετάσεις" if el else "➕ Upload new labs"), use_container_width=True, key="hist_labs", type="primary"):
@@ -4523,9 +4509,20 @@ _PN_DIARY_CSS = """<style>
 
 
 def _diary_archive(entry, pet):
-    """Plus + history ON: keep the entry in the encrypted archive. Silent no-op otherwise."""
+    """Persist diary observations without hitting the legacy DB kind constraint."""
     try:
-        save_record("diary", entry.get("symptom", "")[:100], dict(entry), pet)
+        symptom = str(entry.get("symptom", "") or "").strip()
+        level = entry.get("level") or "n/a"
+        sev = entry.get("sev")
+        notes = str(entry.get("notes", "") or "").strip()
+        body = f"Diary observation: {symptom}. Triage level: {level}."
+        if sev not in (None, ""):
+            body += f" Severity: {sev}/10."
+        if notes:
+            body += f" Notes: {notes}"
+        save_record("report", ("Diary · " + symptom)[:100] or "Diary",
+                    {"complaint": symptom, "report": body, "second_opinion": "",
+                     "source_kind": "diary", "entry": dict(entry)}, pet)
     except Exception:
         pass
 
