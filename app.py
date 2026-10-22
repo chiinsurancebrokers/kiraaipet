@@ -5165,7 +5165,7 @@ def render_vitals_summary():
             st.markdown(st.session_state.vitals_analysis)
 
 
-_TOOL_TAG_RE = _re_san.compile(r"(?im)^\\s*\\[TOOL:\\s*(LABS|PHOTO|VITALS|REPORT|VETS|NONE)\\]\\s*$")
+_TOOL_TAG_RE = _re_san.compile(r"(?im)^\s*\[TOOL:\s*(LABS|PHOTO|VITALS|REPORT|VETS|NONE)\]\s*$")
 
 
 def parse_tool_request(text):
@@ -5175,7 +5175,7 @@ def parse_tool_request(text):
     found = _TOOL_TAG_RE.findall(text)
     tool = found[-1].lower() if found else None
     clean = _TOOL_TAG_RE.sub("", text)
-    clean = _re_san.sub(r"\\n{3,}", "\\n\\n", clean).strip()
+    clean = _re_san.sub(r"\n{3,}", "\\n\\n", clean).strip()
     return clean, (None if tool in (None, "none") else tool)
 
 
@@ -7671,7 +7671,7 @@ def render_pet_photo():
     _tool_footer()
 
 
-_EXAM_DATE_TAG_RE = _re_san.compile(r"(?im)^\\s*\\[EXAM_DATE:\\s*(UNKNOWN|\\d{4}-\\d{2}-\\d{2})\\]\\s*$")
+_EXAM_DATE_TAG_RE = _re_san.compile(r"(?im)^\s*\[EXAM_DATE:\s*(UNKNOWN|\d{4}-\d{2}-\d{2})\]\s*$")
 
 
 def _extract_exam_date(text):
@@ -7693,7 +7693,7 @@ def _extract_exam_date(text):
 def _exam_display_date(exam_date, created_at=""):
     """Prefer the clinical exam date; otherwise use upload/archive date."""
     raw = str(exam_date or "").strip()
-    if _re_san.match(r"^\\d{4}-\\d{2}-\\d{2}$", raw):
+    if _re_san.match(r"^\d{4}-\d{2}-\d{2}$", raw):
         return raw, True
     return str(created_at or "")[:10] or datetime.now().strftime("%Y-%m-%d"), False
 
