@@ -1031,14 +1031,13 @@ def claude(messages, system="", max_tokens=3000, timeout=60):
 
 
 # ── PET INSURANCE COVERAGE CHECKER (Eurolife My Happy Pet) ───────────────────
-# ΣΗΜΕΙΩΣΗ INTERNAL: Το πρόγραμμα λειτουργεί με ειδική τιμολόγηση.
-# Ο πελάτης πληρώνει απευθείας στο κτηνιατρείο με μειωμένες τιμές.
-# ΜΗΝ αναφέρεις αυτό στον χρήστη — παρουσίαζε ως κάλυψη.
+# Το πρόγραμμα λειτουργεί με ειδική τιμολόγηση δικτύου: ο πελάτης πληρώνει απευθείας στο κτηνιατρείο
+# τα συμφωνημένα ποσά συμμετοχής (Προσάρτημα Α) και όχι «πλήρη κάλυψη». Η εφαρμογή το εξηγεί με ακρίβεια.
 
 _POLICY_COMMON = """EUROLIFE FFH — MY HAPPY PET (σκύλοι και γάτες) | Πηγή: IPID v3_07 2026, κατάλογος δικτύου 09.25.
 ΥΠΟΧΡΕΩΤΙΚΟ: Επικοινωνία ΠΡΩΤΑ με το Συντονιστικό Κέντρο 210 9303811 (ραντεβού Δευ-Παρ 8:00-20:00, επείγοντα 24/7) πριν από κάθε επίσκεψη, εξέταση, νοσηλεία ή επέμβαση.
 ΓΕΩΓΡΑΦΙΑ: ΜΟΝΟ νομοί Αττικής και Θεσσαλονίκης, σε μέλη του συμβεβλημένου δικτύου και συνεργαζόμενες κλινικές.
-[INTERNAL] Ειδική τιμολόγηση. Ο πελάτης πληρώνει απευθείας στο κτηνιατρείο. ΠΟΤΕ μην το αναφέρεις. [END INTERNAL]
+ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ: ειδική τιμολόγηση δικτύου. Ο πελάτης πληρώνει απευθείας στο κτηνιατρείο τα συμφωνημένα ποσά συμμετοχής· στις συνεργαζόμενες κλινικές (μόνο επείγοντα) προβλέπεται απολογιστική αποζημίωση. Εξήγησέ το καθαρά όταν ρωτηθείς για κόστος.
 ΠΕΡΙΟΔΟΣ ΑΝΑΜΟΝΗΣ: 45 ημέρες από την έναρξη για Νοσοκομειακή Περίθαλψη-Πράξεις και Διαγνωστικές Εξετάσεις (όχι στην ανανέωση).
 ΔΕΝ ΚΑΛΥΠΤΕΤΑΙ: ζώο χωρίς microchip· φάρμακα εκτός νοσηλείας (εξαίρεση: cushing, καρδιοαναπνευστικά, ορμονολογικά, χημειοθεραπείες)·
   ογκολογικές επεμβάσεις πέραν δερματικών όγκων· ακτινοβολίες· τραυματισμοί σε αγώνες/κυνομαχίες/κυνήγι/φρούρηση· panel εξετάσεων.
@@ -1101,6 +1100,53 @@ def _policy_text(provider=""):
     return _POLICY_COMMON + "\n\n" + block + "\n\n" + _APPENDIX_A
 
 
+def _pet_country():
+    """'GR' (Greece) or 'OTHER'. Default: Greece for Greek UI, otherwise unknown until the user says."""
+    c = st.session_state.get("pet_country")
+    if c in ("GR", "OTHER"):
+        return c
+    c = (st.session_state.get("pet") or {}).get("country")
+    if c in ("GR", "OTHER"):
+        st.session_state["pet_country"] = c
+        return c
+    return "GR" if st.session_state.get("lang", "el") == "el" else ""
+
+
+def _in_greece():
+    return _pet_country() == "GR"
+
+
+def _policy_analysis():
+    a = st.session_state.get("policy_analysis")
+    return a if isinstance(a, dict) and a.get("is_pet_policy", True) and a.get("summary") else None
+
+
+_GROUNDED_SYSTEM = """You are PetsAIHealth's policy assistant. Answer the pet owner's question using ONLY the policy facts
+below (extracted from THEIR OWN document). Rules:
+- Quote figures, waiting periods and exclusions exactly as given. If the facts do not say, answer: "your document doesn't state this" and suggest asking the insurer. Never guess or use knowledge of other policies.
+- Say plainly how the policy pays (reimbursement vs network prices) when relevant, and never imply full cover when there are limits, co-payments or exclusions.
+- If an exclusion or waiting period could affect the question, mention it first.
+- Not legal advice; the insurer's decision on a claim is what counts.
+- Plain text, max 130 words, friendly, in the user's language ({lang}). Finish your last sentence."""
+
+
+def _grounded_policy_chat(question, pet_name, species, lang):
+    a = _policy_analysis()
+    import pet_policy as _pp
+    w = ""
+    try:
+        import datetime as _dt
+        start = _dt.date.fromisoformat((a.get("policy_period") or {}).get("start_date") or str((st.session_state.get("pet") or {}).get("policy_start", "")))
+        rows = _pp.waiting_rows(a, start)
+        w = "\n".join(f"- {r['applies_to']}: {r['detail']} -> " + (f"ends {r['end']:%d/%m/%Y}" if r.get("end") else "end date unknown") for r in rows)
+    except Exception:
+        pass
+    prompt = (f"POLICY FACTS (JSON):\n{_pp.facts_for_prompt(a)}\n\nWaiting periods computed from the start date:\n{w or 'start date not available'}\n\n"
+              f"Pet: {pet_name} ({species})\nQuestion: {question}")
+    return claude(messages=[{"role": "user", "content": prompt}],
+                  system=_GROUNDED_SYSTEM.format(lang="Greek" if lang == "el" else "English"), max_tokens=900, timeout=45)
+
+
 WAITING_DAYS = 45
 
 
@@ -1130,7 +1176,7 @@ def _waiting_line(pet=None):
 
 _PET_INSURANCE_SYSTEM = """Εισαι η PetsAIHealth, συμβουλος PetsAIHealth για το προγραμμα Eurolife My Happy Pet.
 Μιλας ΠΑΝΤΑ ως: "Με το προγραμμα σου...", "Δικαιουσαι...", "Το προγραμμα σου περιλαμβανει..."
-ΠΟΤΕ δεν εξηγεις εσωτερικη λειτουργια προγραμματος.
+Οταν ρωτηθεις για κοστος, εξηγησε με ακριβεια τον τροπο πληρωμης (ποσα συμμετοχης στο δικτυο / απολογιστικη αποζημιωση στις συνεργαζομενες κλινικες). Μην υπονοεις "πληρη καλυψη".
 ΚΑΝΟΝΑΣ: EMERGENCY=24ωρο νοσοκομειο ή συνεργαζομενη 24ωρη κλινικη της περιοχης πρωτα. URGENT/SELF_CARE=κοντινο συμβεβλημενο κτηνιατρειο. Αν δεν ξερεις αν ο χρηστης ειναι Αττικη ή Θεσσαλονικη, πες το γενικα και ζητα το Συντονιστικο 210 9303811.
 
 ΚΡΙΣΙΜΟ ΓΙΑ ΤΙΜΕΣ:
@@ -1207,7 +1253,7 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
     system = """Είσαι η PetsAIHealth, εξειδικευμένος σύμβουλος για το πρόγραμμα Eurolife My Happy Pet (Plus ή Standard, όπως δίνεται στο κείμενο προγράμματος).
 Απαντάς σε ερωτήσεις πελατών για την κάλυψη του συμβολαίου τους.
 Μιλάς ΠΑΝΤΑ ως: "Με το πρόγραμμά σου...", "Δικαιούσαι...", "Το πρόγραμμά σου περιλαμβάνει..."
-ΠΟΤΕ δεν αναφέρεις πώς λειτουργεί εσωτερικά (ειδική τιμολόγηση κλπ).
+Όταν ρωτηθείς για κόστος, εξήγησε με ακρίβεια πώς πληρώνει ο χρήστης (ποσά συμμετοχής δικτύου / απολογιστική αποζημίωση στις συνεργαζόμενες) και μην υπονοείς «πλήρη κάλυψη».
 
 ΚΡΙΣΙΜΟ ΓΙΑ ΤΙΜΕΣ: Το κείμενο προγράμματος περιέχει ΟΛΟΚΛΗΡΟ το Προσάρτημα Α. Δώσε ακριβή ποσά
 συμμετοχής ΜΟΝΟ από εκεί, με τη στήλη του είδους (Γ=γάτα, Σ=σκύλος), χωρίς ΦΠΑ. Αν κάτι δεν
@@ -1219,6 +1265,8 @@ def _hal_insurance_chat(question: str, triage_result: str, condition: str,
 Απαντάς σύντομα (έως 120 λέξεις), φιλικά, στη γλώσσα του χρήστη, σε απλό κείμενο χωρίς τίτλους (#) και ολοκληρώνεις πάντα την τελευταία πρόταση.
 ΣΤΕΙΡΩΣΗ/ΕΥΝΟΥΧΙΣΜΟΣ: Στο Προσάρτημα Α αναγράφονται συμμετοχές για ωοθηκυστερεκτομή και ευνουχισμό. Αν ρωτηθείς, δώσε αυτά τα ποσά (ανά είδος/βάρος) και πες καθαρά ότι αν η προγραμματισμένη (μη επείγουσα) στείρωση αποζημιώνεται το επιβεβαιώνει το Συντονιστικό 210 9303811 — μην το υποσχεθείς."""
 
+    if _policy_analysis():
+        return _grounded_policy_chat(question, pet_name, species, lang)
     prompt = (
         "Προγραμμα:\n" + _policy_text() + "\n\n"
         + f"Κατοικιδιο: {pet_name} ({species}) | Triage: {triage_result} | {condition}\n"
@@ -5042,6 +5090,13 @@ def render_intake():
             if lang=="el" else
             "If your pet is insured, select the programme to see coverage details after triage."
         )
+    _c_opts = ["GR", "OTHER"]
+    _c_lbl = {"GR": ("Ελλάδα" if lang == "el" else "Greece"), "OTHER": ("Άλλη χώρα" if lang == "el" else "Another country")}
+    _c_cur = _pet_country() or "OTHER"
+    _c_sel = st.selectbox("Χώρα διαμονής" if lang == "el" else "Country you live in", _c_opts,
+                          index=_c_opts.index(_c_cur), format_func=lambda k: _c_lbl[k], key="intake_country")
+    st.session_state["pet_country"] = _c_sel
+    draft["country"] = _c_sel
     _insurance_providers = {
         "el": [
             "— Χωρίς ασφάλεια —",
@@ -5055,7 +5110,13 @@ def render_intake():
         ],
     }
     _ins_locked = paywall_enabled() and not has_plus()
-    if _ins_locked:
+    if not _in_greece():
+        # EFG Eurolife My Happy Pet exists only in Greece. Elsewhere: upload your own policy on the Insurance screen.
+        draft["insurance_provider"] = ""
+        st.session_state["pet_insurance_provider"] = ""
+        st.caption("Η ασφάλιση κατοικιδίου: ανέβασε το συμβόλαιό σου στην οθόνη «Ασφάλιση» για ανάλυση." if lang=="el"
+                   else "Pet insurance: upload your own policy on the Insurance screen and we will analyse it.")
+    elif _ins_locked:
         # Insurance is a Plus feature: free users are not asked about a programme at all.
         draft["insurance_provider"] = draft.get("insurance_provider", "") if str(draft.get("insurance_provider", "")).startswith("Eurolife") else ""
         st.session_state["pet_insurance_provider"] = draft["insurance_provider"]
@@ -5122,6 +5183,7 @@ def render_intake():
                 "meds_raw": meds_raw, "vet_name": vet_name,
                 "filled_by": draft.get("filled_by",""),
                 "insurance_provider": draft.get("insurance_provider",""),
+                "country": draft.get("country", st.session_state.get("pet_country", "")),
                 "policy_start": draft.get("policy_start","") if draft.get("insurance_provider","").startswith("Eurolife") else "",
                 "policy_number": draft.get("policy_number","") if draft.get("insurance_provider","").startswith("Eurolife") else "",
             }
@@ -5382,7 +5444,7 @@ def render_triage():
     _pl = str(_provider).lower()
     # Legacy saved values ("Eurolife FFH" with no programme) don't count: ask which programme.
     _has_provider = (bool(_provider) and _provider not in _no_ins_opts and _pl.startswith("eurolife")
-                     and ("plus" in _pl or "standard" in _pl))
+                     and ("plus" in _pl or "standard" in _pl) and _in_greece())
 
     # ── Insurance coverage card (Eurolife My Happy Pet) — Paid Feature ────────
     # Εμφανίζεται ΜΟΝΟ αν ο χρήστης έχει επιλέξει ασφαλιστική στο intake.
@@ -6526,14 +6588,16 @@ def render_privacy_page():
 
 # ── ADMIN PAGE (/?page=admin) ────────────────────────────────────────────────
 # Credentials come from environment variables / Railway "Variables" tab
-# (ADMIN_USER / ADMIN_PASS). Falls back to the previous defaults if not set,
-# so existing deployments keep working until the variables are configured.
-ADMIN_USER = _secret("ADMIN_USER", "petainurse")
-ADMIN_PASS = _secret("ADMIN_PASS", "YouM@tt3r!")
+# (ADMIN_USER / ADMIN_PASS). No default: if they are not set the admin page is disabled.
+ADMIN_USER = _secret("ADMIN_USER", "")
+ADMIN_PASS = _secret("ADMIN_PASS", "")
 
 def render_admin_page():
     st.markdown("## 🛠️ PetsAIHealth — Admin Settings")
 
+    if not (ADMIN_USER and ADMIN_PASS):
+        st.error("Το admin είναι απενεργοποιημένο: ορίστε τις μεταβλητές ADMIN_USER και ADMIN_PASS στο Railway.")
+        return
     if not st.session_state.get("admin_logged_in"):
         st.caption("Πρόσβαση μόνο για διαχειριστές.")
         with st.form("admin_login"):
@@ -6541,7 +6605,8 @@ def render_admin_page():
             p = st.text_input("Password", type="password")
             ok = st.form_submit_button("Σύνδεση", type="primary")
         if ok:
-            if u == ADMIN_USER and p == ADMIN_PASS:
+            import hmac as _hm
+            if _hm.compare_digest(u.encode(), ADMIN_USER.encode()) and _hm.compare_digest(p.encode(), ADMIN_PASS.encode()):
                 st.session_state["admin_logged_in"] = True
                 st.rerun()
             else:
@@ -8057,6 +8122,125 @@ def render_programme_overview(provider, lang="el"):
         f'<small>{note}</small></div>', unsafe_allow_html=True)
 
 
+def _render_policy_analysis(an, lang):
+    import datetime as _dt
+    import pet_policy as _pp
+    el = lang == "el"
+    L = (lambda g, e: g if el else e)
+    if not an.get("is_pet_policy", True):
+        st.warning(an.get("summary") or L("Το έγγραφο δεν φαίνεται να είναι ασφαλιστήριο κατοικιδίου.", "This does not look like a pet insurance document."))
+        return
+    head = " · ".join(x for x in (an.get("insurer"), an.get("product")) if x) or L("Το συμβόλαιό σου", "Your policy")
+    st.markdown(f"### 📄 {head}")
+    if an.get("summary"):
+        st.info(an["summary"])
+    if an.get("confidence") == "low":
+        st.warning(L("Χαμηλή βεβαιότητα ανάγνωσης: έλεγξε τα στοιχεία με το ίδιο το έγγραφο.", "Low reading confidence: check the details against the document itself."))
+    hp = an.get("how_it_pays") or {}
+    mdl = {"reimbursement": L("Αποζημίωση μετά από δαπάνη", "Reimbursement after you pay"),
+           "direct_network_pricing": L("Τιμές δικτύου, πληρώνεις απευθείας στην κλινική", "Network prices, you pay the clinic directly"),
+           "mixed": L("Μικτό", "Mixed"), "unclear": L("Δεν προκύπτει καθαρά", "Not clearly stated")}[hp.get("model", "unclear")]
+    st.markdown("**" + L("Πώς πληρώνει", "How it pays") + f":** {mdl}" + (f" — {hp['explanation']}" if hp.get("explanation") else "")
+                + (f" ({hp['reimbursement_rate']})" if hp.get("reimbursement_rate") else ""))
+    lim = an.get("limits") or {}
+    lines = [(L("Ετήσιο όριο", "Annual limit"), lim.get("annual_limit")), (L("Όριο ανά πάθηση", "Per-condition limit"), lim.get("per_condition_limit")),
+             (L("Απαλλαγή", "Excess / deductible"), lim.get("excess_or_deductible")), (L("Συμμετοχή", "Co-payment"), lim.get("co_payment")),
+             (L("Λοιπά όρια", "Other caps"), lim.get("other")), (L("Ασφάλιστρο", "Premium"), an.get("premium"))]
+    lines = [(k, v) for k, v in lines if v]
+    if lines:
+        st.markdown("\n".join(f"- **{k}:** {v}" for k, v in lines))
+    # waiting periods
+    st.markdown("#### ⏳ " + L("Περίοδοι αναμονής", "Waiting periods"))
+    pet = st.session_state.get("pet") or {}
+    start = None
+    for cand in ((an.get("policy_period") or {}).get("start_date"), pet.get("policy_start")):
+        try:
+            start = _dt.date.fromisoformat(str(cand)); break
+        except Exception:
+            pass
+    rows = _pp.waiting_rows(an, start)
+    if not rows:
+        st.caption(L("Δεν αναγράφονται περίοδοι αναμονής στο έγγραφο.", "No waiting periods stated in the document."))
+    for r in rows:
+        status = ""
+        if r["state"] == "active":
+            status = L(f" — ⏳ απομένουν {r['days_left']} ημέρες (έως {r['end']:%d/%m/%Y})", f" — ⏳ {r['days_left']} days left (until {r['end']:%d/%m/%Y})")
+        elif r["state"] == "done":
+            status = L(f" — ✅ ολοκληρώθηκε ({r['end']:%d/%m/%Y})", f" — ✅ completed ({r['end']:%d/%m/%Y})")
+        elif not start:
+            status = L(" — βάλε ημερομηνία έναρξης για να υπολογιστεί", " — add the start date to calculate")
+        st.markdown(f"- **{r['applies_to']}:** {r.get('detail') or ''}{status}")
+        if r.get("evidence"):
+            st.caption("“" + r["evidence"] + "”")
+    # exclusions
+    st.markdown("#### 🚫 " + L("Εξαιρέσεις", "Exclusions"))
+    if not an.get("exclusions"):
+        st.caption(L("Δεν εντοπίστηκαν εξαιρέσεις στο έγγραφο που ανέβασες (ίσως υπάρχουν στους πλήρεις όρους).",
+                     "No exclusions found in the document you uploaded (they may be in the full terms)."))
+    for e in an.get("exclusions", []):
+        st.markdown(f"- **{e.get('topic') or ''}** {e.get('detail') or ''}")
+        if e.get("evidence"):
+            st.caption("“" + e["evidence"] + "”")
+    if an.get("critical_limitations"):
+        st.markdown("#### ⚠️ " + L("Όρια που ξεφεύγουν εύκολα", "Easy-to-miss limits"))
+        for c in an["critical_limitations"]:
+            st.markdown(f"- **{c.get('topic') or ''}** {c.get('detail') or ''}")
+    if an.get("benefits"):
+        with st.expander("✅ " + L("Παροχές", "Benefits")):
+            ic = {"covered": "✅", "not_covered": "❌", "conditional": "◐", "not_stated": "·"}
+            for b in an["benefits"]:
+                extra = " · ".join(x for x in (b.get("limit_or_cost"), b.get("conditions")) if x)
+                st.markdown(f"- {ic.get(b['status'], '·')} **{b['category']}**" + (f" — {extra}" if extra else ""))
+    for k, ttl in (("pre_existing_conditions", L("Προϋπάρχουσες καταστάσεις", "Pre-existing conditions")),
+                   ("age_or_breed_restrictions", L("Ηλικία / ράτσα / απαιτήσεις", "Age / breed / requirements")),
+                   ("geographic_scope", L("Γεωγραφική κάλυψη", "Geographic scope"))):
+        if an.get(k) and an[k] != "not stated":
+            st.markdown(f"**{ttl}:** {an[k]}")
+    if an.get("claims_or_usage_requirements"):
+        st.markdown("**" + L("Πριν από θεραπεία / αίτηση αποζημίωσης", "Before treatment / when claiming") + ":**")
+        st.markdown("\n".join(f"- {x}" for x in an["claims_or_usage_requirements"]))
+    if an.get("missing_information"):
+        with st.expander("❓ " + L("Τι δεν αναφέρεται στο έγγραφο", "Not stated in the document")):
+            st.markdown("\n".join(f"- {x}" for x in an["missing_information"]))
+    st.caption(L("Η ανάλυση βασίζεται μόνο στο έγγραφο που ανέβασες και δεν αποτελεί νομική ή ασφαλιστική συμβουλή· αποφασίζει η ασφαλιστική.",
+                 "This analysis is based only on the document you uploaded and is not legal or insurance advice; the insurer decides claims."))
+
+
+def render_policy_analyzer(lang):
+    el = lang == "el"
+    L = (lambda g, e: g if el else e)
+    st.markdown('<div class="pn-sec">' + L("ΑΝΑΛΥΣΗ ΣΥΜΒΟΛΑΙΟΥ", "POLICY ANALYZER") + '</div>', unsafe_allow_html=True)
+    st.caption(L("Ανέβασε το ασφαλιστήριο (PDF ή φωτογραφία, έως 4 αρχεία). Διαβάζουμε τις παροχές, τις περιόδους αναμονής και τις εξαιρέσεις. "
+                 "Το έγγραφο στέλνεται για ανάλυση στο Anthropic (Claude) και δεν αποθηκεύεται· κρατάμε μόνο τα εξαγόμενα στοιχεία για αυτή τη συνεδρία.",
+                 "Upload your policy (PDF or photo, up to 4 files). We read the benefits, waiting periods and exclusions. "
+                 "The document is sent to Anthropic (Claude) for analysis and is not stored; we keep only the extracted facts for this session."))
+    files = st.file_uploader(L("Ασφαλιστήριο / όροι", "Policy / terms"), type=["pdf", "jpg", "jpeg", "png", "webp", "txt"],
+                             accept_multiple_files=True, key="pn_policy_files")
+    if files and st.button(L("🔍 Ανάλυση συμβολαίου", "🔍 Analyse policy"), type="primary", key="pn_policy_go"):
+        import pet_policy as _pp
+        pet = st.session_state.get("pet") or {}
+        payload = [(f.name, f.getvalue(), f.type) for f in files]
+        with st.spinner(L("Διαβάζω το συμβόλαιο… (έως 1-2 λεπτά)", "Reading the policy… (up to 1-2 minutes)")):
+            an, err = _pp.analyze(claude, payload, lang, pet)
+        if an:
+            st.session_state["policy_analysis"] = an
+            st.session_state["hal_insurance_chat"] = []
+            log_event("policy_analyzed", ok=True)
+        else:
+            log_event("policy_analyzed", ok=False, error=err)
+            st.error({"too_large": L("Κάποιο αρχείο είναι πολύ μεγάλο (έως 12 MB).", "A file is too large (max 12 MB)."),
+                      "unsupported": L("Μη υποστηριζόμενος τύπος αρχείου.", "Unsupported file type."),
+                      "unreachable": L("Η ανάλυση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.", "Analysis is unavailable right now. Please try again shortly."),
+                      }.get(err, L("Δεν κατάφερα να διαβάσω το έγγραφο. Δοκίμασε πιο καθαρό αρχείο.", "I couldn't read the document. Try a clearer file.")))
+    an = _policy_analysis() or (st.session_state.get("policy_analysis") if isinstance(st.session_state.get("policy_analysis"), dict) else None)
+    if an:
+        _render_policy_analysis(an, lang)
+        if st.button(L("🗑️ Διαγραφή ανάλυσης", "🗑️ Delete analysis"), key="pn_policy_del"):
+            st.session_state.pop("policy_analysis", None)
+            st.session_state["hal_insurance_chat"] = []
+            st.rerun()
+
+
 def render_pet_insurance():
     if paywall_enabled() and not has_plus():
         render_plus_paywall(st.session_state.get("lang","el"), "Ασφάλιση κατοικιδίου" if st.session_state.get("lang","el")=="el" else "Pet insurance")
@@ -8064,7 +8248,32 @@ def render_pet_insurance():
     lang = st.session_state.lang
     el = lang == "el"
     _tool_screen("🛡️", "Ασφάλιση κατοικιδίου", "Pet insurance",
-                 "Κάλυψη εξόδων κτηνιάτρου για {nm}", "Cover vet costs for {nm}")
+                 "Κατάλαβε τι καλύπτει το συμβόλαιο του {nm}", "Understand what {nm}'s policy covers")
+    _c_opts = ["GR", "OTHER"]
+    _c_lbl = {"GR": ("Ελλάδα" if el else "Greece"), "OTHER": ("Άλλη χώρα" if el else "Another country")}
+    _cur = _pet_country() or "OTHER"
+    _c = st.radio("Χώρα" if el else "Country", _c_opts, index=_c_opts.index(_cur), format_func=lambda k: _c_lbl[k],
+                  horizontal=True, key="pn_ins_country")
+    if _c != st.session_state.get("pet_country"):
+        st.session_state["pet_country"] = _c
+        if isinstance(st.session_state.get("pet"), dict):
+            st.session_state.pet["country"] = _c
+        if _c != "GR":
+            st.session_state["pet_insurance_provider"] = ""
+        st.rerun()
+
+    render_policy_analyzer(lang)
+
+    if not _in_greece():
+        _pet = st.session_state.get("pet") or {}
+        if _policy_analysis():
+            st.markdown('<div class="pn-sec">' + ("ΡΩΤΑ ΓΙΑ ΤΟ ΣΥΜΒΟΛΑΙΟ ΣΟΥ" if el else "ASK ABOUT YOUR POLICY") + '</div>', unsafe_allow_html=True)
+            render_policy_chat("", "", _pet.get("name", ""), _pet.get("species", "dog"), lang)
+        _tool_footer(chat_cta=False)
+        return
+
+    # ── Greece only: EFG Eurolife My Happy Pet ──
+    st.markdown('<div class="pn-sec">' + ("EFG EUROLIFE — MY HAPPY PET (ΜΟΝΟ ΕΛΛΑΔΑ)" if el else "EFG EUROLIFE — MY HAPPY PET (GREECE ONLY)") + '</div>', unsafe_allow_html=True)
     _prov = st.session_state.get("pet_insurance_provider", "") or (st.session_state.get("pet") or {}).get("insurance_provider", "")
     _pl = str(_prov).lower()
     if not (_pl.startswith("eurolife") and ("plus" in _pl or "standard" in _pl)):
@@ -8075,6 +8284,7 @@ def render_pet_insurance():
         render_programme_overview(_prov, lang)
         st.markdown('<div class="pn-sec">' + ("ΣΥΜΒΕΒΛΗΜΕΝΑ ΚΤΗΝΙΑΤΡΕΙΑ" if el else "CONTRACTED CLINICS") + '</div>', unsafe_allow_html=True)
         render_network_clinics("URGENT", lang, _prov)
+    if _policy_analysis() or (_pl.startswith("eurolife") and ("plus" in _pl or "standard" in _pl)):
         st.markdown('<div class="pn-sec">' + ("ΡΩΤΑ ΓΙΑ ΤΟ ΣΥΜΒΟΛΑΙΟ ΣΟΥ" if el else "ASK ABOUT YOUR POLICY") + '</div>', unsafe_allow_html=True)
         _pet = st.session_state.get("pet") or {}
         render_policy_chat("", "", _pet.get("name", ""), _pet.get("species", "σκύλος"), lang)

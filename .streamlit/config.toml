@@ -1,6 +1,9 @@
 [server]
 maxUploadSize = 25
 
+[client]
+showSidebarNavigation = false
+
 [theme]
 primaryColor = "#1237C9"
 backgroundColor = "#F4F6FE"
