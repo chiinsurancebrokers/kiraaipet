@@ -180,7 +180,7 @@ def _rate_limit_gate(action="ai_call"):
     allowed, wait, reason = _rate_limit_check(action)
     if allowed:
         return True
-    lang = st.session_state.get("lang", "el")
+    lang = st.session_state.get("lang", "en")
     if reason == "cooldown":
         msg = (f"⏳ Μία στιγμή — περίμενε {wait}s πριν το επόμενο αίτημα."
                if lang == "el" else
@@ -553,7 +553,7 @@ def msdvet_search(species, query, n=3):
     return found[:n]
 
 
-def generate_pet_recommendations(pet, vitals_text, conversation, report_text, lang="el"):
+def generate_pet_recommendations(pet, vitals_text, conversation, report_text, lang="en"):
     """Ask Claude for 3 short personalized recommendation blurbs
     (activity / nutrition / lifestyle) tailored to this pet's situation,
     mirroring the Asklepios '📍 Εξατομικευμένες Συστάσεις' cards.
@@ -602,7 +602,7 @@ or no major issue was found, give sensible preventive/wellness guidance instead.
     return {}
 
 
-def render_pet_recommendations(recs, sp, lang="el"):
+def render_pet_recommendations(recs, sp, lang="en"):
     """Render the 3-column 'Personalized Recommendations' grid with MSD/WSAVA
     references, mirroring the Asklepios .recs-grid styling but vet-themed."""
     if not recs:
@@ -917,7 +917,7 @@ At the END, add exactly one separate metadata line: [EXAM_DATE: YYYY-MM-DD] if t
         return f"⚠️ Σφάλμα ανάλυσης: {e}"
 
 # ── VOICE → TEXT (Groq Whisper, Greek/English) ────────────────────────────────
-def transcribe_audio(audio_bytes, lang="el", mime="audio/webm", filename="recording.webm"):
+def transcribe_audio(audio_bytes, lang="en", mime="audio/webm", filename="recording.webm"):
     """Transcribe a short voice recording to text via Groq Whisper large-v3.
     Audio is sent to Groq for processing but NEVER stored on our side; only the
     resulting transcript text enters session state. Returns (text, error).
@@ -1109,7 +1109,7 @@ def _pet_country():
     if c in ("GR", "OTHER"):
         st.session_state["pet_country"] = c
         return c
-    return "GR" if st.session_state.get("lang", "el") == "el" else ""
+    return "GR" if st.session_state.get("lang", "en") == "el" else ""
 
 
 def _in_greece():
@@ -1325,7 +1325,7 @@ _EUROLIFE_NETWORK = [
 _NET_COORD_PHONE = "210 9303811"
 
 
-def render_network_clinics(triage_level="SELF_CARE", lang="el", provider=""):
+def render_network_clinics(triage_level="SELF_CARE", lang="en", provider=""):
     """Contracted-network clinics for the selected Eurolife programme and region (Attica / Thessaloniki).
     Order: EMERGENCY -> 24h hospitals and cooperating 24h clinics first; otherwise contracted clinics first.
     Home-visit vets and physios are shown only for Plus."""
@@ -1386,7 +1386,7 @@ def render_network_clinics(triage_level="SELF_CARE", lang="el", provider=""):
                    else "Required before every visit. The network can change (catalogue 09.25).") + '</div>', unsafe_allow_html=True)
 
 
-def render_insurance_prompt(lang="el"):
+def render_insurance_prompt(lang="en"):
     """Shown after the assessment when no insurance programme is selected yet."""
     el = lang == "el"
     st.markdown(
@@ -1410,7 +1410,7 @@ def render_insurance_prompt(lang="el"):
 
 
 
-def render_waiting_banner(lang="el", pet=None):
+def render_waiting_banner(lang="en", pet=None):
     """Status of the 45-day waiting period, from the policy start date saved in the pet profile."""
     el = lang == "el"
     w = waiting_status(pet)
@@ -1433,7 +1433,7 @@ def render_waiting_banner(lang="el", pet=None):
                 unsafe_allow_html=True)
 
 
-def render_policy_details_form(lang="el"):
+def render_policy_details_form(lang="en"):
     """Policy start date + number for the active pet (used for the waiting-period check)."""
     import datetime as _dt
     el = lang == "el"
@@ -1464,7 +1464,7 @@ def render_policy_details_form(lang="el"):
 
 
 def render_insurance_coverage_card(triage_result, condition, pet_name="",
-                                   species="σκύλος", details="", lang="el"):
+                                   species="σκύλος", details="", lang="en"):
     """Streamlit card: κάλυψη ασφαλιστηρίου + PetsAIHealth chat μετά από triage αποτέλεσμα."""
     _provider_name = st.session_state.get("pet_insurance_provider", "")
     if _provider_name and _provider_name not in ("— Χωρίς ασφάλεια —", "— No insurance —"):
@@ -1502,14 +1502,14 @@ def render_insurance_coverage_card(triage_result, condition, pet_name="",
         '<a href="tel:2109303811" style="display:inline-block;background:#059669;'
         'color:white;padding:8px 18px;border-radius:8px;font-size:13px;'
         'font-weight:600;text-decoration:none;margin-top:4px">'
-        '📞 Κάλεσε Eurolife 210 9303811</a>',
+        + ('📞 Κάλεσε Eurolife 210 9303811' if lang == "el" else '📞 Call Eurolife 210 9303811') + '</a>',
         unsafe_allow_html=True
     )
 
     render_policy_chat(triage_result, condition, pet_name, species, lang)
 
 
-def render_policy_chat(triage_result="", condition="", pet_name="", species="σκύλος", lang="el"):
+def render_policy_chat(triage_result="", condition="", pet_name="", species="σκύλος", lang="en"):
     # ── HAL Insurance Chat ────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(
@@ -1892,7 +1892,7 @@ def set_history_enabled(email, on):
     st.session_state.pop("_hist_ctx", None)
 
 
-def render_history_consent(lang="el", key="hc"):
+def render_history_consent(lang="en", key="hc"):
     """Explain automatic Pet Health Record storage without a redundant consent gate."""
     el = lang == "el"
     st.info(
@@ -2144,7 +2144,7 @@ def logout():
         except Exception: pass
     delete_draft(st.session_state.get("auth_user", ""))
     _clear_login_cookie()
-    _lang_keep = st.session_state.get("lang", "el")
+    _lang_keep = st.session_state.get("lang", "en")
     for k in list(st.session_state.keys()):
         st.session_state.pop(k, None)
     for k, v in defaults.items():
@@ -2341,7 +2341,7 @@ def record_triage_check(email: str = ""):
         log_event("usage_write", ok=False, error=str(e))
 
 
-def render_plus_paywall(lang="el", feature_label="", full=True):
+def render_plus_paywall(lang="en", feature_label="", full=True):
     """The one upgrade card: every service for 4,99€/μήνα (or 49,99€/έτος)."""
     el = lang == "el"
     i = 0 if el else 1
@@ -2579,7 +2579,7 @@ def render_billing_agent(lang, plus, row):
 
 def render_history_page():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Αρχείο Υγείας" if st.session_state.get("lang","el")=="el" else "Pet Health Record")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Αρχείο Υγείας" if st.session_state.get("lang", "en")=="el" else "Pet Health Record")
         return
     """Pet Health Record for the active pet (Plus): encrypted findings, comparison context and user-controlled deletion."""
     lang = st.session_state.lang
@@ -2710,7 +2710,7 @@ def render_account_page():
         logout(); st.rerun()
 
 
-def render_plan_banner(lang="el"):
+def render_plan_banner(lang="en"):
     """Home: free-plan usage or Plus status."""
     if not paywall_enabled():
         return
@@ -2935,7 +2935,7 @@ def render_login_gate():
 
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 defaults = {
-    "lang": "el", "screen": "home",
+    "lang": "en", "screen": "home",
     "output_lang": None,  # AI response language (chat + lab + report); None = follow UI lang
     "pet": {},           # active pet profile
     "pets": [], "active_pet": 0, "_editing_pet": None, "_pets_loaded": False,
@@ -3495,7 +3495,7 @@ def output_language_directive():
     Reused by petainurse_system(), claude_analyze_pet_lab(), the photo-scan
     vision call, and the GPT-4o second opinion — single source of truth."""
     code = output_lang_code()
-    if code == st.session_state.get("lang", "el"):
+    if code == st.session_state.get("lang", "en"):
         return ""
     name = OUTPUT_LANGUAGES[code][1]
     base = (
@@ -3514,7 +3514,7 @@ def output_lang_code():
     code = st.session_state.get("output_lang")
     if code and code in OUTPUT_LANGUAGES:
         return code
-    return st.session_state.get("lang", "el")
+    return st.session_state.get("lang", "en")
 
 
 def output_language_name():
@@ -3921,7 +3921,7 @@ def render_hero_group(size=110, show_names=True, bg="white", gap=14, caption=Fal
             f'gap:{gap}px;margin:6px 0">' + "".join(tiles) + "</div>")
 
     if caption and len(keys) == 4:
-        lang = st.session_state.get("lang", "el")
+        lang = st.session_state.get("lang", "en")
         intro = ("Είμαστε η ομάδα των ηρώων της PetsAIHealth: "
                  "<strong>ο Perro, η Gata, ο Gaz και ο Ave</strong> — εδώ για να φροντίζουμε τα κατοικίδιά σου."
                  if lang == "el" else
@@ -4006,7 +4006,7 @@ def replace_hero_emoji(text, pet=None):
     return _HERO_EMOJI_RE.sub(img, text), True
 
 
-def report_loading_banner_html(pet, lang="el"):
+def report_loading_banner_html(pet, lang="en"):
     """Build the full-viewport superhero loading overlay shown while the
     veterinary report is generating.
 
@@ -4251,7 +4251,7 @@ PETGOV_LINKS_EN = [
     ("📋", "Legal Framework", "https://pet.gov.gr/thesmiko-plaisio/"),
 ]
 
-def render_govgr_links(lang="el"):
+def render_govgr_links(lang="en"):
     """Direct links to official pet.gov.gr (Εθνικό Μητρώο Ζώων Συντροφιάς) services.
     NOTE: pet.gov.gr explicitly states no system interoperability/API is permitted —
     these are simple outbound links, not a live integration."""
@@ -4273,7 +4273,7 @@ def render_govgr_links(lang="el"):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def render_nearby_vets_geo(lang="el"):
+def render_nearby_vets_geo(lang="en"):
     """Browser-geolocation widget: asks the user's device for their current
     location and opens Google Maps search for nearby veterinary clinics
     using those coordinates. Falls back gracefully if location is denied —
@@ -4373,7 +4373,7 @@ def get_petgovgr_url():
     """Admin-configured pet.gov.gr URL, defaults to https://pet.gov.gr."""
     return get_app_setting("petgovgr_url", "https://pet.gov.gr") or "https://pet.gov.gr"
 
-def get_insurance_text(lang="el"):
+def get_insurance_text(lang="en"):
     """Admin-configured description text for the pet.gov.gr card/CTA."""
     defaults = {
         "el": "Άμεση πρόσβαση στις 7 επίσημες υπηρεσίες του Εθνικού Μητρώου Ζώων Συντροφιάς: ηλεκτρονικό βιβλιάριο υγείας, δήλωση απώλειας/εύρεσης ζώου, κτηνιατρικός φάκελος, QR ταυτοποίηση και άλλα.",
@@ -4385,11 +4385,14 @@ def get_insurance_text(lang="el"):
     return defaults[lang]
 
 
-def render_emergency_vets(lang="el"):
+def render_emergency_vets(lang="en"):
     """Show the geolocation-aware 'find nearby vets' widget followed by the
     static (admin-configurable) emergency vets directory for Athens /
     Thessaloniki, with the featured/partner clinic pinned on top."""
     render_nearby_vets_geo(lang)
+    if not _in_greece():
+        # The curated directory covers Athens/Thessaloniki only; elsewhere the map search above is used.
+        return
     vets_html = ""
     for v in _emergency_vets_ordered():
         maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(v['name']+' '+v['area'])}"
@@ -4403,7 +4406,7 @@ def render_emergency_vets(lang="el"):
             <div style="font-size:12px;color:#6B7280">{v['address']}</div>
             <div style="margin-top:6px;display:flex;gap:8px">
                 <a href="tel:{v['phone']}" style="background:#059669;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">📞 {v['phone']}</a>
-                <a href="{maps_url}" target="_blank" style="background:#0EA5E9;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">🗺️ Χάρτης</a>
+                <a href="{maps_url}" target="_blank" style="background:#0EA5E9;color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">🗺️ {"Χάρτης" if lang=="el" else "Map"}</a>
             </div>
         </div>"""
     title = ("🏥 Κατάλογος Επειγόντων (Αθήνα/Θεσσαλονίκη)" if lang=="el"
@@ -4411,7 +4414,7 @@ def render_emergency_vets(lang="el"):
     st.markdown(f'<div style="font-weight:700;font-size:15px;margin:14px 0 10px">{title}</div>{vets_html}', unsafe_allow_html=True)
 
 # ── HTML REPORT GENERATOR ─────────────────────────────────────────────────────
-def generate_pet_html_report(pet, vitals, report_text, refs, lang="el", lab_findings=None, recs=None, species_key="dog"):
+def generate_pet_html_report(pet, vitals, report_text, refs, lang="en", lab_findings=None, recs=None, species_key="dog"):
     import re as _re, html as _html
     name   = _html.escape(str(pet.get("name","—")))
     species= _html.escape(str(pet.get("species_label","")))
@@ -4946,7 +4949,7 @@ def render_intake():
 
         c1,c2 = st.columns([2,1])
         with c1:
-            name = st.text_input(t("pet_name"), value=draft.get("name", pet.get("name","")), placeholder="Μπόμπης")
+            name = st.text_input(t("pet_name"), value=draft.get("name", pet.get("name","")), placeholder=("Μπόμπης" if lang=="el" else "Buddy"))
             if st.session_state.get("_intake_show_errors") and not name:
                 st.markdown(
                     '<div style="color:#DC2626;font-size:12px;margin:-8px 0 8px">'
@@ -5041,7 +5044,7 @@ def render_intake():
         if prev_vax not in vax_opts: prev_vax = vax_opts[0]
         vaccinations = st.selectbox(t("vaccinations"), vax_opts, index=vax_opts.index(prev_vax))
         conditions = st.text_area(t("conditions"), value=draft.get("conditions", pet.get("conditions","")), height=80,
-                                   placeholder="Π.χ. Αλλεργία σε πρωτεΐνες σιταριού, χρόνια γαστρίτιδα")
+                                   placeholder=("Π.χ. Αλλεργία σε πρωτεΐνες σιταριού, χρόνια γαστρίτιδα" if lang=="el" else "E.g. Wheat protein allergy, chronic gastritis"))
 
         col_b, col_n = st.columns([1,3])
         with col_b:
@@ -5066,8 +5069,8 @@ def render_intake():
     for mi, mv in enumerate(st.session_state.med_inputs):
         mc1,mc2 = st.columns([5,1])
         with mc1: st.session_state.med_inputs[mi] = st.text_input(
-            f"Φάρμακο {mi+1}", value=mv, key=f"med_{mi}", label_visibility="collapsed",
-            placeholder="Π.χ. Frontline Plus 1x/μήνα" if mi==0 else "")
+            (f"Φάρμακο {mi+1}" if lang=="el" else f"Medication {mi+1}"), value=mv, key=f"med_{mi}", label_visibility="collapsed",
+            placeholder=(("Π.χ. Frontline Plus 1x/μήνα" if lang=="el" else "E.g. Frontline Plus once a month") if mi==0 else ""))
         with mc2:
             if st.button("✕", key=f"del_med_{mi}"): st.session_state.med_inputs.pop(mi); st.rerun()
     if st.button("＋ " + ("Προσθήκη φαρμάκου" if lang=="el" else "Add medication")):
@@ -5075,7 +5078,7 @@ def render_intake():
     meds_raw = ", ".join(m for m in st.session_state.med_inputs if m.strip())
 
     vet_name = st.text_input(t("vet_name"), value=draft.get("vet_name", pet.get("vet_name","")),
-                              placeholder="Π.χ. Κτηνιατρείο Αθήνας, Δρ. Παπαδόπουλος")
+                              placeholder=("Π.χ. Κτηνιατρείο Αθήνας, Δρ. Παπαδόπουλος" if lang=="el" else "E.g. City Vet Clinic, Dr Smith"))
     st.caption("💡 Προαιρετικό — μπορείς να το προσθέσεις αργότερα." if lang=="el"
                else "💡 Optional — you can add this later.")
 
@@ -5692,7 +5695,7 @@ _PN_REPORT_TAIL_CSS = """<style>
 
 def render_report():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Κτηνιατρική αναφορά" if st.session_state.get("lang","el")=="el" else "Veterinary report")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Κτηνιατρική αναφορά" if st.session_state.get("lang", "en")=="el" else "Veterinary report")
         return
     render_stepper("report")
     pet  = st.session_state.pet
@@ -6476,7 +6479,7 @@ if _STX_OK and auth_enabled():
 #    (Anthropic/OpenAI/Groq/Roboflow) strictly needed to produce the analysis
 #    the owner asked for.
 def render_privacy_page():
-    lang = st.session_state.get("lang", "el")
+    lang = st.session_state.get("lang", "en")
     c1, c2 = st.columns([6, 1])
     with c2:
         if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key="privacy_lang"):
@@ -6762,7 +6765,7 @@ def petscan_widget(mode, key, **kw):
     """Breathing / pulse component. Returns the result dict once the owner
     presses 'Use this result', else None."""
     sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
-    return _petscan(mode=mode, lang=st.session_state.get("lang", "el"), species=sp,
+    return _petscan(mode=mode, lang=st.session_state.get("lang", "en"), species=sp,
                     key=key, default=None, **kw)
 
 
@@ -6845,7 +6848,7 @@ _TOOL_ART = {"vitals": "breath", "photo": "photo", "labs": "labs", "longevity": 
 
 def _tool_status(kind):
     """Small 'attached' chip text so people see how tools feed the nurse."""
-    el = st.session_state.get("lang", "el") == "el"
+    el = st.session_state.get("lang", "en") == "el"
     S = st.session_state.get("longevity") or {}
     if kind == "vitals":
         b, pu = S.get("breath"), S.get("pulse")
@@ -6867,7 +6870,7 @@ def _tool_status(kind):
 
 
 def render_pet_tool_card(key, screen, eb, title, body, cta, where):
-    el = st.session_state.get("lang", "el") == "el"
+    el = st.session_state.get("lang", "en") == "el"
     i = 0 if el else 1
     mk = f"pn-feat-{key}-{where}"
     st.markdown(_pet_feature_banner_css(mk, False), unsafe_allow_html=True)
@@ -6928,7 +6931,7 @@ def render_pet_nurse_card():
                 _goto("vets")
 
 
-def render_plans_section(lang="el", gate=False, cta=None):
+def render_plans_section(lang="en", gate=False, cta=None):
     """Landing: Free vs Plus, one call to action each. Sign in first; payment happens after sign-in
     (so the Stripe checkout is always tied to the account's email)."""
     import urllib.parse as _up
@@ -7015,7 +7018,7 @@ def render_plans_section(lang="el", gate=False, cta=None):
                     st.link_button((f"Ετήσιο · {PLUS_PRICE_YEAR}" if el else f"Yearly · {PLUS_PRICE_YEAR}"), _yr, use_container_width=True)
 
 
-def render_benchmark_section(lang="el"):
+def render_benchmark_section(lang="en"):
     """Landing: transparency about the open VetTriageBench-45 preprint (figures from the Zenodo record, v2)."""
     el = lang == "el"
     url = os.environ.get("BENCHMARK_URL", "https://doi.org/10.5281/zenodo.21127217").strip()
@@ -7130,7 +7133,7 @@ def _switch_pet(i):
     st.rerun()
 
 
-def render_pet_switcher(lang="el"):
+def render_pet_switcher(lang="en"):
     """Home: Plus = switch between unlimited pets, edit, add; free = one pet with a locked profile."""
     el = lang == "el"
     pets = st.session_state.get("pets") or []
@@ -7256,7 +7259,7 @@ def render_pet_longevity_result(res, lang, compact=False):
 
 def render_pet_scan():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Ζωτικά & αναπνοές" if st.session_state.get("lang","el")=="el" else "Vitals & breathing")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Ζωτικά & αναπνοές" if st.session_state.get("lang", "en")=="el" else "Vitals & breathing")
         return
     """Breathing (camera or tap) + pulse (tap) — results feed vitals, triage and the longevity check."""
     lang = st.session_state.lang
@@ -7368,7 +7371,7 @@ def render_pet_scan():
 
 def render_pet_longevity():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Έλεγχος μακροζωίας" if st.session_state.get("lang","el")=="el" else "Longevity check")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Έλεγχος μακροζωίας" if st.session_state.get("lang", "en")=="el" else "Longevity check")
         return
     lang = st.session_state.lang
     el = lang == "el"
@@ -7542,7 +7545,7 @@ def _pn_evidence_bar():
 
 def render_pet_photo():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Ανάλυση φωτογραφιών" if st.session_state.get("lang","el")=="el" else "Photo analysis")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Ανάλυση φωτογραφιών" if st.session_state.get("lang", "en")=="el" else "Photo analysis")
         return
     _tool_screen("📷", "Έλεγχος με φωτογραφία", "Photo check",
                  "Μάτια, δέρμα, αυτιά, ούλα — η AI περιγράφει όσα βλέπει για {nm}",
@@ -7803,7 +7806,7 @@ def _exam_timeline_text(rows):
     return "\n\n---\n\n".join(parts)
 
 
-def _render_exam_timeline(rows, lang="el"):
+def _render_exam_timeline(rows, lang="en"):
     if not rows:
         return
     el = lang == "el"
@@ -8045,7 +8048,7 @@ def render_pet_labs():
 
 def render_pet_diary():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Ημερολόγιο συμπτωμάτων" if st.session_state.get("lang","el")=="el" else "Symptom diary")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Ημερολόγιο συμπτωμάτων" if st.session_state.get("lang", "en")=="el" else "Symptom diary")
         return
     _tool_screen("📅", "Ημερολόγιο συμπτωμάτων", "Symptom diary",
                  "Κατάγραψε τι συμβαίνει στο χρόνο για {nm}", "Track what happens over time for {nm}")
@@ -8060,7 +8063,7 @@ def render_pet_vets():
     _tool_footer(chat_cta=False)
 
 
-def render_programme_overview(provider, lang="el"):
+def render_programme_overview(provider, lang="en"):
     """Plus subscribers: what the Eurolife programme gives, at a glance — no AI call."""
     el = lang == "el"
     p = (provider or "").lower()
@@ -8243,7 +8246,7 @@ def render_policy_analyzer(lang):
 
 def render_pet_insurance():
     if paywall_enabled() and not has_plus():
-        render_plus_paywall(st.session_state.get("lang","el"), "Ασφάλιση κατοικιδίου" if st.session_state.get("lang","el")=="el" else "Pet insurance")
+        render_plus_paywall(st.session_state.get("lang", "en"), "Ασφάλιση κατοικιδίου" if st.session_state.get("lang", "en")=="el" else "Pet insurance")
         return
     lang = st.session_state.lang
     el = lang == "el"
@@ -8343,6 +8346,13 @@ if st.session_state.pop("_login_plan", None) == "plus" and paywall_enabled() and
     st.session_state.screen = "plus"
 if st.session_state.pop("_paid_return", None):
     st.session_state.screen = "paid"
+# Species labels are saved in the language of the session that created the profile: show them in the current UI language.
+_sp = st.session_state.get("pet")
+if isinstance(_sp, dict) and _sp.get("species_label") in SPECIES_KEY:
+    _i = SPECIES_KEY[_sp["species_label"]]
+    _opts = SPECIES.get(st.session_state.get("lang", "en"), SPECIES["en"])
+    _idx = [SPECIES_KEY[x] for x in SPECIES["en"]].index(_i)
+    _sp["species_label"] = _opts[_idx]
 screen = st.session_state.screen
 _has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_enabled() and is_logged_in()):
