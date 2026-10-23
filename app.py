@@ -1371,7 +1371,7 @@ def render_network_clinics(triage_level="SELF_CARE", lang="en", provider=""):
         '.pn-net-ic{width:38px;height:38px;border-radius:12px;background:#E7EAFB;display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 38px;}'
         '.pn-net-tx{flex:1;min-width:0;font-size:13.5px;line-height:1.3;}.pn-net-tx b{font-weight:700;}'
         '.pn-net-tx small{display:block;color:#5B6794;font-size:12px;margin-top:2px;}'
-        '.pn-net-first{margin-left:8px;background:#FF6B2C;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 8px;}'
+        '.pn-net-first{margin-left:8px;background:#EE7340;color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 8px;}'
         '.pn-net-go{color:#1237C9;font-weight:800;}'
         '.pn-net-call{display:block;text-align:center;background:#1237C9;color:#fff !important;font-weight:700;border-radius:999px;padding:12px;text-decoration:none !important;margin:2px 0 8px;}</style>'
         f'<div class="pn-net"><h4>🏥 {"Συμβεβλημένα κτηνιατρεία" if el else "Contracted clinics"} · My Happy Pet {prog}</h4>'
@@ -6905,7 +6905,7 @@ def render_pet_nurse_card():
                 '.pn-nurse .art{border-radius:20px;overflow:hidden;aspect-ratio:400/220;}'
                 '.pn-steps{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px;}'
                 '.pn-step{flex:1 1 150px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:10px 12px;color:#fff;font-size:12.5px;line-height:1.4;}'
-                '.pn-step b{display:block;font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#FFB48F;margin-bottom:2px;}'
+                '.pn-step b{display:block;font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#F2B393;margin-bottom:2px;}'
                 '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;}.pn-nurse .art{order:-1;}}</style>', unsafe_allow_html=True)
     steps = ([("ΒΗΜΑ 1", "Πες τι παρατηρείς"), ("ΒΗΜΑ 2", "Η νοσηλεύτρια ρωτά ανά μία ερώτηση"), ("ΒΗΜΑ 3", "Παίρνεις αναφορά για τον κτηνίατρο")]
              if el else [("STEP 1", "Tell us what you notice"), ("STEP 2", "The nurse asks one question at a time"), ("STEP 3", "Get a vet-ready report")])

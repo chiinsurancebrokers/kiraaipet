@@ -15,7 +15,7 @@ import petify_art as _art
 
 BLUE = "#1237C9"
 BLUE2 = "#2F55F0"
-ORANGE = "#FF6B2C"
+ORANGE = "#EE7340"
 INK = "#0B1B4B"
 MUTED = "#5B6794"
 LINE = "#D9DEF5"
@@ -129,7 +129,7 @@ div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid=
   box-shadow:0 26px 50px -32px rgba(18,55,201,.75); }}
 .pn-banner .tx {{ padding:22px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:0; }}
 .pn-banner .org {{ font:700 10.5px/1 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:{BLUE}; }}
-.pn-banner.dark .org {{ color:#FFB48F; }}
+.pn-banner.dark .org {{ color:#F2B393; }}
 .pn-banner .ttl {{ font-family:var(--pn-display); font-weight:700; font-size:26px; line-height:1.12; letter-spacing:-.03em; color:{INK}; }}
 .pn-banner.dark .ttl {{ color:#fff; }}
 .pn-banner .sb {{ font-size:13.5px; line-height:1.5; color:{MUTED}; }}
@@ -187,10 +187,10 @@ HERO_CSS = f"""
 .pn-hero-copy {{ position:relative; z-index:1; max-width:52%; display:flex; flex-direction:column; gap:14px; }}
 .pn-logo-row {{ display:flex; align-items:center; gap:12px; }}
 .pn-logo-mark {{ width:52px; height:52px; border-radius:17px; background:{ORANGE}; display:flex; align-items:center; justify-content:center; font-size:27px;
-  box-shadow:0 8px 20px -8px rgba(255,107,44,.9); transform:rotate(-6deg); }}
+  box-shadow:0 8px 20px -8px rgba(238,115,64,.9); transform:rotate(-6deg); }}
 .pn-wordmark {{ font-family:var(--pn-display); font-weight:800; font-size:36px; letter-spacing:-.04em; line-height:1; }}
 .pn-h1 {{ font-family:var(--pn-display); font-weight:700; font-size:40px; line-height:1.04; letter-spacing:-.035em; margin:6px 0 0; }}
-.pn-h1 span {{ color:#FFB48F; }}
+.pn-h1 span {{ color:#F2B393; }}
 .pn-lead {{ font-size:15.5px; line-height:1.6; color:#D5DCFF; max-width:520px; }}
 .pn-trust {{ list-style:none; padding:0; margin:4px 0 0; display:flex; flex-wrap:wrap; gap:8px 18px; }}
 .pn-trust li {{ font-size:13px; color:#E8ECFF; display:flex; align-items:center; gap:8px; }}
@@ -267,17 +267,16 @@ def hero_html(lang: str, mascot_html: str = "") -> str:
         "ex": "Τα νούμερα είναι ενδεικτικά." if el else "Figures shown are illustrative.",
     }
     gallery = gallery_html(lang)
-    art = _art.scene("breath", "dog")
+    art = _art.scene("nurse", "dog")
     c1 = "Αναπνοές ηρεμίας" if el else "Resting breaths"
     c2 = "Ηλικία σε ανθρώπινα" if el else "Human years"
     return (HERO_CSS + f"""
 <div class="pn-hero-head">
   <div class="pn-brand-tile">
-    <div class="pn-hero-art"><div class="fw"><div class="frame">__ART_BREATH__</div>
-      <div class="chip a"><span>__C1__</span><b>22 /min</b></div><div class="chip b"><span>__C2__</span><b>45 ↗</b></div></div></div>
+    <div class="pn-hero-art"><div class="fw"><div class="frame">__ART_BREATH__</div></div></div>
     <div class="pn-hero-copy">
     <div class="pn-logo-row"><div class="pn-logo-mark">🐾</div><div class="pn-wordmark">PetsAIHealth</div></div>
-    <div><span class="pn-eyebrow dark">{tx['kicker']}</span></div>
+    <div><span class="pn-eyebrow dark">AI VET NURSE</span></div>
     <div class="pn-h1">{tx['h1']}</div>
     <div class="pn-lead">{tx['lead']}</div>
     <ul class="pn-trust"><li><i></i>{tx['t1']}</li><li><i></i>{tx['t2']}</li><li><i></i>{tx['t3']}</li></ul>
@@ -352,7 +351,7 @@ def result_card_html(res: dict, lang: str) -> str:
   <div class="pn-resface" style="position:absolute;right:16px;top:14px;opacity:.95;">{_art.species_face(res.get("species","dog"), 74)}</div>
   <span class="pn-eyebrow dark">{"ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LONGEVITY CHECK"} · {name}</span>
   <div style="display:flex;align-items:flex-end;gap:16px;margin-top:14px;flex-wrap:wrap;">{ha_html}
-    <div style="margin-left:auto;text-align:right;"><div style="font:800 34px Sora,Inter,sans-serif;color:#FFB48F;letter-spacing:-.03em;">{res.get("score", 0)}<small style="font-size:14px;color:#D5DCFF;">/100</small></div>
+    <div style="margin-left:auto;text-align:right;"><div style="font:800 34px Sora,Inter,sans-serif;color:#F2B393;letter-spacing:-.03em;">{res.get("score", 0)}<small style="font-size:14px;color:#D5DCFF;">/100</small></div>
     <div style="font-size:12px;color:#D5DCFF;">{"δείκτης ευεξίας" if el else "wellness score"}</div></div></div>
   <div style="margin-top:16px;">
     <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#D5DCFF;margin-bottom:5px;"><span>0</span>
@@ -418,7 +417,7 @@ LANDING_CSS = f"""
 .pn-l-hero {{ display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:22px; align-items:center; background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%), {BLUE};
   border-radius:28px; padding:34px 32px; color:#fff; box-shadow:0 30px 60px -34px rgba(18,55,201,.8); margin:4px 0 14px; }}
 .pn-l-hero h1 {{ font-family:var(--pn-display); font-weight:700; font-size:40px; line-height:1.06; letter-spacing:-.035em; margin:14px 0 12px; color:#fff; }}
-.pn-l-hero h1 span {{ color:#FFB48F; }}
+.pn-l-hero h1 span {{ color:#F2B393; }}
 .pn-l-hero p {{ font-size:15.5px; line-height:1.65; color:#D5DCFF; max-width:520px; margin:0; }}
 .pn-l-hero .art {{ border-radius:22px; overflow:hidden; aspect-ratio:400/220; box-shadow:0 24px 50px -26px rgba(0,0,0,.55); }}
 .pn-l-svc {{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:0; background:#fff; border:1px solid {LINE}; border-radius:28px; overflow:hidden; margin:0 0 16px; }}
