@@ -1116,6 +1116,19 @@ def _in_greece():
     return _pet_country() == "GR"
 
 
+def _greece_visitor():
+    """Eurolife (Greece-only) is shown only to users in Greece. Saved country wins; before sign-in use the browser
+    region (el-GR / el). Unknown = not Greece, so everyone else is asked to upload their own policy."""
+    c = st.session_state.get("pet_country") or (st.session_state.get("pet") or {}).get("country")
+    if c in ("GR", "OTHER"):
+        return c == "GR"
+    try:
+        loc = str(st.context.locale or "").replace("_", "-").upper()
+    except Exception:
+        loc = ""
+    return loc.endswith("-GR") or loc == "EL"
+
+
 def _policy_analysis():
     a = st.session_state.get("policy_analysis")
     return a if isinstance(a, dict) and a.get("is_pet_policy", True) and a.get("summary") else None
@@ -2271,8 +2284,8 @@ _PLUS_SERVICES = [
     ("📅", ("Ημερολόγιο συμπτωμάτων", "Symptom diary"),
            ("Τι συμβαίνει στον χρόνο, έτοιμο για τον κτηνίατρο.", "What happens over time, ready for your vet.")),
     ("🛡️", ("Ασφάλιση: κάλυψη & κόστος", "Insurance: cover & cost"),
-           ("Έλεγχος κάλυψης, πόσο πληρώνεις, συμβεβλημένες κλινικές, ερωτήσεις για το συμβόλαιο.",
-            "Coverage check, what you pay, contracted clinics, policy questions.")),
+           ("Έλεγχος κάλυψης από το δικό σου ασφαλιστήριο (ανέβασμα PDF ή φωτογραφίας), ερωτήσεις για το συμβόλαιο. Στην Ελλάδα: και Eurolife My Happy Pet με συμβεβλημένες κλινικές.",
+            "Coverage check from your own policy (upload a PDF or photo) and policy questions. In Greece: also Eurolife My Happy Pet with its contracted clinics.")),
 ]
 
 
@@ -2490,7 +2503,7 @@ def render_paid_page():
 _BILLING_SYSTEM = """Είσαι ο βοηθός συνδρομής της PetsAIHealth. Βοηθάς τον χρήστη να αγοράσει, να διαχειριστεί ή να ακυρώσει τη συνδρομή του.
 ΓΕΓΟΝΟΤΑ (μην επινοείς άλλα):
 - Δωρεάν πλάνο: 3 έλεγχοι συμπτωμάτων τον μήνα, 1 κατοικίδιο με κλειδωμένο προφίλ, κτηνίατρος κοντά σου και επείγοντα.
-- PetsAIHealth Plus: 4,99€ τον μήνα ή 49,99€ τον χρόνο. Ξεκλειδώνει ΟΛΕΣ τις υπηρεσίες: απεριόριστοι έλεγχοι, κτηνιατρική αναφορά, δεύτερη γνώμη, ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο, απεριόριστα κατοικίδια με επεξεργάσιμο προφίλ, ασφάλιση Eurolife (κάλυψη, κόστος, κλινικές, ερωτήσεις συμβολαίου).
+- PetsAIHealth Plus: 4,99€ τον μήνα ή 49,99€ τον χρόνο. Ξεκλειδώνει ΟΛΕΣ τις υπηρεσίες: απεριόριστοι έλεγχοι, κτηνιατρική αναφορά, δεύτερη γνώμη, ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο, απεριόριστα κατοικίδια με επεξεργάσιμο προφίλ, ασφάλιση (ανέβασμα του δικού σου ασφαλιστηρίου· το πρόγραμμα Eurolife My Happy Pet υπάρχει ΜΟΝΟ στην Ελλάδα).
 - Πληρωμή και τιμολόγια: μέσω Stripe. Ακύρωση όποτε θέλεις από την πύλη του Stripe· η πρόσβαση συνεχίζεται μέχρι το τέλος της περιόδου που έχει πληρωθεί.
 - Επιστροφές χρημάτων, αλλαγή email πληρωμής, προβλήματα πρόσβασης: info@chiinsurance.gr (μην υπόσχεσαι επιστροφή).
 ΚΑΝΟΝΕΣ: Δεν ακυρώνεις και δεν χρεώνεις εσύ τίποτα· ο χρήστης το κάνει με τα κουμπιά που εμφανίζονται κάτω από την απάντησή σου. Απάντα σύντομα (έως 70 λέξεις), φιλικά, στη γλώσσα του χρήστη, χωρίς τίτλους.
@@ -6947,7 +6960,9 @@ def render_plans_section(lang="en", gate=False, cta=None):
         ("Απεριόριστα κατοικίδια, με επεξεργάσιμο προφίλ", "Unlimited pets with editable profiles"),
         ("Κτηνιατρική αναφορά + δεύτερη γνώμη", "Veterinary report + second opinion"),
         ("Ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο", "Vitals, photos, labs, longevity, diary"),
-        ("Ασφάλιση Eurolife (Plus & Standard): κάλυψη, κόστος, κλινικές, ερωτήσεις", "Eurolife insurance (Plus & Standard): cover, costs, clinics, questions"),
+        (("Ασφάλιση Eurolife (Plus & Standard): κάλυψη, κόστος, κλινικές, ερωτήσεις", "Eurolife insurance (Plus & Standard): cover, costs, clinics, questions")
+         if _greece_visitor() else
+         ("Ασφάλιση: ανέβασε το ασφαλιστήριό σου και δες κάλυψη, εξαιρέσεις, περιόδους αναμονής", "Insurance: upload your own policy for cover, exclusions and waiting periods")),
     ]
     li = lambda items, ic: "".join(f'<li><span>{ic}</span>{t[i]}</li>' for t in items)
     _P = 'div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .%s)'
@@ -7066,7 +7081,7 @@ def render_pet_landing(gate=False):
     from petify_ui import landing_parts as _lp
     lang = st.session_state.lang
     el = lang == "el"
-    parts = _lp(lang)
+    parts = _lp(lang, _greece_visitor())
     st.markdown(_PETIFY_THEME, unsafe_allow_html=True)
     _t1, _t2 = st.columns([6, 1])
     with _t1:

@@ -467,7 +467,8 @@ LANDING_CSS = f"""
 """
 
 
-def landing_parts(lang: str) -> dict:
+def landing_parts(lang: str, gr: bool = False) -> dict:
+    """gr=True: user is in Greece (Eurolife My Happy Pet is offered). Otherwise: upload your own policy."""
     el = lang == "el"
     hero = f"""{LANDING_CSS}
 <div class="pn-l-hero"><div>
@@ -511,11 +512,19 @@ def landing_parts(lang: str) -> dict:
             svc("shield", True, False, "ΑΣΦΑΛΙΣΤΙΚΗ ΚΑΛΥΨΗ", "Έλεγχος κάλυψης ασφαλιστηρίου",
                 "Μετά την αξιολόγηση, η AI ελέγχει αν η κατάσταση καλύπτεται από το ασφαλιστήριο του κατοικιδίου σου και πόσο θα πληρώσεις.",
                 "Οι ιδιοκτήτες δεν ξέρουν αν και πόσο καλύπτεται ένα ραντεβού πριν πάνε στην κλινική.",
-                ["Επιλέγεις την ασφαλιστική σου στο προφίλ.",
+                ["Επιλέγεις το πρόγραμμα Eurolife My Happy Pet στο προφίλ ή ανεβάζεις το δικό σου ασφαλιστήριο.",
                  "Ολοκληρώνεις την αξιολόγηση συμπτωμάτων.",
                  "Βλέπεις αν καλύπτεται, τη συμμετοχή ανά επίσκεψη ή εξέταση και τις συμβεβλημένες κλινικές.",
                  "Ρωτάς ό,τι θέλεις για το συμβόλαιό σου."],
-                "Ο έλεγχος γίνεται από AI και δεν είναι επίσημη γνωμάτευση της ασφαλιστικής. Περιλαμβάνεται στο Plus."),
+                "Ο έλεγχος γίνεται από AI και δεν είναι επίσημη γνωμάτευση της ασφαλιστικής. Περιλαμβάνεται στο Plus.") if gr else
+            svc("shield", True, False, "ΑΣΦΑΛΙΣΤΙΚΗ ΚΑΛΥΨΗ", "Έλεγχος του ασφαλιστηρίου σου",
+                "Ανεβάζεις το ασφαλιστήριο του κατοικιδίου σου και η AI διαβάζει παροχές, περιόδους αναμονής και εξαιρέσεις.",
+                "Οι ιδιοκτήτες δεν ξέρουν αν και πόσο καλύπτεται ένα ραντεβού πριν πάνε στην κλινική.",
+                ["Ανεβάζεις το ασφαλιστήριο (PDF ή φωτογραφίες, έως 4 αρχεία).",
+                 "Ολοκληρώνεις την αξιολόγηση συμπτωμάτων.",
+                 "Βλέπεις τι φαίνεται να καλύπτεται, εξαιρέσεις και περιόδους αναμονής.",
+                 "Ρωτάς ό,τι θέλεις για το συμβόλαιό σου."],
+                "Ανάγνωση εγγράφου από AI — δεν είναι επίσημη γνωμάτευση της ασφαλιστικής. Περιλαμβάνεται στο Plus."),
             svc("longevity", False, False, "ΜΑΚΡΟΖΩΙΑ", "Έλεγχος μακροζωίας",
                 "Ηλικία σε ανθρώπινα χρόνια, δείκτης ευεξίας 0–100 και πλάνο φροντίδας για περισσότερα χρόνια μαζί.",
                 "«Πόσο χρονών είναι πραγματικά;» και «τι να αλλάξω για να ζήσει περισσότερο;» δεν έχουν απλή απάντηση.",
@@ -549,11 +558,19 @@ def landing_parts(lang: str) -> dict:
             svc("shield", True, False, "INSURANCE COVERAGE", "Policy coverage check",
                 "After the assessment, the AI checks whether the condition is covered by your pet's policy and what you would pay.",
                 "Owners don't know whether, or how much, a visit is covered before they reach the clinic.",
-                ["Choose your insurer in the profile.",
+                ["Choose the Eurolife My Happy Pet programme in the profile, or upload your own policy.",
                  "Finish the symptom assessment.",
                  "See whether it is covered, the co-payment per visit or test, and the network clinics.",
                  "Ask anything about your policy."],
-                "The check is done by AI and is not an official statement from your insurer. Included in Plus."),
+                "The check is done by AI and is not an official statement from your insurer. Included in Plus.") if gr else
+            svc("shield", True, False, "INSURANCE COVERAGE", "Check your own policy",
+                "Upload your pet insurance policy and the AI reads the benefits, waiting periods and exclusions.",
+                "Owners don't know whether, or how much, a visit is covered before they reach the clinic.",
+                ["Upload your policy (PDF or photos, up to 4 files).",
+                 "Finish the symptom assessment.",
+                 "See what looks covered, plus exclusions and waiting periods.",
+                 "Ask anything about your policy."],
+                "An AI reading of your document — not an official statement from your insurer. Included in Plus."),
             svc("longevity", False, False, "LONGEVITY", "Longevity check",
                 "Age in human years, a 0–100 wellness score and a care plan for more years together.",
                 "\"How old are they really?\" and \"what should I change so they live longer?\" have no simple answer.",
