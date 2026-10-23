@@ -111,20 +111,6 @@ def scene(kind: str, species: str = "dog") -> str:
                   f'<rect x="38" y="-6" width="14" height="8" rx="3" fill="{BLUE}"/></g>'
                 + _sparkle(70, 70, 1.3, ORANGE) + _sparkle(340, 168, 1.0, BLUE))
         return _svg("0 0 400 220", body, "pn-art-photo", "photo")
-    if kind == "nurse":
-        # AI Vet Nurse mascot: dog in a white coat with a stethoscope, chat bubble + orange plus badge
-        body = (_bg(BLUE2, "#142A9E", "gn")
-                + f'<circle cx="340" cy="26" r="84" fill="#fff" opacity=".07"/><circle cx="22" cy="214" r="74" fill="#fff" opacity=".06"/>'
-                + f'<path d="M58 222c8 -46 42 -60 82 -60s74 14 82 60z" fill="#fff"/>'
-                + f'<path d="M112 176q-6 34 28 38q34 -4 28 -38" stroke="{INK}" stroke-width="6" fill="none" stroke-linecap="round"/>'
-                + f'<circle cx="140" cy="210" r="11" fill="{ORANGE}" stroke="{INK}" stroke-width="4"/>'
-                + _dog_head(140, 108, 1.22)
-                + f'<g transform="translate(236 36)"><rect width="124" height="78" rx="24" fill="#fff"/><path d="M22 76l-14 26l36 -22z" fill="#fff"/>'
-                  f'<rect x="20" y="18" width="84" height="9" rx="4.5" fill="{LAV2}"/><rect x="20" y="38" width="58" height="9" rx="4.5" fill="{LAV2}"/>'
-                  f'<rect x="20" y="58" width="34" height="9" rx="4.5" fill="{ORANGE}"/></g>'
-                + f'<circle cx="262" cy="136" r="32" fill="{ORANGE}"/><path d="M262 120v32M246 136h32" stroke="#fff" stroke-width="11" stroke-linecap="round"/>'
-                + _sparkle(48, 56, 1.3, "#fff") + _sparkle(372, 150, .9, ORANGE))
-        return _svg("0 0 400 220", body, "pn-art-nurse", "AI vet nurse")
     if kind == "breath":
         sleep_head = (head or _dog_head)(112, 128, .78, True)
         wave = "M20 150q18 -22 36 0t36 0t36 0t36 0"
