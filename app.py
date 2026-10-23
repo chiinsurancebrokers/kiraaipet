@@ -6165,7 +6165,7 @@ Be direct and clinical. Always recommend professional veterinary evaluation. End
         )
 
 # ── FULL-PAGE LOGIN SCREEN (shown when auth is enabled and user not logged in) ─
-CATEGORY_SLUGS = ("pet-parents", "pet-sitters", "ktiniatroys")
+CATEGORY_SLUGS = ("pet-parents", "pet-sitters", "vet")
 
 
 def _category_content(slug, lang):
@@ -6257,7 +6257,7 @@ def _category_content(slug, lang):
                  "\u201cA more professional image for clients.\u201d"),
             ],
         ),
-        "ktiniatroys": dict(
+        "vet": dict(
             icon="🩺",
             title="Για Κτηνιάτρους" if el else "For Veterinarians",
             lead=("Ένας φάκελος ανά ασθενή για όλες τις εξετάσεις και τα έγγραφα, δεύτερη γνώμη AI για την κλινική σου εξέταση "
@@ -6373,11 +6373,11 @@ def render_category_page(slug):
 
     cc1, cc2, cc3 = st.columns([1, 2, 1])
     with cc2:
-        if slug == "ktiniatroys":
+        if slug == "vet":
             if st.button("🩺 " + ("Δοκίμασε το demo ιατρείου" if lang == "el" else "Try the clinic demo"), type="primary",
                          use_container_width=True, key="cat_vet_demo"):
-                st.query_params["page"] = "vet"; st.rerun()
-        if slug != "ktiniatroys" and st.button(start_lbl, type="primary", use_container_width=True, key=f"cat_start_{slug}"):
+                st.query_params["page"] = "vet-demo"; st.rerun()
+        if slug != "vet" and st.button(start_lbl, type="primary", use_container_width=True, key=f"cat_start_{slug}"):
             st.session_state["_welcome_seen"] = True
             st.session_state["_hero_seen"] = True
             st.query_params.clear()
@@ -8303,7 +8303,7 @@ def render_vet_workbench():
     top_l, top_r = st.columns([6, 1])
     with top_l:
         if st.button(L("← Πίσω", "← Back"), key="vw_back"):
-            st.query_params["page"] = "ktiniatroys"; st.rerun()
+            st.query_params["page"] = "vet"; st.rerun()
     with top_r:
         if st.button("🇬🇧 EN" if el else "🇬🇷 ΕΛ", key="vw_lang"):
             st.session_state.lang = "en" if el else "el"; st.rerun()
@@ -8422,7 +8422,11 @@ if _page_param == "privacy":
     render_privacy_page()
     st.stop()
 
-if _page_param == "vet":
+if _page_param == "ktiniatroys":      # old link, kept so existing URLs keep working
+    st.query_params["page"] = "vet"
+    _page_param = "vet"
+
+if _page_param == "vet-demo":
     render_vet_workbench()
     st.stop()
 
