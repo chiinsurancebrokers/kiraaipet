@@ -436,6 +436,23 @@ LANDING_CSS = f"""
 .pn-l-svc li:before {{ content:counter(s); flex:0 0 24px; height:24px; border-radius:50%; background:{BLUE}; color:#fff; font:700 12px 'Inter',sans-serif; display:flex; align-items:center; justify-content:center; margin-top:1px; }}
 .pn-l-svc .note {{ font-size:11.5px; color:{MUTED}; line-height:1.5; }}
 .pn-l-svc.main {{ border-color:{BLUE}; box-shadow:0 26px 50px -36px rgba(18,55,201,.6); }}
+.pn-l-steps {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:6px 0 16px; }}
+.pn-l-step {{ background:#fff; border:1px solid {LINE}; border-radius:24px; overflow:hidden; position:relative; }}
+.pn-l-step .im {{ aspect-ratio:400/170; }}
+.pn-l-step .n {{ position:absolute; top:12px; left:12px; width:34px; height:34px; border-radius:50%; background:{ORANGE}; color:#fff; font:800 16px/34px 'Sora',sans-serif; text-align:center; box-shadow:0 8px 18px -8px rgba(238,115,64,.9); z-index:2; }}
+.pn-l-step .bd {{ padding:14px 18px 18px; }}
+.pn-l-step h4 {{ font-family:var(--pn-display); font-size:18px; letter-spacing:-.02em; margin:0 0 4px; color:{INK}; }}
+.pn-l-step p {{ margin:0; font-size:13.5px; line-height:1.5; color:{MUTED}; }}
+.pn-l-head {{ margin:22px 2px 10px; }}
+.pn-l-head .h {{ font-family:var(--pn-display); font-weight:700; font-size:28px; letter-spacing:-.03em; color:{INK}; margin-top:8px; line-height:1.1; }}
+.pn-l-svc details {{ margin-top:6px; }}
+.pn-l-svc summary {{ list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px;
+  background:{LAV}; border:1px solid {LAV2}; color:{BLUE}; font:700 13px 'Inter',sans-serif; width:fit-content; }}
+.pn-l-svc summary::-webkit-details-marker {{ display:none; }}
+.pn-l-svc summary:after {{ content:'+'; font-weight:800; }} .pn-l-svc details[open] summary:after {{ content:'–'; }}
+.pn-l-svc details[open] > *:not(summary) {{ margin-top:12px; }}
+@media (max-width:640px) {{ .pn-l-hero p {{ display:none; }} .pn-l-hero h1 {{ font-size:27px; margin:10px 0 0; }} .pn-l-hero {{ padding:18px 18px 22px; gap:14px; }} }}
+@media (max-width:820px) {{ .pn-l-steps {{ grid-template-columns:1fr; }} .pn-l-step .im {{ aspect-ratio:400/150; }} }}
 .pn-l-more {{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 0 18px; }}
 .pn-l-more .c {{ background:#fff; border:1px solid {LINE}; border-radius:20px; overflow:hidden; }}
 .pn-l-more .im {{ aspect-ratio:400/190; }} .pn-l-more .t {{ padding:10px 12px 12px; font:700 13px 'Sora',sans-serif; color:{INK}; letter-spacing:-.01em; line-height:1.25; }}
@@ -464,9 +481,22 @@ def landing_parts(lang: str) -> dict:
         lis = "".join(f"<li>{x}</li>" for x in steps)
         return (f'<div class="pn-l-svc{" flip" if flip else ""}{" main" if main else ""}"><div class="art">{_art.scene(scene, "dog").replace("slice","meet")}</div>'
                 f'<div class="bd"><div><span class="pn-eyebrow{" orange" if main else ""}">{tag}</span></div><h2>{title}</h2><div class="sum">{summary}</div>'
-                f'<div class="prob"><b>{"Το πρόβλημα" if el else "The problem"}</b>{problem}</div>'
-                f'<h3>{"Πώς δουλεύει" if el else "How it works"}</h3><ol>{lis}</ol>'
-                + (f'<div class="note">{note}</div>' if note else "") + '</div></div>')
+                f'<details><summary>{"Πώς δουλεύει" if el else "How it works"}</summary>'
+                f'<div class="prob"><b>{"Το πρόβλημα" if el else "The problem"}</b>{problem}</div><ol>{lis}</ol>'
+                + (f'<div class="note">{note}</div>' if note else "") + '</details></div></div>')
+
+
+    steps_items = ([("pets", "Πρόσθεσε το κατοικίδιο", "Όνομα, είδος, ηλικία, βάρος — 1 λεπτό."),
+                    ("symptoms", "Πες τι παρατηρείς", "Με λόγια ή φωνή. Μία ερώτηση τη φορά."),
+                    ("report", "Πάρε την αναφορά", "Καθαρή σύνοψη για να την πας στον κτηνίατρο.")] if el else
+                   [("pets", "Add your pet", "Name, species, age, weight — about a minute."),
+                    ("symptoms", "Tell us what you notice", "In words or by voice. One question at a time."),
+                    ("report", "Get your vet report", "A clear summary to take to the clinic.")])
+    steps = ('<div class="pn-l-head"><span class="pn-eyebrow orange">' + ("ΞΕΚΙΝΑ ΕΔΩ" if el else "START HERE") + '</span>'
+             '<div class="h">' + ("Ξεκίνα σε 3 βήματα" if el else "Start in 3 steps") + '</div></div><div class="pn-l-steps">' +
+             "".join(f'<div class="pn-l-step"><div class="n">{i + 1}</div><div class="im">{_art.scene(k, "dog")}</div>'
+                     f'<div class="bd"><h4>{t}</h4><p>{b}</p></div></div>' for i, (k, t, b) in enumerate(steps_items)) + '</div>')
+    svc_head = ('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΤΙ ΚΑΝΕΙ" if el else "WHAT IT DOES") + '</span></div>')
 
     if el:
         services = "".join([
@@ -546,7 +576,7 @@ def landing_parts(lang: str) -> dict:
         foot = "PetsAIHealth does not provide veterinary diagnosis and does not replace your vet."
     more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
                  "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
-    return {"hero": hero, "services": services, "more": more_html, "foot": foot}
+    return {"hero": hero, "steps": steps, "svc_head": svc_head, "services": services, "more": more_html, "foot": foot}
 
 
 # ── illustrated section cards (report), species picker and intake steps ───────

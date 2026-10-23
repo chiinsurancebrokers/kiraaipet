@@ -7084,13 +7084,25 @@ def render_pet_landing(gate=False):
             st.session_state.screen = "dashboard" if has_pet else "intake"
             st.rerun()
 
+    def _start(key):
+        """One obvious way in: gate mode → sign-in (free plan); otherwise straight to the app."""
+        if not gate:
+            return _cta(key)
+        if st.button(("Ξεκίνα δωρεάν" if el else "Start free"), key=key, type="primary", use_container_width=True, icon="🐾"):
+            st.session_state["_login_plan"] = "free"; st.rerun()
+        st.markdown('<div style="text-align:center;font-size:13px;margin:-2px 0 6px;"><a href="#pn-plans" style="color:#1237C9;font-weight:600;">'
+                    + ("Δες τα πλάνα ↓" if el else "See the plans ↓") + '</a></div>', unsafe_allow_html=True)
+
     st.markdown(parts["hero"], unsafe_allow_html=True)
-    if gate:
-        st.markdown('<a href="#pn-plans" style="display:block;text-align:center;background:#1237C9;color:#fff !important;font-weight:700;'
-                    'padding:14px;border-radius:999px;text-decoration:none !important;margin-top:6px;">'
-                    + ("Δες τα πλάνα και ξεκίνα ↓" if el else "See the plans and start ↓") + '</a>', unsafe_allow_html=True)
-    else:
-        _cta("land_cta_top")
+    _start("land_cta_top")
+    st.markdown(parts["steps"], unsafe_allow_html=True)
+    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "").strip()
+    if _vid:
+        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΤΟ ΣΕ 1 ΛΕΠΤΟ" if el else "WATCH IT IN 1 MINUTE") + '</span></div>',
+                    unsafe_allow_html=True)
+        st.video(_vid)
+    _start("land_cta_steps")
+    st.markdown(parts["svc_head"], unsafe_allow_html=True)
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
     # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
