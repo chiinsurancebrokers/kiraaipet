@@ -6260,44 +6260,34 @@ def _category_content(slug, lang):
         "ktiniatroys": dict(
             icon="🩺",
             title="Για Κτηνιάτρους" if el else "For Veterinarians",
-            lead=("Ένα επιπρόσθετο εργαλείο συλλογής οργανωμένου ιστορικού και "
-                  "προετοιμασίας της επίσκεψης."
+            lead=("Ένας φάκελος ανά ασθενή για όλες τις εξετάσεις και τα έγγραφα, δεύτερη γνώμη AI για την κλινική σου εξέταση "
+                  "και προ-αξιολόγηση από τους ιδιοκτήτες πριν το τηλεφώνημα."
                   if el else
-                  "A supplementary tool for collecting organized history and "
-                  "preparing the visit."),
+                  "One folder per patient for every exam and document, an AI second opinion on your physical exam, "
+                  "and a pre-visit assessment from owners before they call."),
             offers=[
-                ("📋", "Δομημένο ιστορικό" if el else "Structured history",
-                 "Λάβε οργανωμένες πληροφορίες πριν το ραντεβού." if el else
-                 "Receive organized information before the visit."),
+                ("📁", "Φάκελος ασθενή" if el else "Patient Folder",
+                 "Ανέβασε εξετάσεις και έγγραφα· η AI τα οργανώνει ανά εξέταση, με τιμές, ημερομηνίες και σήμανση ανώμαλων." if el else
+                 "Drop in exams and documents; the AI files them by exam with values, dates and flagged abnormals."),
+                ("🧾", "Αναφορά με κλινική εξέταση" if el else "Exam-enhanced report",
+                 "Πρόσθεσε τη φυσική εξέταση και πάρε πρόχειρη αναφορά που επεξεργάζεσαι και υπογράφεις." if el else
+                 "Add your physical exam and get a draft report you edit and sign."),
+                ("🧠", "Δεύτερη γνώμη" if el else "Second opinion",
+                 "Διαφορικές διαγνώσεις, εξετάσεις για αποκλεισμό και red flags, ως υποστήριξη απόφασης." if el else
+                 "Differentials, tests to rule in/out and red flags, as decision support."),
+            ],
+            activities=[
+                ("📞", "Λιγότερες άσκοπες κλήσεις" if el else "Fewer unnecessary calls",
+                 "Ο ιδιοκτήτης κάνει πρώτη αξιολόγηση και η κλινική βλέπει το επίπεδο επείγοντος." if el else
+                 "Owners complete a first assessment so the clinic sees the urgency level up front."),
                 ("⏱️", "Εξοικονόμηση χρόνου" if el else "Time savings",
-                 "Λιγότερη ώρα σε ερωτήσεις ρουτίνας." if el else
-                 "Less time on routine questions."),
-                ("🔗", "Παραπομπές πηγών" if el else "Sourced references",
+                 "Όλα τα έγγραφα σε ένα σημείο, αντί για email, φωτογραφίες και χαρτιά." if el else
+                 "Every document in one place instead of e-mails, photos and paper."),
+                ("🔗", "Πηγές" if el else "Sourced references",
                  "Αναφορές βασισμένες στο MSD Vet Manual." if el else
                  "References grounded in the MSD Vet Manual."),
             ],
-            activities=[
-                ("🏥", "Υλικό για το ιατρείο" if el else "Clinic resources",
-                 "Ενημερωτικό υλικό για ιδιοκτήτες." if el else
-                 "Educational material for owners."),
-                ("📞", "Προετοιμασία επικοινωνίας" if el else "Comms prep",
-                 "Καθοδήγηση για follow-up." if el else
-                 "Guidance for follow-up."),
-                ("🧾", "Πρότυπα αναφορών" if el else "Report templates",
-                 "Έτοιμες δομές σύνοψης." if el else
-                 "Ready-made summary structures."),
-            ],
-            testimonials=[
-                ("Δρ. Παπαδοπούλου" if el else "Dr. Papadopoulou", "Κτηνίατρος" if el else "Veterinarian",
-                 "«Οι ιδιοκτήτες έρχονται πιο προετοιμασμένοι.»" if el else
-                 "\u201cOwners arrive better prepared.\u201d"),
-                ("Δρ. Ιωάννου" if el else "Dr. Ioannou", "Κτηνίατρος" if el else "Veterinarian",
-                 "«Χρήσιμη πρώτη εικόνα του περιστατικού.»" if el else
-                 "\u201cA useful first picture of the case.\u201d"),
-                ("Δρ. Βασιλείου" if el else "Dr. Vasiliou", "Κτηνίατρος" if el else "Veterinarian",
-                 "«Καθαρό ιστορικό, λιγότερη χαμένη ώρα.»" if el else
-                 "\u201cClean history, less wasted time.\u201d"),
-            ],
+            testimonials=[],
         ),
     }
     return data.get(slug)
@@ -6376,14 +6366,18 @@ def render_category_page(slug):
 </div></div>
 <div class="pcat-sec-t">{act_ttl}</div>
 <div class="pcat-grid">{acts_html}</div>
-<div class="pcat-sec-t">{voices_ttl}</div>
+""" + (f"""<div class="pcat-sec-t">{voices_ttl}</div>
 <div class="pcat-hint">{('σύρε για περισσότερα →' if lang=='el' else 'swipe for more →')}</div>
-<div class="pcat-carousel">{tcards_html}</div>
+<div class="pcat-carousel">{tcards_html}</div>""" if tcards_html else "") + """
 """, unsafe_allow_html=True)
 
     cc1, cc2, cc3 = st.columns([1, 2, 1])
     with cc2:
-        if st.button(start_lbl, type="primary", use_container_width=True, key=f"cat_start_{slug}"):
+        if slug == "ktiniatroys":
+            if st.button("🩺 " + ("Δοκίμασε το demo ιατρείου" if lang == "el" else "Try the clinic demo"), type="primary",
+                         use_container_width=True, key="cat_vet_demo"):
+                st.query_params["page"] = "vet"; st.rerun()
+        if slug != "ktiniatroys" and st.button(start_lbl, type="primary", use_container_width=True, key=f"cat_start_{slug}"):
             st.session_state["_welcome_seen"] = True
             st.session_state["_hero_seen"] = True
             st.query_params.clear()
@@ -8294,6 +8288,130 @@ def render_pet_insurance():
     _tool_footer(chat_cta=False)
 
 
+def _vet_status_icon(f):
+    return {"high": "🔺", "low": "🔻", "normal": "✅"}.get(f, "▫️")
+
+
+def render_vet_workbench():
+    import pet_vet as _pv
+    lang = st.session_state.get("lang", "en")
+    el = lang == "el"
+    L = (lambda g, e: g if el else e)
+    st.markdown("""<style>.vw-b{background:#FFFBEB;border:1px solid #FCD34D;border-radius:14px;padding:10px 14px;font-size:13px;color:#7A4B00;margin:6px 0 12px}
+    .vw-h{font:800 24px Sora,Inter,sans-serif;color:#0B1B4B;margin:4px 0}.vw-s{font-size:13px;color:#5B6794}
+    .vw-card{background:#fff;border:1px solid #DDE2F8;border-radius:18px;padding:12px 16px;margin:8px 0}</style>""", unsafe_allow_html=True)
+    top_l, top_r = st.columns([6, 1])
+    with top_l:
+        if st.button(L("← Πίσω", "← Back"), key="vw_back"):
+            st.query_params["page"] = "ktiniatroys"; st.rerun()
+    with top_r:
+        if st.button("🇬🇧 EN" if el else "🇬🇷 ΕΛ", key="vw_lang"):
+            st.session_state.lang = "en" if el else "el"; st.rerun()
+    st.markdown('<div class="vw-h">🩺 PetsAIHealth ' + L("για ιατρεία", "for clinics") + '</div>'
+                '<div class="vw-s">' + L("Φάκελοι εξετάσεων ανά ασθενή, αναφορά και δεύτερη γνώμη AI", "Per-patient exam folders, reports and AI second opinion") + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="vw-b">🧪 <b>' + L("Έκδοση επίδειξης.", "Demo version.") + '</b> '
+                + L("Οι ασθενείς είναι φανταστικοί. Μην ανεβάζετε πραγματικά στοιχεία ασθενών ή ιδιοκτητών· τα δεδομένα μένουν μόνο όσο είναι ανοιχτή η καρτέλα. "
+                    "Τα έγγραφα αναλύονται από το Anthropic (Claude). Υποστήριξη απόφασης, όχι διάγνωση: αποφασίζει και υπογράφει ο κτηνίατρος.",
+                    "Patients are fictional. Do not upload real patient or owner data; data lives only while this tab is open. "
+                    "Documents are analysed by Anthropic (Claude). Decision support, not a diagnosis: the veterinarian decides and signs.")
+                + '</div>', unsafe_allow_html=True)
+
+    if "vet_patients" not in st.session_state:
+        st.session_state["vet_patients"] = _pv.demo_patients()
+        st.session_state["vet_sel"] = None
+    pats = st.session_state["vet_patients"]
+    work = st.session_state.setdefault("vet_work", {})
+    sel = next((p for p in pats if p["id"] == st.session_state.get("vet_sel")), None)
+
+    # ── 01 patients ──
+    if not sel:
+        st.markdown("### 01 " + L("Ασθενείς", "Patients"))
+        c1, c2 = st.columns([4, 1])
+        q = c1.text_input(L("Αναζήτηση (όνομα ή microchip)", "Search (name or microchip)"), key="vw_q", placeholder=L("π.χ. Rex", "e.g. Rex"))
+        if c2.button("＋ " + L("Νέος ασθενής", "New patient"), key="vw_new", use_container_width=True):
+            st.session_state["vw_adding"] = not st.session_state.get("vw_adding")
+        if st.session_state.get("vw_adding"):
+            with st.form("vw_newform"):
+                n = st.text_input(L("Όνομα", "Name")); sp = st.selectbox(L("Είδος", "Species"), ["Dog", "Cat", "Rabbit", "Bird", "Other"])
+                br = st.text_input(L("Φυλή", "Breed")); ch = st.text_input("Microchip"); ag = st.text_input(L("Ηλικία", "Age"))
+                if st.form_submit_button(L("Δημιουργία (demo)", "Create (demo)")) and n.strip():
+                    p = _pv.new_patient(n[:40] + " (demo)", sp, br[:40], ch[:20], ag[:10])
+                    pats.append(p); st.session_state["vet_sel"] = p["id"]; st.session_state["vw_adding"] = False; st.rerun()
+        for p in _pv.search(pats, q):
+            ic = {"Dog": "🐕", "Cat": "🐈", "Rabbit": "🐇", "Bird": "🐦"}.get(p["species"], "🐾")
+            last = max([e.get("date") or "" for e in p["entries"]] or [""])
+            r1, r2 = st.columns([5, 2])
+            r1.markdown(f'<div class="vw-card"><b>{ic} {p["name"]}</b><br><span class="vw-s">{p.get("age","")} · {p.get("breed","")} · '
+                        f'{len(p["entries"])} ' + L("έγγραφα", "document" if len(p["entries"]) == 1 else "documents") + (f' · ' + L("τελευταίο", "latest") + f' {last}' if last else '') + '</span></div>', unsafe_allow_html=True)
+            if r2.button(L("Άνοιγμα φακέλου →", "Open folder →"), key=f"vw_open_{p['id']}", use_container_width=True):
+                st.session_state["vet_sel"] = p["id"]; st.rerun()
+        return
+
+    w = work.setdefault(sel["id"], {"exam": {}, "report": "", "opinion": "", "complaint": sel.get("previsit", ""), "dx": ""})
+    if st.button(L("← Όλοι οι ασθενείς", "← All patients"), key="vw_all"):
+        st.session_state["vet_sel"] = None; st.rerun()
+    st.markdown(f"### 📁 {_pv.patient_header(sel)}")
+    t_doc, t_rep, t_op = st.tabs([L("📁 Φάκελος", "📁 Folder"), L("🧾 Εξέταση & αναφορά", "🧾 Exam & report"), L("🧠 Δεύτερη γνώμη", "🧠 Second opinion")])
+
+    with t_doc:
+        if sel.get("previsit"):
+            st.info("📞 " + L("Προ-αξιολόγηση ιδιοκτήτη: ", "Owner pre-visit assessment: ") + sel["previsit"])
+        files = st.file_uploader(L("Ανέβασε εξετάσεις / έγγραφα (PDF, φωτογραφία)", "Upload exams / documents (PDF, photo)"),
+                                 type=["pdf", "jpg", "jpeg", "png", "webp"], accept_multiple_files=True, key=f"vw_up_{sel['id']}")
+        if files and st.button(L("🔍 Οργάνωση στον φάκελο", "🔍 Organise into the folder"), type="primary", key=f"vw_org_{sel['id']}"):
+            with st.spinner(L("Διαβάζω τα έγγραφα…", "Reading the documents…")):
+                entries, err = _pv.organise(claude, [(f.name, f.getvalue(), f.type) for f in files], lang)
+            if entries:
+                sel["entries"].extend(entries); log_event("vet_folder_add", ok=True); st.rerun()
+            else:
+                log_event("vet_folder_add", ok=False, error=err)
+                st.error(L("Δεν κατάφερα να διαβάσω τα έγγραφα. Δοκίμασε πιο καθαρό αρχείο.", "I couldn't read the documents. Try a clearer file."))
+        rows = sorted(sel["entries"], key=lambda e: e.get("date") or "", reverse=True)
+        if not rows:
+            st.caption(L("Ο φάκελος είναι άδειος.", "The folder is empty."))
+        for i, e in enumerate(rows):
+            with st.expander(f"{e.get('date') or L('χωρίς ημερομηνία', 'undated')} · {e['title']}" + (f" · {e['center']}" if e.get("center") else ""), expanded=(i == 0)):
+                st.caption(e["doc_type"])
+                if e.get("summary"): st.markdown(e["summary"])
+                if e.get("values"):
+                    st.markdown("\n".join(f"- {_vet_status_icon(v['flag'])} **{v['name']}** {v['value']} {v.get('unit','')}" + (f"  _(ref {v['ref']})_" if v.get("ref") else "") for v in e["values"]))
+                if e.get("medications"): st.markdown("💊 " + ", ".join(e["medications"]))
+                if e.get("notes"): st.caption(e["notes"])
+        st.caption(L("🔺 υψηλό · 🔻 χαμηλό · ✅ φυσιολογικό · ▫️ χωρίς εύρος αναφοράς", "🔺 high · 🔻 low · ✅ normal · ▫️ no reference range"))
+
+    with t_rep:
+        w["complaint"] = st.text_area(L("Ιστορικό / παράπονο (από την προ-αξιολόγηση ή δικό σου)", "History / complaint (from the pre-visit assessment or yours)"),
+                                      value=w["complaint"], height=90, key=f"vw_c_{sel['id']}")
+        with st.expander(L("🩺 Φυσική εξέταση", "🩺 Physical exam"), expanded=True):
+            cols = st.columns(2)
+            for i, (k, g, e_, kind) in enumerate(_pv.EXAM_FIELDS):
+                with cols[i % 2]:
+                    lab = g if el else e_
+                    if kind == "num":
+                        v = st.text_input(lab, value=str(w["exam"].get(k, "") or ""), key=f"vw_x_{sel['id']}_{k}", max_chars=10)
+                    else:
+                        v = st.text_input(lab, value=str(w["exam"].get(k, "") or ""), key=f"vw_x_{sel['id']}_{k}", max_chars=200)
+                    w["exam"][k] = v.strip()
+        if st.button(L("✍️ Δημιουργία πρόχειρης αναφοράς", "✍️ Draft the report"), type="primary", key=f"vw_rep_{sel['id']}"):
+            with st.spinner(L("Γράφω την αναφορά…", "Writing the report…")):
+                w["report"] = _pv.draft_report(claude, sel, w["exam"], w["complaint"], lang)
+            log_event("vet_report", ok=not w["report"].startswith("⚠️"))
+        if w["report"]:
+            w["report"] = st.text_area(L("Επεξεργάσου την αναφορά", "Edit the report"), value=w["report"], height=380, key=f"vw_rt_{sel['id']}")
+            st.download_button(L("⬇️ Λήψη (.md)", "⬇️ Download (.md)"), w["report"].encode("utf-8"), file_name=f"report_{sel['id']}.md", key=f"vw_dl_{sel['id']}")
+
+    with t_op:
+        st.caption(L("Υποστήριξη απόφασης για τον κτηνίατρο — δεν αντικαθιστά την κλινική κρίση.", "Decision support for the veterinarian — it does not replace clinical judgement."))
+        w["dx"] = st.text_area(L("Η διάγνωση εργασίας / η ερώτησή σου", "Your working diagnosis / question"), value=w["dx"], height=80, key=f"vw_dx_{sel['id']}")
+        st.caption(L("Χρησιμοποιεί το ιστορικό, τη φυσική εξέταση (καρτέλα «Εξέταση & αναφορά») και τον φάκελο.", "Uses the history, the physical exam (Exam & report tab) and the folder."))
+        if st.button(L("🧠 Δεύτερη γνώμη", "🧠 Get a second opinion"), type="primary", key=f"vw_op_{sel['id']}"):
+            with st.spinner(L("Σκέφτομαι…", "Thinking…")):
+                w["opinion"] = _pv.second_opinion(claude, sel, w["exam"], w["complaint"], w["dx"], lang)
+            log_event("vet_second_opinion", ok=not w["opinion"].startswith("⚠️"))
+        if w["opinion"]:
+            st.markdown(w["opinion"])
+
+
 # ── ROUTER ────────────────────────────────────────────────────────────────────
 _page_param = st.query_params.get("page")
 if _page_param == "admin":
@@ -8302,6 +8420,10 @@ if _page_param == "admin":
 
 if _page_param == "privacy":
     render_privacy_page()
+    st.stop()
+
+if _page_param == "vet":
+    render_vet_workbench()
     st.stop()
 
 if _page_param in CATEGORY_SLUGS:
