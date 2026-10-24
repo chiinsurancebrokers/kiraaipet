@@ -17,6 +17,11 @@ import logging as _logging
 import uuid as _uuid
 import html as _html
 import pet_longevity as _plg
+import vet_rules as _vet_rules   # deterministic safety floor under the nurse chat (MSD-based)
+import followups as _followups   # opt-in one-time check-in email after URGENT / SELF_CARE
+import safety_events as _safety_events   # code-only safety event log (Supabase) for the weekly report
+import vet_knowledge as _vet_knowledge   # MSD owner-level facts for the topics a chat mentions
+import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
                        result_card_html as _pet_result_card_html, banner_html as _pn_banner,
@@ -1004,13 +1009,13 @@ def gpt4o(prompt, system="", max_tokens=3000):
         return f"GPT-4o unavailable: {type(e).__name__}: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-def claude(messages, system="", max_tokens=3000, timeout=60):
+def claude(messages, system="", max_tokens=3000, timeout=60, model=None):
     _t0 = time.time()
     key = get_claude_key()
     if not key:
         log_event("claude_chat", ok=False, error="missing_api_key")
         return "⚠️ Claude API key not set."
-    body = json.dumps({"model":CLAUDE_MODEL,"max_tokens":max_tokens,
+    body = json.dumps({"model":model or CLAUDE_MODEL,"max_tokens":max_tokens,
         "system":system,"messages":messages}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
@@ -2352,6 +2357,44 @@ def record_triage_check(email: str = ""):
         log_event("usage_write", ok=True, kind="triage_check")
     except Exception as e:
         log_event("usage_write", ok=False, error=str(e))
+
+
+def _render_poison_handoff(lang):
+    """Next-step card beside a poisoning verdict: call the vet / 24h clinic now, plus the official bait-report lines when relevant."""
+    last = st.session_state.get("_vs_last") or {}
+    ho = _vet_safety.handoff(last.get("ids"), lang)
+    if not ho:
+        return
+    st.warning(ho["text"])
+    if ho.get("show_vets") and st.button(("🏥 Βρες 24ωρο κτηνιατρείο" if lang == "el" else "🏥 Find a 24h vet"), key="pn_handoff_vets", use_container_width=True):
+        _goto("vets")
+    if ho.get("bait_text"):
+        st.caption(ho["bait_text"])
+
+
+def _render_followup_offer(pet, lang, level):
+    """Opt-in reminder: one email later asking how the pet is. Only for signed-in owners and non-emergency verdicts."""
+    email = st.session_state.get("auth_user", "")
+    if level not in ("URGENT", "SELF_CARE") or not email:
+        return
+    key = f"_fu_done_{pet.get('name','')}_{len(st.session_state.get('triage_chat', []))}"
+    nm = pet.get("name") or ("το κατοικίδιο" if lang == "el" else "your pet")
+    if st.session_state.get(key):
+        st.success((f"🔔 Εντάξει! Θα σου στείλω ένα email σε περίπου {_followups.DELAY_HOURS[level]} ώρες για να δούμε πώς είναι {nm}."
+                    if lang == "el" else f"🔔 Done! I'll email you in about {_followups.DELAY_HOURS[level]} hours to ask how {nm} is doing."))
+        return
+    if st.button(("🔔 Υπενθύμισέ μου να ελέγξουμε πώς είναι " + nm) if lang == "el" else ("🔔 Remind me to check in on " + nm),
+                 key="pn_followup_btn", use_container_width=True):
+        try:
+            due = _followups.schedule(_supabase_client(), email, pet, level, lang)
+            log_event("followup_schedule", ok=bool(due), level=level)
+            st.session_state[key] = bool(due)
+        except Exception as e:
+            log_event("followup_schedule", ok=False, error=str(e))
+            st.warning("Δεν μπόρεσα να ορίσω την υπενθύμιση, δοκίμασε ξανά." if lang == "el" else "Couldn't set the reminder, please try again.")
+        st.rerun()
+    st.caption("Ένα μόνο email, μόνο επειδή το ζήτησες· χωρίς συμπτώματα μέσα. Διαγράφεται με τη διαγραφή δεδομένων." if lang == "el"
+               else "One email only, because you asked; it contains no symptoms. Removed when you delete your data.")
 
 
 def render_plus_paywall(lang="en", feature_label="", full=True):
@@ -5302,6 +5345,7 @@ def render_triage():
             return
         if not st.session_state.triage_chat and paywall_enabled() and not has_plus():
             record_triage_check()   # a new assessment = one of the free monthly checks
+        user_text = _vet_safety.clean_user_text(user_text)     # owner text is data: strip [TRIAGE:..]/[TOOL:..] lookalikes
         st.session_state.triage_chat.append({"role":"user","content":user_text})
         with st.spinner("PetsAIHealth..."):
             p = pet
@@ -5315,9 +5359,70 @@ def render_triage():
             vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
                           if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
             system_ctx = petainurse_system(pet) + f"\n\n{profile_ctx}\n{vitals_ctx}"
+            # Safety floor: deterministic rules over everything the owner has written in this chat, plus the extracted
+            # facts, the pet's profile and measured vitals. They only ever RAISE a final verdict; they never lower it
+            # and never cut the question cycle short.
+            _owner_texts = [m["content"] for m in st.session_state.triage_chat if m["role"] == "user"]
+            _sk = p.get("species_key", "dog")
+            _floor_on = _vet_safety.flag(_secret("VET_FLOOR", "on"))          # kill switch: VET_FLOOR=off restores the old behaviour
+            _extract_on = _floor_on and _vet_safety.flag(_secret("VET_EXTRACT", "on"))
+            _facts = {}
+            try:
+                if _extract_on and _vet_rules.evaluate(_sk, _owner_texts, p).level != "EMERGENCY":   # emergency floor already reached: skip the call
+                    _fk = hash(tuple(_owner_texts))
+                    _cached = st.session_state.get("_vs_facts")
+                    if _cached and _cached[0] == _fk:
+                        _facts = _cached[1]
+                    else:
+                        _xm = _secret("CLAUDE_EXTRACT_MODEL", "claude-haiku-5-5")      # small, fast model: this is a plain extraction task
+                        _xp = [{"role": "user", "content": _vet_safety.extract_prompt(_owner_texts)}]
+                        _fraw = claude(_xp, system=_vet_safety.EXTRACT_SYSTEM, max_tokens=1200, timeout=20, model=_xm)
+                        if _vet_safety.ai_failed(_fraw) and _xm != CLAUDE_MODEL:              # model name not available: retry once with the main model
+                            _fraw = claude(_xp, system=_vet_safety.EXTRACT_SYSTEM, max_tokens=2000, timeout=20)
+                        _facts = {} if _vet_safety.ai_failed(_fraw) else _vet_safety.parse_facts(_fraw)
+                        log_event("vet_extract", ok=bool(_facts), model=_xm)
+                        st.session_state["_vs_facts"] = (_fk, _facts)
+            except Exception:
+                _facts = {}
+            try:
+                if _floor_on:
+                    _vr, _kw_lvl = _vet_safety.evaluate_all(_sk, _owner_texts, p, st.session_state.get("vitals"), _facts)
+                else:
+                    _vr, _kw_lvl = _vet_rules.Result(), ""
+            except Exception:
+                _vr, _kw_lvl = _vet_rules.Result(), ""
+            st.session_state["_vs_last"] = {"ids": [h.id for h in _vr.hits], "level": _vr.level}     # read by the hand-off card
+            _hints = _vet_rules.prompt_hints(_vr)
+            if _hints:
+                system_ctx += "\n\n" + _hints
+            try:
+                _kb = _vet_knowledge.prompt_block(_sk, _owner_texts + [_vet_safety.facts_text(_facts)]) if _floor_on else ""
+            except Exception:
+                _kb = ""
+            if _kb:
+                system_ctx += "\n\n" + _kb
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
-            reply, _lvl = parse_triage_tag(reply)
+            _failed = _vet_safety.ai_failed(reply)
+            if _failed:                                 # AI down: never show an error or "all fine"; give a safe next step
+                reply, _lvl = _vet_safety.fallback_reply(lang, _vr.level)
+                if _vr.hits:
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                _lvl = _vr.level if _vr.level and _vet_rules.RANK[_vr.level] > _vet_rules.RANK[_lvl] else _lvl
+            else:
+                reply, _lvl = parse_triage_tag(reply)
+                if _lvl and _vet_rules.outranks(_vr.level, _lvl):      # final verdict below the floor -> raise it
+                    _lvl = _vr.level
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                if _floor_on and _lvl in ("URGENT", "SELF_CARE"):
+                    reply = reply.rstrip() + "\n\n" + _vet_safety.safety_net(_sk, _lvl, lang)
+            try:                                        # layer 6: codes only, no owner text
+                _dis = _vet_safety.disagreement(_sk, _vr.level, _lvl, [h.id for h in _vr.hits], _kw_lvl, failed=_failed)
+                if _dis:
+                    log_event("safety_disagreement", ok=not _failed, **_dis)
+                    _safety_events.record(_supabase_client(), _dis)
+            except Exception:
+                pass
             reply, _tool = parse_tool_request(reply)
             reply = sanitize_ai_text(reply)
             if _lvl is None:
@@ -5450,6 +5555,9 @@ def render_triage():
     _ai_lvl = _ai_triage_level()
     _is_emergency_msg = (_ai_lvl == "EMERGENCY") if _ai_lvl else any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
     _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
+    if _ai_lvl:
+        _render_poison_handoff(lang)
+    _render_followup_offer(pet, lang, _ai_lvl)
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
     _provider_pet = pet.get("insurance_provider", "") if isinstance(pet, dict) else ""
@@ -6579,6 +6687,7 @@ def render_privacy_page():
                 if sb:
                     try:
                         sb.table("user_prefs").delete().eq("user_email", _email).execute()
+                        sb.table("followups").delete().eq("user_email", _email).execute()
                         log_event("gdpr_delete", ok=True)
                     except Exception as e:
                         log_event("gdpr_delete", ok=False, error=str(e))
