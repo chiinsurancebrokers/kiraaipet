@@ -37,6 +37,18 @@ SRC = {
     "bird_repro": MSD + "exotic-and-laboratory-animals/pet-birds/reproductive-diseases-of-pet-birds",
     "bird_owner": "https://www.merckvetmanual.com/bird-owners/disorders-and-diseases-of-birds/reproductive-disorders-of-pet-birds",
     "reptile": "https://www.merckvetmanual.com/all-other-pets/reptiles/disorders-and-diseases-of-reptiles",
+    # pet-owner section pages
+    "snake": MSD + "special-pet-topics/poisoning/snakebite",
+    "metaldehyde": MSD + "special-pet-topics/poisoning/metaldehyde-poisoning",
+    "insecticide": MSD + "special-pet-topics/poisoning/insecticide-poisoning",
+    "food": MSD + "special-pet-topics/poisoning/food-hazards",
+    "household": MSD + "special-pet-topics/poisoning/household-hazards",
+    "otc": MSD + "special-pet-topics/poisoning/poisoning-from-human-over-the-counter-drugs",
+    "rx": MSD + "special-pet-topics/poisoning/poisonings-from-human-prescription-drugs",
+    "plants": MSD + "special-pet-topics/poisoning/plants-poisonous-to-animals",
+    "salt": MSD + "special-pet-topics/poisoning/salt-poisoning",
+    "emergency": MSD + "special-pet-topics/emergencies/what-to-do-in-a-dog-or-cat-emergency",
+    "dog_gi": MSD + "dog-owners/digestive-disorders-of-dogs/disorders-of-the-stomach-and-intestines-in-dogs",
 }
 
 
@@ -93,7 +105,7 @@ _LONG = (r"(lasted|lasting|for|going|διαρκεσ\w*|εδω και|ηδη) .{0
 _GUMS_BAD = (r"(pale|white|blue|bluish|grey|gray|purple|cyan|muddy|brown)\w*.{0,15}gums?|"
              r"gums?.{0,25}(pale|white|blue|bluish|grey|gray|purple|cyan|muddy)|"
              r"(χλωμ|ασπρ|μπλε|γαλαζ|γκρι|μωβ)\w*.{0,15}ουλα|ουλα.{0,25}(χλωμ|ασπρ|μπλε|γαλαζ|γκρι|μωβ)")
-_INGEST = (r"\b(ate|eaten|eats|eating|swallowed?|ingest\w*|chew\w*|nibbl\w*|licked|stole|stolen|took|taken|gave|given)\b|got into|got hold of|"
+_INGEST = (r"\b(ate|eaten|eats|eating|swallowed?|ingest\w*|chew\w*|nibbl\w*|licked|lapped|drank|drunk|stole|stolen|took|taken|gave|given)\b|got into|got hold of|"
            r"εφαγε|φαει|καταπι|μασησε|μασουλ|τσιμπ|γλειψ|ηπιε|εκλεψε|πηρε|εδωσα")
 
 RULES = [
@@ -285,6 +297,116 @@ RULES = [
          "Prolonged or stalled labour is an emergency.",
          "Παρατεταμένος ή σταματημένος τοκετός είναι επείγον.",
          "", "policy", immediate=True),
+    # ================= added from the MSD pet-owner pages (food, household, drugs, plants, bites, emergencies)
+    Rule("DC-SNAKEBITE", ("dog", "cat"), "EMERGENCY",
+         _r(r"snake|viper|adder|\bφιδι|οχι[αά]|οχια", r"\bbit(e|es|ten)?\b|bitten|fang|strike|struck|δαγκ|τσιμπ"),
+         "A snakebite is an emergency: keep the pet calm and still, go to a vet immediately, and do not cut, suck, ice or tie the wound.",
+         "Δάγκωμα φιδιού είναι επείγον: κράτα το ζώο ήρεμο και ακίνητο, πήγαινε αμέσως σε κτηνίατρο και μην κόψεις, μην ρουφήξεις, μην βάλεις πάγο και μην δέσεις την πληγή.",
+         SRC["snake"], "msd", immediate=True),
+    Rule("DC-METALDEHYDE", ("dog", "cat"), "EMERGENCY",
+         _r(r"metaldehyde|μεταλδεϋδ|μεταλδευδ|(slug|snail|σαλιγκαρ|γυμνοσαλιγκ)\w*.{0,25}(bait|pellet|poison|killer|δολωμ|φαρμακ|χαπακ|κοκκ)|(δολωμ|φαρμακ|bait|pellet)\w*.{0,20}(σαλιγκαρ|γυμνοσαλιγκ|slug|snail)", _INGEST),
+         "Slug and snail bait (metaldehyde) causes tremors, fever and seizures and needs intensive treatment: go to a vet now.",
+         "Το δόλωμα για σαλιγκάρια και γυμνοσάλιαγκες (μεταλδεΰδη) προκαλεί τρέμουλο, πυρετό και σπασμούς και θέλει εντατική θεραπεία: πήγαινε σε κτηνίατρο τώρα.",
+         SRC["metaldehyde"], "msd", immediate=True),
+    Rule("DC-POISON-BAIT", ("dog", "cat"), "EMERGENCY",
+         _r(r"poison(ed)? bait|strychnine|aldicarb|methomyl|carbamate|organophosph|στρυχνιν|αλντικαρμπ|μεθομυλ|οργανοφωσφ|"
+            r"δηλητηριασμεν\w*.{0,15}(δολωμ|φαγητ|κρεας|λουκανικ|κεφτε)"),
+         "Suspected poisoned bait or an insecticide (carbamate, organophosphate, strychnine) can cause drooling, tremors, breathing trouble and seizures within hours: go to a vet now.",
+         "Πιθανό δηλητηριασμένο δόλωμα ή εντομοκτόνο (καρβαμιδικό, οργανοφωσφορικό, στρυχνίνη) μπορεί να προκαλέσει σάλια, τρέμουλο, δύσπνοια και σπασμούς μέσα σε ώρες: πήγαινε σε κτηνίατρο τώρα.",
+         SRC["insecticide"], "msd", immediate=True),
+    Rule("CAT-DOGFLEA", ("cat",), "EMERGENCY",
+         _r(r"permethrin|περμεθριν|dog (flea|tick|spot|pipette|drops|treatment|collar|product)|(for|made for) dogs|σταγονες.{0,12}σκυλ|αντιπαρασιτικ\w*.{0,12}σκυλ|για σκυλους|για σκυλο",
+            r"appl|put|used|gave|on (my|the|her|him|our) cat|εβαλα|εφαρμοσα|χρησιμοποιησα|στη γατα|στον γατο|στη γατουλα"),
+         "Dog flea products (permethrin) can cause tremors and seizures in cats: wash the product off now with mild dish soap and lukewarm water, keep the cat warm, and go to a vet immediately.",
+         "Τα αντιπαρασιτικά για σκύλους (περμεθρίνη) μπορεί να προκαλέσουν τρέμουλο και σπασμούς στις γάτες: ξέπλυνε αμέσως το προϊόν με ήπιο απορρυπαντικό πιάτων και χλιαρό νερό, κράτα τη γάτα ζεστή και πήγαινε αμέσως σε κτηνίατρο.",
+         SRC["insecticide"], "policy", immediate=True),
+    Rule("DC-BATTERY", ("dog", "cat"), "EMERGENCY",
+         _r(r"batter(y|ies)|button cell|coin cell|μπαταρι", _INGEST),
+         "A swallowed battery (especially a flat button or lithium cell) can burn the throat and stomach within hours: go to a vet now and do not make the pet vomit.",
+         "Μια μπαταρία που καταπίθηκε (ιδίως κουμπί ή λιθίου) μπορεί να κάψει τον οισοφάγο και το στομάχι μέσα σε ώρες: πήγαινε σε κτηνίατρο τώρα και μην προκαλέσεις εμετό.",
+         SRC["household"], "msd", immediate=True),
+    Rule("DC-CORROSIVE", ("dog", "cat"), "URGENT",
+         _r(r"drain (cleaner|opener|unblocker)|bleach|dishwasher (tablet|detergent|pod|powder)|toilet (cleaner|bowl cleaner)|oven cleaner|caustic|corrosive|limescale|"
+            r"χλωριν|αλευκαντικ|μπλιτσ|καθαριστικ\w*.{0,12}(αποχετευσ|τουαλετ|φουρν|πλυντηρι)|αποφρακτικ|καυστικ", _INGEST),
+         "Swallowed drain, toilet or dishwasher cleaner and bleach can burn the mouth, throat and stomach, sometimes hours later: call a vet now, give only water or milk, and do not induce vomiting.",
+         "Καθαριστικά αποχέτευσης, τουαλέτας ή πλυντηρίου πιάτων και χλωρίνη που καταπίθηκαν μπορεί να κάψουν στόμα, λαιμό και στομάχι, ακόμη και ώρες αργότερα: κάλεσε κτηνίατρο τώρα, δώσε μόνο νερό ή γάλα και μην προκαλέσεις εμετό.",
+         SRC["household"], "msd"),
+    Rule("DC-ALCOHOL", ("dog", "cat"), "URGENT",
+         _r(r"alcohol|\bbeer|\bwine|vodka|whisk|\brum\b|ouzo|tsipouro|raki\b|liqueur|antiseptic spray|αλκοολ|μπυρα|κρασι|βοτκα|ουισκι|ουζο|τσιπουρο|ρακη",
+            r"drank|drunk|lapped|licked|\bate\b|swallow|ηπιε|ηπιαν|γλειψ|καταπι|ποτισ|εφαγε"),
+         "Alcohol can cause vomiting, wobbliness, low body temperature and slow breathing within 30 to 60 minutes: call a vet now.",
+         "Το αλκοόλ μπορεί να προκαλέσει εμετό, αστάθεια, χαμηλή θερμοκρασία και αργή αναπνοή μέσα σε 30 έως 60 λεπτά: κάλεσε κτηνίατρο τώρα.",
+         SRC["household"], "msd"),
+    Rule("DC-OTC-STIMULANT", ("dog", "cat"), "URGENT",
+         _r(r"pseudoephedrine|ephedrine|ephedra|sudafed|decongestant|oxymetazoline|xylometazoline|naphazoline|tetrahydrozoline|nasal spray|eye drops for redness|guarana|"
+            r"aspirin|ασπιριν|ψευδοεφεδριν|εφεδριν|ρινικο σπρει|αποσυμφορητικ", _INGEST),
+         "Cold and flu medicines (decongestants), aspirin and stimulant supplements can cause a racing heart, tremors, seizures or bleeding in pets: call a vet or poison line now.",
+         "Φάρμακα για το κρυολόγημα (αποσυμφορητικά), ασπιρίνη και διεγερτικά συμπληρώματα μπορεί να προκαλέσουν ταχυκαρδία, τρέμουλο, σπασμούς ή αιμορραγία: κάλεσε κτηνίατρο ή κέντρο δηλητηριάσεων τώρα.",
+         SRC["otc"], "msd"),
+    Rule("DC-RX-HUMAN", ("dog", "cat"), "URGENT",
+         _r(r"antidepress|prozac|fluoxetine|sertraline|zoloft|citalopram|escitalopram|venlafaxine|amitriptyline|beta[- ]?blocker|propranolol|metoprolol|atenolol|bisoprolol|"
+            r"amlodipine|diltiazem|verapamil|lisinopril|enalapril|ramipril|losartan|baclofen|cyclobenzaprine|zolpidem|alprazolam|xanax|diazepam|lorazepam|valium|"
+            r"sleeping (pill|tablet|aid)|sedative|tranquili[sz]er|adhd|ritalin|adderall|amphetamine|methylphenidate|vitamin d|cholecalciferol|calcipotriene|calcipotriol|psoriasis|"
+            r"iron (pill|tablet|supplement)|ferrous|blood pressure (pill|tablet|medic)|heart (pill|tablet|medic)|"
+            r"αντικαταθλιπτ|ηρεμιστικ|υπνωτικ|βιταμινη d|σιδηρ|ψωριασ|χαπι\w*.{0,12}(πιεση|καρδια|υπνο|ηρεμ)|βηταλυτικ|ριταλιν", _INGEST),
+         "Human prescription drugs (antidepressants, heart and blood-pressure pills, sleeping pills, ADHD drugs, vitamin D or iron) can cause heart rhythm problems, seizures or kidney damage, sometimes after a delay: call a vet or poison line now.",
+         "Τα ανθρώπινα συνταγογραφούμενα φάρμακα (αντικαταθλιπτικά, χάπια για καρδιά και πίεση, υπνωτικά, φάρμακα ΔΕΠΥ, βιταμίνη D ή σίδηρος) μπορεί να προκαλέσουν αρρυθμίες, σπασμούς ή νεφρική βλάβη, ενίοτε με καθυστέρηση: κάλεσε κτηνίατρο ή κέντρο δηλητηριάσεων τώρα.",
+         SRC["rx"], "msd"),
+    Rule("DC-FLUOROURACIL", ("dog", "cat"), "EMERGENCY",
+         _r(r"fluorouracil|5-?fu\b|efudex|carac\b|φθοριουρακιλ|φλουορουρακιλ", _INGEST),
+         "5-fluorouracil skin cream can kill a dog even in small amounts, with vomiting then seizures within hours: go to a vet immediately.",
+         "Η κρέμα 5-φθοριουρακίλης μπορεί να σκοτώσει σκύλο ακόμη και σε μικρή ποσότητα, με εμετό και μετά σπασμούς μέσα σε ώρες: πήγαινε αμέσως σε κτηνίατρο.",
+         SRC["rx"], "msd", immediate=True),
+    Rule("DC-PLANT-SEVERE", ("dog", "cat"), "EMERGENCY",
+         _r(r"oleander|πικροδαφν|\byew\b|ταξοσ|lily of the valley|κρινακι.{0,12}κοιλαδ|castor (bean|oil plant)|\bricin|κικινο|azalea|rhododendron|αζαλεα|ροδοδενδρ|"
+            r"mistletoe|ιξοσ|autumn crocus|colchicum|κολχικ", _INGEST),
+         "Oleander, yew, lily of the valley, azalea, castor bean, mistletoe and autumn crocus are dangerous to the heart, gut or breathing and can kill quickly: go to a vet now.",
+         "Η πικροδάφνη, ο ίταμος, το κρινάκι της κοιλάδας, η αζαλέα, η καστορέλαιο-φυτό (κικίνος), το γκι και το φθινοπωρινό κρόκο είναι επικίνδυνα για καρδιά, έντερο ή αναπνοή και μπορούν να σκοτώσουν γρήγορα: πήγαινε σε κτηνίατρο τώρα.",
+         SRC["plants"], "msd", immediate=True),
+    Rule("DC-PLANT-OTHER", ("dog", "cat"), "URGENT",
+         _r(r"foxglove|διγιταλ|sago|cycad|coontie|κυκασ|dieffenbachia|dumb ?cane|philodendron|caladium|ντιφενμπαχ|φιλοδενδρ|καλαδι|"
+            r"marijuana|cannabis|hashish|\bthc\b|κανναβ|μαριχουαν|χασισ|jerusalem cherry|cyclamen|κυκλαμιν", _INGEST),
+         "This plant (or cannabis) can cause heart or liver problems, mouth and throat swelling, or poisoning signs within hours: call a vet today, sooner if breathing, wobbling or vomiting starts.",
+         "Αυτό το φυτό (ή η κάνναβη) μπορεί να προκαλέσει καρδιακά ή ηπατικά προβλήματα, πρήξιμο σε στόμα και λαιμό ή σημεία δηλητηρίασης μέσα σε ώρες: κάλεσε κτηνίατρο σήμερα, νωρίτερα αν αρχίσει δύσπνοια, αστάθεια ή εμετός.",
+         SRC["plants"], "msd"),
+    Rule("DOG-BREADDOUGH", ("dog",), "URGENT",
+         _r(r"\bdough\b|ζυμη|ζυμαρι|προζυμ", _INGEST),
+         "Raw yeast dough swells in the stomach and makes alcohol: it can twist the stomach or cause staggering and seizures, so call a vet today and watch for a swollen belly or retching.",
+         "Η ωμή ζύμη με μαγιά φουσκώνει στο στομάχι και παράγει αλκοόλ: μπορεί να στρίψει το στομάχι ή να προκαλέσει ζάλη και σπασμούς, οπότε κάλεσε κτηνίατρο σήμερα και πρόσεξε φουσκωμένη κοιλιά ή ξερομάρισμα.",
+         SRC["food"], "msd"),
+    Rule("BIRD-AVOCADO", ("bird",), "EMERGENCY",
+         _r(r"avocado|guacamole|αβοκαντο", _INGEST),
+         "Avocado can kill pet birds within 48 hours by damaging the heart: go to an avian vet now.",
+         "Το αβοκάντο μπορεί να σκοτώσει πουλιά μέσα σε 48 ώρες βλάπτοντας την καρδιά: πήγαινε τώρα σε κτηνίατρο πουλιών.",
+         SRC["food"], "msd", immediate=True),
+    Rule("DC-SALT", ("dog", "cat"), "URGENT",
+         _r(r"salt dough|play ?dough|rock salt|too much salt|(a lot|lots|bag|handful|pack) of salt|ζυμαρι.{0,12}αλατ|πολυ αλατι|αλατι.{0,12}(παλαμ|πακετο|σακουλ)", _INGEST),
+         "A large amount of salt (salt dough, rock salt) can cause vomiting, tremors and seizures: call a vet now and give water only in small sips.",
+         "Μεγάλη ποσότητα αλατιού (ζύμη αλατιού, χονδρό αλάτι) μπορεί να προκαλέσει εμετό, τρέμουλο και σπασμούς: κάλεσε κτηνίατρο τώρα και δώσε νερό μόνο σε μικρές γουλιές.",
+         SRC["salt"], "msd"),
+    Rule("DC-CHOKING", ("dog", "cat"), "EMERGENCY",
+         _r(r"\bchok(e|es|ed|ing)\b|something stuck in (his|her|the|its) throat|stuck in (his|her|the|its) throat|πνιγεται|πνιγηκε|κολλησε.{0,15}λαιμο|σφηνωσε.{0,15}λαιμο"),
+         "A choking pet can stop breathing: check the mouth without putting your fingers in, give firm thumps between the shoulder blades, and go to a vet at once.",
+         "Ένα ζώο που πνίγεται μπορεί να σταματήσει να αναπνέει: κοίταξε το στόμα χωρίς να βάλεις τα δάχτυλα μέσα, δώσε δυνατά χτυπήματα ανάμεσα στις ωμοπλάτες και πήγαινε αμέσως σε κτηνίατρο.",
+         SRC["emergency"], "msd", exclude=r"choke (chain|collar|leash)|chok\w* collar|κολαρο στραγγαλ", immediate=True),
+    Rule("DC-BLOODY-GI", ("dog", "cat"), "URGENT",
+         _r(r"(bloody|blood in|with blood|blood\b).{0,20}(diarrh|stool|poo|vomit|faeces|feces|vomit)|(diarrh|stool|poo|vomit|faeces|feces).{0,20}(blood|bloody|bloodstain)|coffee[- ]?ground|"
+            r"αιμα.{0,20}(διαρρο|κοπρανα|εμετ)|(διαρροι|κοπρανα|εμετ\w*|εξεμεσ\w*).{0,20}(αιμα|αιματ)|αιματηρ|ματωμεν"),
+         "Blood in vomit or diarrhoea can mean haemorrhagic gastroenteritis, parvovirus or an obstruction, and dehydration can set in fast: see a vet today.",
+         "Αίμα στον εμετό ή στη διάρροια μπορεί να σημαίνει αιμορραγική γαστρεντερίτιδα, παρβοϊό ή απόφραξη και η αφυδάτωση έρχεται γρήγορα: δες κτηνίατρο σήμερα.",
+         SRC["dog_gi"], "msd", exclude=r"rat poison|rodenticide|ποντικοφαρμακ"),
+    Rule("DOG-PARVO", ("dog",), "EMERGENCY",
+         _r(r"parvo|παρβο|(puppy|pup\b|κουταβ|\b\d+ ?(weeks?|εβδομαδ)).{0,60}(bloody|blood|αιμα|αιματ)",
+            r"vomit|diarrh|lethar|bloody|blood|sick|εμετ|διαρρο|ληθαργ|αιμα"),
+         "A puppy or unvaccinated dog with vomiting and bloody diarrhoea may have parvovirus, which can kill within hours without treatment: go to a vet now and keep them away from other dogs.",
+         "Ένα κουτάβι ή αεμβολίαστος σκύλος με εμετό και αιματηρή διάρροια μπορεί να έχει παρβοϊό, που μπορεί να σκοτώσει μέσα σε ώρες χωρίς θεραπεία: πήγαινε τώρα σε κτηνίατρο και κράτα τον μακριά από άλλους σκύλους.",
+         SRC["dog_gi"], "msd", exclude=r"vaccinated for parvo|εμβολιασμεν\w* για παρβο|parvo (shot|vaccine|vaccination)", immediate=True),
+    Rule("DC-FOREIGN-BODY", ("dog", "cat"), "URGENT",
+         _r(r"\bsock|stocking|\bstring\b|\byarn|\bthread|tinsel|needle|ribbon|hair ?tie|rubber band|corn ?cob|fishing (line|hook)|"
+            r"καλτσα|κλωστη|βελονα|κορδελα|λαστιχακι|καλαμποκι.{0,8}(ροκα|στελεχοσ)|πετονι|αγκιστρι", _INGEST),
+         "A swallowed sock, string, needle, ribbon or corn cob can block or cut the gut: call a vet today, do not pull anything hanging out, and go now if vomiting, belly pain or retching starts.",
+         "Κάλτσα, κλωστή, βελόνα, κορδέλα ή ρόκα καλαμποκιού που καταπίθηκε μπορεί να φράξει ή να κόψει το έντερο: κάλεσε κτηνίατρο σήμερα, μην τραβήξεις κάτι που κρέμεται και πήγαινε αμέσως αν αρχίσει εμετός, πόνος ή ξερομάρισμα.",
+         SRC["dog_gi"], "msd"),
 ]
 
 

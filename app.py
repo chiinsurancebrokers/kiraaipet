@@ -19,6 +19,7 @@ import html as _html
 import pet_longevity as _plg
 import vet_rules as _vet_rules   # deterministic safety floor under the nurse chat (MSD-based)
 import followups as _followups   # opt-in one-time check-in email after URGENT / SELF_CARE
+import vet_knowledge as _vet_knowledge   # MSD owner-level facts for the topics a chat mentions
 import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
@@ -5371,6 +5372,12 @@ def render_triage():
             _hints = _vet_rules.prompt_hints(_vr)
             if _hints:
                 system_ctx += "\n\n" + _hints
+            try:
+                _kb = _vet_knowledge.prompt_block(_sk, _owner_texts + [_vet_safety.facts_text(_facts)])
+            except Exception:
+                _kb = ""
+            if _kb:
+                system_ctx += "\n\n" + _kb
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
             _failed = _vet_safety.ai_failed(reply)

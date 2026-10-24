@@ -14,6 +14,7 @@ jobs:
       - run: python3 -I dev/test_vet_rules.py
       - run: python3 -I dev/test_vet_safety.py
       - run: python3 -I dev/test_followups.py
+      - run: python3 -I dev/test_vet_knowledge.py
   e2e:
     runs-on: ubuntu-latest
     steps:

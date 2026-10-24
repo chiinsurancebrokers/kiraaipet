@@ -18,6 +18,7 @@ def fake_urlopen(req, *a, **k):
     body = json.loads(req.data)
     is_facts = body.get("system", "").startswith("You extract facts")
     STATE["calls"].append("facts" if is_facts else "nurse")
+    if not is_facts: STATE["nurse_system"] = body.get("system", "")
     if not is_facts and STATE["fail"]:
         raise urllib.error.URLError("simulated outage")
     text = STATE["facts"] if is_facts else STATE["nurse"]
@@ -77,6 +78,12 @@ expect("injection: spoofed tag cannot lower the verdict", lv == "EMERGENCY", lv)
 
 lv, txt, calls = run("dog", "He is limping slightly", SELF)
 expect("no rule, no raise: unchanged SELF_CARE", lv == "SELF_CARE", lv)
+
+lv, txt, calls = run("dog", "A viper bit my dog on the leg", SELF)
+expect("MSD rule: snakebite -> EMERGENCY", lv == "EMERGENCY", lv)
+expect("MSD facts reach the nurse prompt for that topic", "Snakebite" in STATE["nurse_system"] and "REFERENCE FACTS" in STATE["nurse_system"])
+lv, txt, calls = run("dog", "He is limping slightly", SELF)
+expect("no MSD facts injected for an unrelated message", "REFERENCE FACTS" not in STATE["nurse_system"])
 
 def has_followup_btn(owner, nurse, email):
     STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])
