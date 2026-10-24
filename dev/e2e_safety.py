@@ -77,4 +77,18 @@ expect("injection: spoofed tag cannot lower the verdict", lv == "EMERGENCY", lv)
 
 lv, txt, calls = run("dog", "He is limping slightly", SELF)
 expect("no rule, no raise: unchanged SELF_CARE", lv == "SELF_CARE", lv)
+
+def has_followup_btn(owner, nurse, email):
+    STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])
+    at = AppTest.from_file(os.path.join(ROOT, "dev", "harness.py"), default_timeout=90)
+    at.query_params["t"] = "triage"; at.run()
+    if email: at.session_state["auth_user"] = email
+    at.session_state["triage_chat"] = []; at.run()
+    at.text_area(key="pn_compose_text").set_value(owner)
+    [b for b in at.button if b.label.startswith("\u27a4")][0].click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return any(b.key == "pn_followup_btn" for b in at.button)
+expect("reminder: offered after SELF_CARE when signed in", has_followup_btn("He is limping slightly", SELF, "a@b.gr"))
+expect("reminder: not offered when signed out", not has_followup_btn("He is limping slightly", SELF, ""))
+expect("reminder: not offered after an EMERGENCY", not has_followup_btn("He ate xylitol gum", SELF, "a@b.gr"))
 sys.exit(0 if ok else 1)

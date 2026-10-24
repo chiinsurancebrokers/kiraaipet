@@ -18,6 +18,7 @@ import uuid as _uuid
 import html as _html
 import pet_longevity as _plg
 import vet_rules as _vet_rules   # deterministic safety floor under the nurse chat (MSD-based)
+import followups as _followups   # opt-in one-time check-in email after URGENT / SELF_CARE
 import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
@@ -2354,6 +2355,31 @@ def record_triage_check(email: str = ""):
         log_event("usage_write", ok=True, kind="triage_check")
     except Exception as e:
         log_event("usage_write", ok=False, error=str(e))
+
+
+def _render_followup_offer(pet, lang, level):
+    """Opt-in reminder: one email later asking how the pet is. Only for signed-in owners and non-emergency verdicts."""
+    email = st.session_state.get("auth_user", "")
+    if level not in ("URGENT", "SELF_CARE") or not email:
+        return
+    key = f"_fu_done_{pet.get('name','')}_{len(st.session_state.get('triage_chat', []))}"
+    nm = pet.get("name") or ("το κατοικίδιο" if lang == "el" else "your pet")
+    if st.session_state.get(key):
+        st.success((f"🔔 Εντάξει! Θα σου στείλω ένα email σε περίπου {_followups.DELAY_HOURS[level]} ώρες για να δούμε πώς είναι {nm}."
+                    if lang == "el" else f"🔔 Done! I'll email you in about {_followups.DELAY_HOURS[level]} hours to ask how {nm} is doing."))
+        return
+    if st.button(("🔔 Υπενθύμισέ μου να ελέγξουμε πώς είναι " + nm) if lang == "el" else ("🔔 Remind me to check in on " + nm),
+                 key="pn_followup_btn", use_container_width=True):
+        try:
+            due = _followups.schedule(_supabase_client(), email, pet, level, lang)
+            log_event("followup_schedule", ok=bool(due), level=level)
+            st.session_state[key] = bool(due)
+        except Exception as e:
+            log_event("followup_schedule", ok=False, error=str(e))
+            st.warning("Δεν μπόρεσα να ορίσω την υπενθύμιση, δοκίμασε ξανά." if lang == "el" else "Couldn't set the reminder, please try again.")
+        st.rerun()
+    st.caption("Ένα μόνο email, μόνο επειδή το ζήτησες· χωρίς συμπτώματα μέσα. Διαγράφεται με τη διαγραφή δεδομένων." if lang == "el"
+               else "One email only, because you asked; it contains no symptoms. Removed when you delete your data.")
 
 
 def render_plus_paywall(lang="en", feature_label="", full=True):
@@ -5498,6 +5524,7 @@ def render_triage():
     _ai_lvl = _ai_triage_level()
     _is_emergency_msg = (_ai_lvl == "EMERGENCY") if _ai_lvl else any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
     _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
+    _render_followup_offer(pet, lang, _ai_lvl)
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
     _provider_pet = pet.get("insurance_provider", "") if isinstance(pet, dict) else ""
@@ -6627,6 +6654,7 @@ def render_privacy_page():
                 if sb:
                     try:
                         sb.table("user_prefs").delete().eq("user_email", _email).execute()
+                        sb.table("followups").delete().eq("user_email", _email).execute()
                         log_event("gdpr_delete", ok=True)
                     except Exception as e:
                         log_event("gdpr_delete", ok=False, error=str(e))
