@@ -1,0 +1,23 @@
+name: safety-gate
+# Blocks a merge when a change breaks the vet safety floor or the layers around it.
+on:
+  pull_request:
+  push:
+    branches: [main, design/petify-layout]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 -I dev/test_vet_rules.py
+      - run: python3 -I dev/test_vet_safety.py
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python3 -I dev/e2e_safety.py   # real app, Anthropic faked, no secrets needed

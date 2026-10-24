@@ -18,6 +18,7 @@ import uuid as _uuid
 import html as _html
 import pet_longevity as _plg
 import vet_rules as _vet_rules   # deterministic safety floor under the nurse chat (MSD-based)
+import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
                        result_card_html as _pet_result_card_html, banner_html as _pn_banner,
@@ -5303,6 +5304,7 @@ def render_triage():
             return
         if not st.session_state.triage_chat and paywall_enabled() and not has_plus():
             record_triage_check()   # a new assessment = one of the free monthly checks
+        user_text = _vet_safety.clean_user_text(user_text)     # owner text is data: strip [TRIAGE:..]/[TOOL:..] lookalikes
         st.session_state.triage_chat.append({"role":"user","content":user_text})
         with st.spinner("PetsAIHealth..."):
             p = pet
@@ -5316,21 +5318,54 @@ def render_triage():
             vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
                           if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
             system_ctx = petainurse_system(pet) + f"\n\n{profile_ctx}\n{vitals_ctx}"
-            # Safety floor: deterministic rules over everything the owner has written in this chat.
-            # They only ever RAISE a final verdict; they never lower it and never cut the question cycle short.
+            # Safety floor: deterministic rules over everything the owner has written in this chat, plus the extracted
+            # facts, the pet's profile and measured vitals. They only ever RAISE a final verdict; they never lower it
+            # and never cut the question cycle short.
+            _owner_texts = [m["content"] for m in st.session_state.triage_chat if m["role"] == "user"]
+            _sk = p.get("species_key", "dog")
+            _facts = {}
             try:
-                _vr = _vet_rules.evaluate(p.get("species_key", "dog"), [m["content"] for m in st.session_state.triage_chat if m["role"] == "user"], p)
+                _raw_lvl = _vet_rules.evaluate(_sk, _owner_texts, p).level
+                if _raw_lvl != "EMERGENCY":            # an emergency floor is already reached: no need for the extra call
+                    _fk = hash(tuple(_owner_texts))
+                    _cached = st.session_state.get("_vs_facts")
+                    if _cached and _cached[0] == _fk:
+                        _facts = _cached[1]
+                    else:
+                        _fraw = claude([{"role": "user", "content": _vet_safety.extract_prompt(_owner_texts)}],
+                                       system=_vet_safety.EXTRACT_SYSTEM, max_tokens=2000, timeout=20)
+                        _facts = {} if _vet_safety.ai_failed(_fraw) else _vet_safety.parse_facts(_fraw)
+                        st.session_state["_vs_facts"] = (_fk, _facts)
             except Exception:
-                _vr = _vet_rules.Result()
+                _facts = {}
+            try:
+                _vr, _kw_lvl = _vet_safety.evaluate_all(_sk, _owner_texts, p, st.session_state.get("vitals"), _facts)
+            except Exception:
+                _vr, _kw_lvl = _vet_rules.Result(), ""
             _hints = _vet_rules.prompt_hints(_vr)
             if _hints:
                 system_ctx += "\n\n" + _hints
             reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
                            system=system_ctx, max_tokens=3000)
-            reply, _lvl = parse_triage_tag(reply)
-            if _lvl and _vet_rules.outranks(_vr.level, _lvl):      # final verdict below the rule floor -> raise it
-                _lvl = _vr.level
-                reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+            _failed = _vet_safety.ai_failed(reply)
+            if _failed:                                 # AI down: never show an error or "all fine"; give a safe next step
+                reply, _lvl = _vet_safety.fallback_reply(lang, _vr.level)
+                if _vr.hits:
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                _lvl = _vr.level if _vr.level and _vet_rules.RANK[_vr.level] > _vet_rules.RANK[_lvl] else _lvl
+            else:
+                reply, _lvl = parse_triage_tag(reply)
+                if _lvl and _vet_rules.outranks(_vr.level, _lvl):      # final verdict below the floor -> raise it
+                    _lvl = _vr.level
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                if _lvl in ("URGENT", "SELF_CARE"):
+                    reply = reply.rstrip() + "\n\n" + _vet_safety.safety_net(_sk, _lvl, lang)
+            try:                                        # layer 6: codes only, no owner text
+                _dis = _vet_safety.disagreement(_sk, _vr.level, _lvl, [h.id for h in _vr.hits], _kw_lvl, failed=_failed)
+                if _dis:
+                    log_event("safety_disagreement", ok=not _failed, **_dis)
+            except Exception:
+                pass
             reply, _tool = parse_tool_request(reply)
             reply = sanitize_ai_text(reply)
             if _lvl is None:
