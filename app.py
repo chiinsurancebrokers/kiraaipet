@@ -7143,12 +7143,19 @@ def render_pet_landing(gate=False):
             st.markdown('<a class="pn-ghost" href="#pn-how">' + ("Δες πώς λειτουργεί" if el else "See how it works") + '</a>', unsafe_allow_html=True)
     st.markdown(parts["chips"], unsafe_allow_html=True)
     st.markdown('<div id="pn-how" style="scroll-margin-top:12px;"></div>', unsafe_allow_html=True)
-    # Same explainer video as petsaihealth.com (override with EXPLAINER_VIDEO_URL; set it to "off" to hide)
-    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "https://petsaihealth.com/wp-content/uploads/2026/10/content-3.mp4").strip()
-    if _vid and _vid.lower() != "off":
-        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ" if el else "SEE HOW IT WORKS") + '</span></div>',
+    # Explainer video (EN / EL, in static/video). EXPLAINER_VIDEO_URL overrides it with your own video; "off" hides the section.
+    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "").strip()
+    if _vid.lower() != "off":
+        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ" if el else "SEE HOW IT WORKS") + '</span>'
+                    '<div class="h">' + ("Η PetsAIHealth σε 30 δευτερόλεπτα" if el else "PetsAIHealth in 30 seconds") + '</div></div>',
                     unsafe_allow_html=True)
-        st.video(_vid)
+        if _vid:
+            st.video(_vid)
+        else:
+            _lg = "el" if el else "en"
+            st.markdown(f'<video controls playsinline preload="metadata" poster="/app/static/video/poster_{_lg}.jpg" '
+                        f'style="width:100%;border-radius:24px;background:#0B1B4B;box-shadow:0 24px 50px -30px rgba(18,55,201,.6);display:block;">'
+                        f'<source src="/app/static/video/explainer_{_lg}.mp4" type="video/mp4"></video>', unsafe_allow_html=True)
     st.markdown(parts["steps"], unsafe_allow_html=True)
     st.markdown(parts["heroes"], unsafe_allow_html=True)
     st.markdown(parts["svc_head"], unsafe_allow_html=True)
