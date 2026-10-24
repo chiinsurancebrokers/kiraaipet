@@ -453,6 +453,26 @@ LANDING_CSS = f"""
 .pn-l-svc details[open] > *:not(summary) {{ margin-top:12px; }}
 @media (max-width:640px) {{ .pn-l-hero p {{ display:none; }} .pn-l-hero h1 {{ font-size:27px; margin:10px 0 0; }} .pn-l-hero {{ padding:18px 18px 22px; gap:14px; }} }}
 @media (max-width:820px) {{ .pn-l-steps {{ grid-template-columns:1fr; }} .pn-l-step .im {{ aspect-ratio:400/150; }} }}
+.pn-brand {{ display:flex; align-items:center; gap:12px; padding:4px 2px 0; }}
+.pn-brand .tile {{ width:46px; height:46px; border-radius:15px; background:{ORANGE}; display:flex; align-items:center; justify-content:center; transform:rotate(-5deg);
+  box-shadow:0 8px 18px -8px rgba(238,115,64,.9); flex-shrink:0; }}
+.pn-brand .tile svg {{ width:26px; height:26px; }}
+.pn-brand .wm {{ font-family:var(--pn-display); font-weight:800; font-size:25px; letter-spacing:-.04em; color:{INK}; line-height:1; }}
+.pn-heroes {{ margin:26px 0 18px; text-align:center; }}
+.pn-heroes .h {{ font-family:var(--pn-display); font-weight:800; font-size:30px; letter-spacing:-.035em; color:{INK}; line-height:1.1; margin:10px 0 8px; }}
+.pn-heroes p {{ font-size:15px; line-height:1.6; color:{MUTED}; max-width:560px; margin:0 auto 16px; }}
+.pn-hgrid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }}
+.pn-hcard {{ background:#fff; border:1px solid {LINE}; border-radius:24px; overflow:hidden; }}
+.pn-hcard .im {{ background:linear-gradient(160deg,{LAV},{LAV2}); padding:12px 8px 6px; }}
+.pn-hcard .im img {{ width:100%; height:auto; display:block; aspect-ratio:1/1; object-fit:contain; }}
+.pn-hcard .n {{ font:800 17px 'Sora',sans-serif; letter-spacing:-.02em; color:{INK}; padding:10px 8px 0; }}
+.pn-hcard .s {{ font-size:12.5px; color:{MUTED}; padding:0 8px 12px; }}
+.pn-ready {{ text-align:center; color:#fff; }}
+.pn-ready .row {{ display:flex; justify-content:center; gap:6px; margin:0 0 6px; }}
+.pn-ready .row img {{ width:22%; max-width:96px; height:auto; }}
+.pn-ready .h {{ font-family:var(--pn-display); font-weight:800; font-size:32px; letter-spacing:-.035em; margin:8px 0 6px; }}
+.pn-ready p {{ font-size:15.5px; line-height:1.55; color:#D5DCFF; margin:0 0 6px; }}
+@media (max-width:820px) {{ .pn-hgrid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} .pn-heroes .h {{ font-size:25px; }} .pn-ready .h {{ font-size:27px; }} }}
 .pn-l-more {{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 0 18px; }}
 .pn-l-more .c {{ background:#fff; border:1px solid {LINE}; border-radius:20px; overflow:hidden; }}
 .pn-l-more .im {{ aspect-ratio:400/190; }} .pn-l-more .t {{ padding:10px 12px 12px; font:700 13px 'Sora',sans-serif; color:{INK}; letter-spacing:-.01em; line-height:1.25; }}
@@ -465,6 +485,36 @@ LANDING_CSS = f"""
 }}
 </style>
 """
+
+
+HERO_NAMES_UI = {"dog": "Perro", "cat": "Gata", "rabbit": "Gaz", "bird": "Ave"}
+
+
+def brand_html() -> str:
+    """Orange paw tile + wordmark, same as the website header."""
+    return (f'<div class="pn-brand"><div class="tile"><svg viewBox="-20 -22 40 42" xmlns="http://www.w3.org/2000/svg">'
+            f'{_art._paw(0, 2, 1.0, INK).replace(chr(60) + "g transform=", chr(60) + "g transform=")}</svg></div>'
+            f'<div class="wm">PetsAIHealth</div></div>')
+
+
+def heroes_html(lang: str) -> str:
+    el = lang == "el"
+    lab = {"dog": "Σκύλος" if el else "Dogs", "cat": "Γάτα" if el else "Cats", "rabbit": "Κουνέλι" if el else "Rabbits", "bird": "Πουλί" if el else "Birds"}
+    cards = "".join(f'<div class="pn-hcard"><div class="im"><img src="/app/static/heroes/{k}.png" alt="{HERO_NAMES_UI[k]}" loading="lazy"/></div>'
+                    f'<div class="n">{HERO_NAMES_UI[k]}</div><div class="s">{lab[k]}</div></div>' for k in ("dog", "cat", "rabbit", "bird"))
+    return ('<div class="pn-heroes"><span class="pn-eyebrow orange">' + ("Η ΟΜΑΔΑ ΤΩΝ ΗΡΩΩΝ" if el else "THE HERO TEAM") + '</span>'
+            '<div class="h">' + ("Γνώρισε τους ήρωες της PetsAIHealth" if el else "Meet the PetsAIHealth heroes") + '</div>'
+            '<p>' + ("Ένας ήρωας για κάθε είδος. Δουλεύουν μαζί ώστε κάθε κατοικίδιο να έχει βοήθεια όταν τη χρειάζεται." if el else
+                     "One hero for every species. They work together so every pet has help when it needs it.") + '</p>'
+            f'<div class="pn-hgrid">{cards}</div></div>')
+
+
+def ready_html(lang: str) -> str:
+    el = lang == "el"
+    row = "".join(f'<img src="/app/static/heroes/{k}.png" alt="{HERO_NAMES_UI[k]}"/>' for k in ("dog", "cat", "rabbit", "bird"))
+    return (f'<div class="pn-ready"><div class="row">{row}</div>'
+            f'<div class="h">{"Έτοιμος να ρωτήσεις;" if el else "Ready to ask?"}</div>'
+            f'<p>{"Φτιάξε το προφίλ του κατοικιδίου σου και κάνε τον πρώτο έλεγχο δωρεάν." if el else "Create your pet’s profile and do the first check for free."}</p></div>')
 
 
 def landing_parts(lang: str, gr: bool = False) -> dict:
@@ -593,7 +643,7 @@ def landing_parts(lang: str, gr: bool = False) -> dict:
         foot = "PetsAIHealth does not provide veterinary diagnosis and does not replace your vet."
     more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
                  "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
-    return {"hero": hero, "steps": steps, "svc_head": svc_head, "services": services, "more": more_html, "foot": foot}
+    return {"hero": hero, "brand": brand_html(), "heroes": heroes_html(lang), "ready": ready_html(lang), "steps": steps, "svc_head": svc_head, "services": services, "more": more_html, "foot": foot}
 
 
 # ── illustrated section cards (report), species picker and intake steps ───────

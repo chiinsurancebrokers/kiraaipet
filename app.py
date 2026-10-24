@@ -6903,6 +6903,24 @@ def render_pet_tool_card(key, screen, eb, title, body, cta, where):
             _goto(screen)
 
 
+def render_pet_tile(key, screen, eb, title, body, cta):
+    """Compact illustrated tile for the Home grid: picture, title, status chip, one button."""
+    el = st.session_state.get("lang", "en") == "el"
+    i = 0 if el else 1
+    _sp = (st.session_state.get("pet") or {}).get("species_key", "dog")
+    chip = _tool_status(key)
+    lock = paywall_enabled() and screen in PAID_SCREENS and not has_plus()
+    with st.container(border=True, key=f"pn_tile_{key}"):
+        st.markdown(_pn_feat_art(_TOOL_ART[key], _sp, compact=True), unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="pn-tile"><div class="ti">{title[i]}</div><div class="bo">{body[i]}</div>'
+            + (f'<div class="st"><span class="pn-chip ok">✓ {chip}</span></div>' if chip else
+               ('<div class="st"><span class="pn-chip">🔒 Plus</span></div>' if lock else ""))
+            + '</div>', unsafe_allow_html=True)
+        if st.button(cta[i] + " →", key=f"pntile_{key}", use_container_width=True):
+            _goto(screen)
+
+
 def render_pet_nurse_card():
     """The main event: ask PetsAIHealth. Shows the three-step plot and the way in."""
     lang = st.session_state.lang
@@ -6919,7 +6937,10 @@ def render_pet_nurse_card():
                 '.pn-steps{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px;}'
                 '.pn-step{flex:1 1 150px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:10px 12px;color:#fff;font-size:12.5px;line-height:1.4;}'
                 '.pn-step b{display:block;font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#F2B393;margin-bottom:2px;}'
-                '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;}.pn-nurse .art{order:-1;}}</style>', unsafe_allow_html=True)
+                '.st-key-pn_nurse_go button{background:#EE7340 !important;border:none !important;color:#fff !important;font-weight:800 !important;min-height:50px !important;}'
+                '.st-key-pn_nurse_go button p{color:#fff !important;font-weight:800 !important;}'
+                '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;gap:10px;}.pn-nurse .art{order:-1;aspect-ratio:400/150;}}'
+                '@media (max-width:640px){.pn-nurse .d{display:none;}.pn-step{flex:1 1 100%;padding:8px 12px;}}</style>', unsafe_allow_html=True)
     steps = ([("ΒΗΜΑ 1", "Πες τι παρατηρείς"), ("ΒΗΜΑ 2", "Η νοσηλεύτρια ρωτά ανά μία ερώτηση"), ("ΒΗΜΑ 3", "Παίρνεις αναφορά για τον κτηνίατρο")]
              if el else [("STEP 1", "Tell us what you notice"), ("STEP 2", "The nurse asks one question at a time"), ("STEP 3", "Get a vet-ready report")])
     steps_html = "".join(f'<div class="pn-step"><b>{a}</b>{b}</div>' for a, b in steps)
@@ -6929,19 +6950,19 @@ def render_pet_nurse_card():
             f'<span class="pn-eyebrow dark">{"ΑΙ ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>'
             f'<div style="font-family:Sora,Inter,sans-serif;color:#fff;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:12px 0 8px;">'
             f'{("Ρώτα την PetsAIHealth για τον/την " if el else "Ask PetsAIHealth about ")}{nm}</div>'
-            f'<div style="color:#D5DCFF;font-size:14.5px;line-height:1.6;">'
+            f'<div class="d" style="color:#D5DCFF;font-size:14.5px;line-height:1.6;">'
             f'{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD — σε λίγα λεπτά, πριν από το ραντεβού ή όταν αποφασίζεις το επόμενο βήμα." if el else "A structured symptom assessment with MSD references — in minutes, before a vet visit or when deciding the next step."}</div>'
-            f'</div><div class="art">{_pn_feat_art("nurse", _sp, raw=True)}</div></div>'
-            f'<div class="pn-steps">{steps_html}</div></div>', unsafe_allow_html=True)
+            f'</div><div class="art">{_pn_feat_art("nurse", _sp, raw=True)}</div></div></div>', unsafe_allow_html=True)
         c1, c2 = st.columns([2, 1], gap="small")
         with c1:
             if st.button((("Συνέχεια της συζήτησης →" if has_chat else "Ξεκίνα με τη νοσηλεύτρια →") if el
                           else ("Continue the chat →" if has_chat else "Start with the nurse →")),
-                         key="pn_nurse_go", use_container_width=True):
+                         key="pn_nurse_go", type="primary", use_container_width=True):
                 _goto("triage")
         with c2:
             if st.button(("🚨 Επείγον;" if el else "🚨 Emergency?"), key="pn_emerg", use_container_width=True):
                 _goto("vets")
+        st.markdown(f'<div class="pn-steps">{steps_html}</div>', unsafe_allow_html=True)
 
 
 def render_plans_section(lang="en", gate=False, cta=None):
@@ -7083,13 +7104,16 @@ def render_pet_landing(gate=False):
     el = lang == "el"
     parts = _lp(lang, _greece_visitor())
     st.markdown(_PETIFY_THEME, unsafe_allow_html=True)
-    _t1, _t2 = st.columns([6, 1])
-    with _t1:
-        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetsAIHealth</div>',
-                    unsafe_allow_html=True)
-    with _t2:
-        if st.button("EN" if el else "ΕΛ", key="land_lang"):
-            st.session_state.lang = "en" if el else "el"; st.rerun()
+    st.markdown('<style>.st-key-pn_landtop [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;align-items:center !important;}'
+                '.st-key-pn_landtop [data-testid="stColumn"]{min-width:0 !important;width:auto !important;}'
+                '.st-key-pn_landtop [data-testid="stColumn"]:last-child{flex:0 0 64px !important;}</style>', unsafe_allow_html=True)
+    with st.container(key="pn_landtop"):
+        _t1, _t2 = st.columns([6, 1], vertical_alignment="center")
+        with _t1:
+            st.markdown(parts["brand"], unsafe_allow_html=True)
+        with _t2:
+            if st.button("EN" if el else "ΕΛ", key="land_lang"):
+                st.session_state.lang = "en" if el else "el"; st.rerun()
     has_pet = bool((st.session_state.get("pet") or {}).get("name"))
 
     def _cta(key):
@@ -7099,30 +7123,39 @@ def render_pet_landing(gate=False):
             st.session_state.screen = "dashboard" if has_pet else "intake"
             st.rerun()
 
-    def _start(key):
-        """One obvious way in: gate mode → sign-in (free plan); otherwise straight to the app."""
+    def _start(key, label=None):
+        """One obvious way in: gate mode -> sign-in (free plan); otherwise straight to the app."""
         if not gate:
             return _cta(key)
-        if st.button(("Ξεκίνα δωρεάν" if el else "Start free"), key=key, type="primary", use_container_width=True, icon="🐾"):
+        if st.button(label or ("Ξεκίνα δωρεάν" if el else "Start free"), key=key, type="primary", use_container_width=True, icon="🐾"):
             st.session_state["_login_plan"] = "free"; st.rerun()
-        st.markdown('<div style="text-align:center;font-size:13px;margin:-2px 0 6px;"><a href="#pn-plans" style="color:#1237C9;font-weight:600;">'
-                    + ("Δες τα πλάνα ↓" if el else "See the plans ↓") + '</a></div>', unsafe_allow_html=True)
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
     _start("land_cta_top")
-    st.markdown(parts["steps"], unsafe_allow_html=True)
-    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "").strip()
-    if _vid:
-        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΤΟ ΣΕ 1 ΛΕΠΤΟ" if el else "WATCH IT IN 1 MINUTE") + '</span></div>',
+    if gate:
+        st.markdown('<div style="text-align:center;font-size:13px;margin:-2px 0 6px;"><a href="#pn-plans" style="color:#1237C9;font-weight:600;">'
+                    + ("Δες τα πλάνα ↓" if el else "See the plans ↓") + '</a></div>', unsafe_allow_html=True)
+    # Same explainer video as petsaihealth.com (override with EXPLAINER_VIDEO_URL; set it to "off" to hide)
+    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "https://petsaihealth.com/wp-content/uploads/2026/10/content-3.mp4").strip()
+    if _vid and _vid.lower() != "off":
+        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ" if el else "SEE HOW IT WORKS") + '</span></div>',
                     unsafe_allow_html=True)
         st.video(_vid)
-    _start("land_cta_steps")
+    st.markdown(parts["steps"], unsafe_allow_html=True)
+    st.markdown(parts["heroes"], unsafe_allow_html=True)
     st.markdown(parts["svc_head"], unsafe_allow_html=True)
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
     # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
     if os.environ.get("SHOW_BENCHMARK", "off").strip().lower() in ("1", "on", "true", "yes"):
         render_benchmark_section(lang)
+    st.markdown('<style>.st-key-pn_ready{background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%),#1237C9;'
+                'border-radius:28px;padding:26px 22px 22px;margin:8px 0 6px;box-shadow:0 30px 60px -34px rgba(18,55,201,.8);}'
+                '.st-key-pn_ready .stButton button{background:#EE7340 !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}</style>',
+                unsafe_allow_html=True)
+    with st.container(key="pn_ready"):
+        st.markdown(parts["ready"], unsafe_allow_html=True)
+        _start("land_cta_ready", label=("Ξεκίνα τώρα" if el else "Start now"))
     render_plans_section(lang, gate, _cta)
     if gate:
         if st.session_state.get("_login_plan"):
@@ -7133,8 +7166,6 @@ def render_pet_landing(gate=False):
             _g1, _g2, _g3 = st.columns([1, 2, 1])
             with _g2:
                 render_login_gate()
-    else:
-        _cta("land_cta_bottom")
     st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
                 unsafe_allow_html=True)
 
@@ -7212,48 +7243,45 @@ def render_pet_home():
     if pet.get("weight"):
         chips.append(f"{pet['weight']} kg")
     chips_html = "".join(f'<span class="pn-chip">{c}</span>' for c in chips)
-    mascot = render_mascot(mascot_for_pet(pet) or "dog", size=64)
+    mascot = render_mascot(mascot_for_pet(pet) or "dog", size=52)
     st.markdown(f"""
-<div style="display:flex;gap:14px;align-items:center;margin:2px 2px 14px;flex-wrap:wrap;">
-  <div class="pn-mascot" style="background:#FFDCC7;border-radius:20px;padding:6px;flex-shrink:0;">{mascot}</div>
-  <div style="flex:1 1 220px;min-width:0;">
-    <div style="font-family:Sora,Inter,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.03em;color:#0B1B4B;line-height:1.15;">
-      {("Γεια σου, " + nm + "!") if el else ("Hi, " + nm + "!")}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">{chips_html}</div>
-  </div>
-</div>""", unsafe_allow_html=True)
-    render_pet_switcher(lang)
+<style>
+.pn-hello{{display:flex;gap:12px;align-items:center;margin:0 2px 10px;}}
+.pn-hello .m{{background:#FFDCC7;border-radius:18px;padding:4px;flex-shrink:0;line-height:0;}}
+.pn-hello .t{{font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;color:#0B1B4B;line-height:1.15;}}
+.pn-hello .c{{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}}
+.pn-hello .c .pn-chip{{padding:3px 9px;font-size:11.5px;}}
+.st-key-pn_petbar [data-testid="stHorizontalBlock"]{{flex-direction:row !important;flex-wrap:nowrap !important;gap:8px !important;}}
+.st-key-pn_petbar [data-testid="stColumn"]{{min-width:0 !important;flex:1 1 0 !important;width:auto !important;}}
+.st-key-pn_petbar button{{min-height:38px !important;font-size:13px !important;}}
+.st-key-pn_tiles [data-testid="stHorizontalBlock"]{{flex-direction:row !important;flex-wrap:wrap !important;gap:10px !important;}}
+.st-key-pn_tiles [data-testid="stColumn"]{{min-width:calc(25% - 10px) !important;flex:1 1 calc(25% - 10px) !important;width:auto !important;}}
+@media (max-width:640px){{.st-key-pn_tiles [data-testid="stColumn"]{{min-width:calc(50% - 10px) !important;flex:1 1 calc(50% - 10px) !important;}}}}
+.pn-tile{{padding:0 2px;}}
+.pn-tile .ti{{font:700 15px/1.2 Sora,Inter,sans-serif;letter-spacing:-.02em;color:#0B1B4B;margin:8px 0 3px;min-height:2.4em;}}
+.pn-tile .bo{{font-size:12px;line-height:1.45;color:#5B6794;}}
+.pn-tile .st{{margin-top:6px;}}
+@media (max-width:640px){{.pn-tile .bo{{display:none;}} .pn-hello .t{{font-size:20px;}}}}
+@media (min-width:641px){{.pn-tile .ti{{min-height:1.2em;}} .pn-tile .bo{{min-height:2.9em;}}}}
+</style>
+<div class="pn-hello"><div class="m pn-mascot">{mascot}</div><div style="min-width:0;">
+  <div class="t">{("Γεια σου, " + nm + "!") if el else ("Hi, " + nm + "!")}</div>
+  <div class="c">{chips_html}</div></div></div>""", unsafe_allow_html=True)
+    with st.container(key="pn_petbar"):
+        render_pet_switcher(lang)
 
-    render_plan_banner(lang)
     render_pet_nurse_card()
+    render_plan_banner(lang)
 
-    st.markdown('<div class="pn-sec">' + ("ΕΞΕΤΑΣΕΙΣ → ΣΥΝΟΨΗ ΓΙΑ ΤΟΝ ΚΤΗΝΙΑΤΡΟ" if el else "TEST RESULTS → VET SUMMARY") + '</div>', unsafe_allow_html=True)
-    with st.container(border=True):
-        st.markdown(
-            '<div style="font-family:Sora,Inter,sans-serif;font-size:22px;font-weight:800;color:#0B1B4B;">'
-            + ("🧪 Έχεις εξετάσεις; Ανέβασέ τες εδώ." if el else "🧪 Have test results? Upload them here.")
-            + '</div><div style="color:#5B6794;font-size:14px;line-height:1.6;margin-top:6px;">'
-            + (("FREE: μία βασική ανάλυση εξέτασης. PLUS: πολλαπλές εξετάσεις, ιστορικό, timeline, σύγκριση μεταβολών και Vet Brief."
-               if el else
-               "FREE: one basic exam analysis. PLUS: multiple exams, history, timeline, change comparison and Vet Brief."))
-            + '</div>', unsafe_allow_html=True)
-        if st.button(("Ανέβασε εξετάσεις →" if el else "Upload results →"),
-                     key="home_primary_labs", type="primary", use_container_width=True):
-            _goto("labs")
-
-    with st.expander(("Περισσότερα εργαλεία" if el else "More tools")):
-        for r in range(0, len(_PET_TOOLS), 2):
-            cols = st.columns(2, gap="small", vertical_alignment="top")
-            for col, tool in zip(cols, _PET_TOOLS[r:r + 2]):
+    st.markdown('<div class="pn-sec">' + ("ΑΚΟΜΑ ΠΕΡΙΣΣΟΤΕΡΑ" if el else "MORE YOU CAN DO") + '</div>', unsafe_allow_html=True)
+    _tiles = list(_PET_TOOLS) + [("insurance", "insurance", ("ΑΣΦΑΛΙΣΗ", "INSURANCE"), ("Ασφάλιση", "Insurance"),
+                                  ("Κάλυψη εξόδων κτηνιάτρου με έλεγχο από AI.", "Vet-cost cover with an AI check."), ("Άνοιγμα", "Open"))]
+    with st.container(key="pn_tiles"):
+        for r in range(0, len(_tiles), 4):
+            cols = st.columns(4, gap="small", vertical_alignment="top")
+            for col, tool in zip(cols, _tiles[r:r + 4]):
                 with col:
-                    key, screen, eb, title, body, cta = tool
-                    render_pet_tool_card(key, screen, eb, title, body, cta, "home")
-
-    st.markdown('<div class="pn-sec">' + ("ΑΣΦΑΛΙΣΗ" if el else "INSURANCE") + '</div>', unsafe_allow_html=True)
-    render_pet_tool_card("insurance", "insurance", ("ΑΣΦΑΛΙΣΗ", "INSURANCE"),
-                         ("Ασφάλιση κατοικιδίου", "Pet insurance"),
-                         ("Κάλυψη εξόδων κτηνιάτρου με έλεγχο κάλυψης από AI.", "Vet-cost cover with an AI coverage check."),
-                         ("Άνοιγμα", "Open"), "home")
+                    render_pet_tile(*tool)
 
     S = st.session_state.get("longevity") or {}
     if S.get("result"):
@@ -8524,13 +8552,18 @@ elif screen == "home":
 elif screen == "intake" and paywall_enabled() and st.session_state.get("pets") and not has_plus():
     render_paywall_page("profile")
 elif screen == "intake":
-    _top1, _top2 = st.columns([6, 1])
-    with _top1:
-        st.markdown('<div style="font:800 19px Sora,Inter,sans-serif;color:#0B1B4B;padding-top:6px;">🐾 PetsAIHealth</div>',
-                    unsafe_allow_html=True)
-    with _top2:
-        if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
-            st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
+    from petify_ui import brand_html as _pn_brand, LANDING_CSS as _pn_land_css
+    st.markdown(_pn_land_css, unsafe_allow_html=True)
+    st.markdown('<style>.st-key-pn_introp [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;align-items:center !important;}'
+                '.st-key-pn_introp [data-testid="stColumn"]{min-width:0 !important;width:auto !important;}'
+                '.st-key-pn_introp [data-testid="stColumn"]:last-child{flex:0 0 64px !important;}</style>', unsafe_allow_html=True)
+    with st.container(key="pn_introp"):
+        _top1, _top2 = st.columns([6, 1], vertical_alignment="center")
+        with _top1:
+            st.markdown(_pn_brand(), unsafe_allow_html=True)
+        with _top2:
+            if st.button("EN" if st.session_state.lang == "el" else "ΕΛ", key="intake_lang"):
+                st.session_state.lang = "en" if st.session_state.lang == "el" else "el"; st.rerun()
     render_intake()
 elif screen == "history": render_pet_nav("history"); render_history_page()
 elif screen == "paid": render_paid_page()
