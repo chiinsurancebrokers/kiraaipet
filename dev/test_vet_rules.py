@@ -137,7 +137,23 @@ CASES = [
     ("other", "his rectum is sticking out", None, "EMERGENCY"),
     ("other", "my hamster is running on the wheel and eating well", None, None),
     ("dog", "he is not eating and has diarrhea", None, None),     # small-mammal rules never fire on dogs
+    # --- gaps found by running real MSD case-study presentations through the rules
+    ("cat", "he is pressing his head against the wall and is disoriented", None, "URGENT"),
+    ("dog", "he keeps circling and stumbling", None, "URGENT"),
+    ("cat", "belly is swollen and she has lost weight and is lethargic", None, "URGENT"),
+    ("cat", "she is playing and her belly looks a bit round after dinner", None, None),
+    ("cat", "she has been vomiting for 3 to 4 days and is not drinking", None, "URGENT"),
+    ("dog", "he vomited once two days ago and is fine since", None, None),
+    ("dog", "diarrhea for several days", None, "URGENT"),
+    ("dog", "there is blood in his urine", None, "URGENT"),
+    ("cat", "αίμα στα ούρα της γάτας", None, "URGENT"),
+    ("dog", "he fell while jumping, yelped and now won't put weight on his leg", None, "URGENT"),
+    ("dog", "limping slightly on the back leg since yesterday", None, None),
+    ("dog", "our 2 month old puppy is lethargic and vomited after the dewormer", None, "URGENT"),
+    ("dog", "our puppy is playful and eating well", None, None),
+    ("dog", "ο σκύλος κρατάει ψηλά το πόδι και δεν πατάει", None, "URGENT"),
 ]
+
 
 
 

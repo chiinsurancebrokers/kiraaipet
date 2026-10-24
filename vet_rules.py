@@ -53,6 +53,7 @@ SRC = {
     "gp_nutrition": MSD + "all-other-pets/guinea-pigs/nutritional-problems-of-guinea-pigs",
     "ferret_emerg": MSD + "all-other-pets/ferrets/emergencies-of-ferrets",
     "hamster": MSD + "all-other-pets/hamsters/disorders-and-diseases-of-hamsters",
+    "cases": MSD + "pages-with-widgets/case-studies",
 }
 
 
@@ -462,6 +463,44 @@ RULES = [
          "Swollen joints, limping, bleeding gums or bruising in a guinea pig suggest vitamin C deficiency (scurvy), which can be fatal if untreated: see a vet promptly.",
          "Πρησμένες αρθρώσεις, κουτσαμάρα, αιμορραγία στα ούλα ή μελανιές σε ινδικό χοιρίδιο παραπέμπουν σε έλλειψη βιταμίνης C (σκορβούτο), που μπορεί να είναι θανατηφόρο χωρίς θεραπεία: δες κτηνίατρο άμεσα.",
          SRC["gp_nutrition"], "msd"),
+    # ============ gaps found by running real MSD case-study presentations through the rules (policy: need vet sign-off)
+    Rule("ALL-NEURO", ("dog", "cat", "rabbit", "other"), "URGENT",
+         _r(r"head ?press|pressing (his|her|its|the) head|disorient|circling|walking in circles|stumbl|unsteady|ataxi|wobbl|staggering|can'?t walk straight|lost (his|her) balance|head tilt|"
+            r"πιεζει το κεφαλι|κεφαλι.{0,12}(τοιχο|γωνια)|ζαλισμεν|γυριζει κυκλους|γυρναει κυκλους|τρικλιζ|χανει την ισορροπι|γερνει το κεφαλι"),
+         "Head pressing, disorientation, circling, stumbling or a head tilt point to a brain or balance problem: see a vet today, and go now if it comes with seizures or collapse.",
+         "Πίεση του κεφαλιού, αποπροσανατολισμός, κυκλικές κινήσεις, τρικλίσματα ή γερμένο κεφάλι παραπέμπουν σε πρόβλημα εγκεφάλου ή ισορροπίας: δες κτηνίατρο σήμερα και πήγαινε αμέσως αν συνοδεύεται από σπασμούς ή κατάρρευση.",
+         "", "policy"),
+    Rule("CAT-ABDOMEN", ("cat",), "URGENT",
+         _r(r"(swollen|distended|bloated|enlarged|big|fat)\w* .{0,10}(belly|abdomen|tummy|stomach)|(belly|abdomen|tummy|stomach).{0,20}(swollen|distended|bloated|enlarged)|φουσκωμεν\w* κοιλι|κοιλι\w*.{0,15}(πρησμεν|φουσκωμεν)",
+            r"letharg|weight loss|losing weight|not eating|poor appetite|reduced appetite|no appetite|weak|ληθαργ|αδυνατισ|χασε βαρος|δεν τρωει|αδυναμ"),
+         "A swollen belly with lethargy, weight loss or poor appetite in a cat can mean fluid (for example from FIP), organ disease or a tumour: see a vet within the day.",
+         "Φουσκωμένη κοιλιά με λήθαργο, απώλεια βάρους ή κακή όρεξη σε γάτα μπορεί να σημαίνει υγρό (π.χ. από FIP), νόσο οργάνου ή όγκο: δες κτηνίατρο μέσα στην ημέρα.",
+         SRC["cases"], "policy"),
+    Rule("DC-GI-PERSISTENT", ("dog", "cat"), "URGENT",
+         _r(r"vomit|throw(ing)? up|threw up|diarrh|εμετ|ξερασ|διαρρο",
+            r"(for|since|over|last|past) .{0,12}(\b([2-9]|\d\d)\b ?(days?|μερ)|several days|few days|days|couple of days)|\b([2-9]|\d\d)\b ?(days?|μερες)|several days|few days|for days|μερες|εδω και μερες|3 με 4|3-4"),
+         "Vomiting or diarrhoea lasting two days or more, especially with poor appetite or drinking, dehydrates a pet and can hide kidney, liver or gut disease: see a vet today.",
+         "Εμετός ή διάρροια που κρατά δύο μέρες ή περισσότερο, ιδίως με κακή όρεξη ή χωρίς νερό, αφυδατώνει το ζώο και μπορεί να κρύβει νεφρική, ηπατική ή εντερική νόσο: δες κτηνίατρο σήμερα.",
+         SRC["dog_gi"] + " | " + SRC["cases"], "policy",
+         exclude=r"\bonce\b|one time|only once|just once|\bago\b|μια φορα|μονο μια|πριν απο"),
+    Rule("DC-HEMATURIA", ("dog", "cat"), "URGENT",
+         _r(r"blood in (his|her|the|their)? ?(urine|pee|wee)|bloody (urine|pee|wee)|(urine|pee|wee) .{0,12}(blood|bloody|red|pink)|red urine|pink urine|αιμα στα ουρα|αιματουρ|ουρα.{0,12}(αιμα|κοκκιν|ροζ)|κοκκινα ουρα"),
+         "Blood in the urine can come from a bladder infection, stones, or a tumour, and a blockage can follow: see a vet today, and go now if there is straining with little or no urine.",
+         "Αίμα στα ούρα μπορεί να οφείλεται σε κυστίτιδα, πέτρες ή όγκο και μπορεί να ακολουθήσει απόφραξη: δες κτηνίατρο σήμερα και πήγαινε αμέσως αν υπάρχει προσπάθεια ούρησης με λίγα ή καθόλου ούρα.",
+         SRC["cases"], "policy"),
+    Rule("DC-LAME-SEVERE", ("dog", "cat"), "URGENT",
+         _r(r"won'?t (put|bear) (any )?weight|not (putting|bearing) (any )?weight|can'?t (put|bear) (any )?weight|three[- ]legged|on three legs|holding (up )?(a |his |her |the )?(front |back |hind )?(leg|paw|limb)|carrying (a |his |her |the )?(leg|paw)|"
+            r"yelp\w*.{0,40}(leg|limb|paw|jump|fell)|fell .{0,30}(then|and) .{0,20}(lame|limp)|severely lame|"
+            r"δεν πατα|τρια ποδια|σηκωνει το ποδι|κρατα ψηλα το ποδι|κουτσαιν\w* πολυ|πολυ κουτσ|ουρλιαζ.{0,30}ποδι"),
+         "Not putting weight on a leg, holding it up, or yelping with a sudden severe limp can mean a fracture, a torn ligament or a bone problem: see a vet today.",
+         "Αν δεν πατά το πόδι, το κρατά ψηλά ή ουρλιάζει με ξαφνικό σοβαρό κούτσαμα, μπορεί να είναι κάταγμα, ρήξη συνδέσμου ή πρόβλημα στο οστό: δες κτηνίατρο σήμερα.",
+         SRC["emergency"], "msd"),
+    Rule("DC-YOUNG-GI", ("dog", "cat"), "URGENT",
+         _r(r"puppy|\bpup\b|kitten|κουταβ|γατακ|\b([1-9]|1[0-9]|2[0-4]) ?[- ]?(weeks?|εβδομαδ)[- ]?(old|ων|ης)?|\b([1-5]) ?[- ]?(months?|μην\w*)[- ]?(old|ων|ης)?|young|new ?born",
+            r"vomit|diarrh|letharg|not eating|poor appetite|reduced appetite|soft stool|yellow stool|εμετ|διαρρο|ληθαργ|δεν τρωει|αδυναμ|μαλακα κοπρανα"),
+         "A puppy or kitten with vomiting, diarrhoea, lethargy or poor appetite can crash within hours (low blood sugar, dehydration, parvovirus, parasites): see a vet today.",
+         "Ένα κουτάβι ή γατάκι με εμετό, διάρροια, λήθαργο ή κακή όρεξη μπορεί να χειροτερέψει μέσα σε ώρες (χαμηλό σάκχαρο, αφυδάτωση, παρβοϊός, παράσιτα): δες κτηνίατρο σήμερα.",
+         SRC["dog_gi"] + " | " + SRC["cases"], "policy"),
 ]
 
 # exposure rules: ignore clauses where the owner says it did not happen
