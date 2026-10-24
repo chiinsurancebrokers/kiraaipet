@@ -49,6 +49,10 @@ SRC = {
     "salt": MSD + "special-pet-topics/poisoning/salt-poisoning",
     "emergency": MSD + "special-pet-topics/emergencies/what-to-do-in-a-dog-or-cat-emergency",
     "dog_gi": MSD + "dog-owners/digestive-disorders-of-dogs/disorders-of-the-stomach-and-intestines-in-dogs",
+    "gp_common": MSD + "all-other-pets/guinea-pigs/common-health-problems-of-guinea-pigs",
+    "gp_nutrition": MSD + "all-other-pets/guinea-pigs/nutritional-problems-of-guinea-pigs",
+    "ferret_emerg": MSD + "all-other-pets/ferrets/emergencies-of-ferrets",
+    "hamster": MSD + "all-other-pets/hamsters/disorders-and-diseases-of-hamsters",
 }
 
 
@@ -73,6 +77,7 @@ class Rule:
     basis: str = "msd"      # "msd" or "policy"
     exclude: str = ""       # if this matches, the rule does not fire
     immediate: bool = False  # clear immediate danger: nurse may skip the question cycle
+    neg_guard: bool = False  # exposure rule: ignore clauses where the owner says it did NOT happen ("didn't eat the grapes")
 
 
 @dataclass
@@ -407,7 +412,70 @@ RULES = [
          "A swallowed sock, string, needle, ribbon or corn cob can block or cut the gut: call a vet today, do not pull anything hanging out, and go now if vomiting, belly pain or retching starts.",
          "Κάλτσα, κλωστή, βελόνα, κορδέλα ή ρόκα καλαμποκιού που καταπίθηκε μπορεί να φράξει ή να κόψει το έντερο: κάλεσε κτηνίατρο σήμερα, μην τραβήξεις κάτι που κρέμεται και πήγαινε αμέσως αν αρχίσει εμετός, πόνος ή ξερομάρισμα.",
          SRC["dog_gi"], "msd"),
+    # ============ small mammals ("other": guinea pig, hamster, ferret, rat, mouse, chinchilla) from the MSD all-other-pets pages
+    Rule("OTH-NOEAT", ("other",), "URGENT",
+         _r(r"not eating|stopped eating|won'?t eat|no appetite|hasn'?t eaten|refus\w* (food|hay|pellet)|off (his|her) food|no food|"
+            r"δεν τρωει|σταματησε να τρωει|δεν εφαγε|χωρις ορεξη|δεν θελει φαγητο"),
+         "A small pet (guinea pig, hamster, ferret, rat) that stops eating needs a vet promptly: they dehydrate and decline fast, and some die suddenly.",
+         "Ένα μικρό κατοικίδιο (ινδικό χοιρίδιο, χάμστερ, κουνάβι, αρουραίος) που σταματά να τρώει χρειάζεται κτηνίατρο άμεσα: αφυδατώνεται και χειροτερεύει γρήγορα και μερικά πεθαίνουν ξαφνικά.",
+         SRC["gp_common"], "msd"),
+    Rule("OTH-RESP", ("other",), "URGENT",
+         _r(r"wheez|nasal discharge|runny nose|eye discharge|sneez|breathing (fast|heavily|hard|noisily)|noisy breathing|"
+            r"συριγμ|ρινικ\w* εκκριση|εκκριση απο τη μυτη|φταρνισ|γρηγορη αναπνο|βαρια αναπνο"),
+         "Wheezing, sneezing, nose or eye discharge or fast breathing in a small pet can be pneumonia, a leading cause of death in guinea pigs and hamsters: see a vet promptly.",
+         "Συριγμός, φτέρνισμα, έκκριση από μύτη ή μάτια ή γρήγορη αναπνοή σε μικρό κατοικίδιο μπορεί να είναι πνευμονία, κύρια αιτία θανάτου στα ινδικά χοιρίδια και τα χάμστερ: δες κτηνίατρο άμεσα.",
+         SRC["gp_common"] + " | " + SRC["hamster"], "msd"),
+    Rule("OTH-DIARRHEA", ("other",), "URGENT",
+         _r(r"diarrh|wet tail|watery (stool|poop)|runny (stool|poop)|διαρροια|υγρη ουρα|νερουλ\w* κοπρανα"),
+         "Diarrhoea (wet tail) in a small pet is serious: dehydration and rapid decline are common, and giving antibiotics that were not prescribed can make it worse.",
+         "Η διάρροια (υγρή ουρά) σε μικρό κατοικίδιο είναι σοβαρή: αφυδάτωση και γρήγορη επιδείνωση είναι συχνές και αντιβιοτικά που δεν έχουν συνταγογραφηθεί μπορούν να το χειροτερέψουν.",
+         SRC["hamster"] + " | " + SRC["ferret_emerg"], "msd"),
+    Rule("OTH-DIARRHEA-YOUNG", ("other",), "EMERGENCY",
+         _r(r"diarrh|wet tail|watery (stool|poop)|διαρροια|υγρη ουρα|νερουλ\w* κοπρανα",
+            r"baby|young|juvenile|weeks? old|just weaned|weaned|new ?born|μωρο|μικρο|νεαρο|εβδομαδ|απογαλακτ"),
+         "Diarrhoea in a young hamster or other young small pet (proliferative ileitis, Tyzzer disease) can kill within a day or two: go to a vet now.",
+         "Διάρροια σε νεαρό χάμστερ ή άλλο νεαρό μικρό κατοικίδιο (εντερίτιδα, νόσος Tyzzer) μπορεί να σκοτώσει μέσα σε μία με δύο μέρες: πήγαινε σε κτηνίατρο τώρα.",
+         SRC["hamster"], "msd", immediate=True),
+    Rule("OTH-PROLAPSE", ("other", "dog", "cat", "rabbit"), "EMERGENCY",
+         _r(r"prolaps|(intestine|bowel|rectum|gut).{0,20}(sticking|protrud|hanging|coming) out|(sticking|protrud|hanging) out.{0,20}(bottom|anus|rectum)|"
+            r"προπτωσ|εντερο.{0,15}εξω|προβαλλ\w*.{0,15}(πρωκτ|ορθο)"),
+         "Intestine or rectum protruding from the bottom (prolapse) is an emergency needing immediate veterinary care.",
+         "Έντερο ή ορθό που προβάλλει από τον πρωκτό (πρόπτωση) είναι επείγον και χρειάζεται άμεση κτηνιατρική φροντίδα.",
+         SRC["hamster"] + " | " + SRC["ferret_emerg"], "msd", immediate=True),
+    Rule("OTH-FERRET-NEURO", ("other",), "EMERGENCY",
+         _r(r"ferret|κουναβι",
+            r"seiz|convuls|staggering|dragging|can'?t walk|weak|lethar|collaps|pawing at (the |his |her )?mouth|drool|"
+            r"σπασμ|τρικλιζ|σερν|δεν περπατ|αδυναμ|ληθαργ|σαλια"),
+         "A ferret that is weak, staggering, dragging its back legs, drooling or having seizures may have low blood sugar (insulinoma) or another emergency: see a vet immediately.",
+         "Ένα κουνάβι που είναι αδύναμο, τρικλίζει, σέρνει τα πίσω πόδια, σαλιώνει ή έχει σπασμούς μπορεί να έχει χαμηλό σάκχαρο (ινσουλίνωμα) ή άλλο επείγον: πήγαινε αμέσως σε κτηνίατρο.",
+         SRC["ferret_emerg"], "msd", immediate=True),
+    Rule("OTH-FERRET-GI", ("other",), "URGENT",
+         _r(r"ferret|κουναβι",
+            r"vomit|retch|stopped (eating|pooping|defecating)|no (poop|stool|droppings)|black (tarry )?stool|tarry|choking|cough|"
+            r"εμετ|ξερατ|δεν κανει κοπρανα|μαυρα κοπρανα|βηχ"),
+         "A ferret that vomits, stops eating or passing stool, or has black tarry stool may have a blockage or bleeding and dehydrates quickly: see a vet today.",
+         "Ένα κουνάβι που κάνει εμετό, σταματά να τρώει ή να κάνει κόπρανα ή έχει μαύρα κόπρανα μπορεί να έχει απόφραξη ή αιμορραγία και αφυδατώνεται γρήγορα: δες κτηνίατρο σήμερα.",
+         SRC["ferret_emerg"], "msd"),
+    Rule("OTH-GP-SCURVY", ("other",), "URGENT",
+         _r(r"guinea ?pig|cavy|χοιριδι\w* ινδι|ινδικ\w* χοιριδι",
+            r"swollen (joint|leg|paw)|limping|lame|bleeding gums?|rough coat|bruis|πρηγμεν\w* (αρθρ|ποδ)|κουτσαιν|ματωνουν|ουλα.{0,10}αιμα|μελανιασ"),
+         "Swollen joints, limping, bleeding gums or bruising in a guinea pig suggest vitamin C deficiency (scurvy), which can be fatal if untreated: see a vet promptly.",
+         "Πρησμένες αρθρώσεις, κουτσαμάρα, αιμορραγία στα ούλα ή μελανιές σε ινδικό χοιρίδιο παραπέμπουν σε έλλειψη βιταμίνης C (σκορβούτο), που μπορεί να είναι θανατηφόρο χωρίς θεραπεία: δες κτηνίατρο άμεσα.",
+         SRC["gp_nutrition"], "msd"),
 ]
+
+# exposure rules: ignore clauses where the owner says it did not happen
+_GUARDED = {"DOG-XYLITOL", "DOG-GRAPES", "CAT-LILY", "CAT-FLOWERS", "CAT-PARACETAMOL", "DC-NSAID", "DC-ANTIFREEZE", "DC-RODENTICIDE",
+            "DC-RODENTICIDE-BLEED", "DC-SNAKEBITE", "DC-METALDEHYDE", "DC-POISON-BAIT", "CAT-DOGFLEA", "DC-BATTERY", "DC-CORROSIVE",
+            "DC-ALCOHOL", "DC-OTC-STIMULANT", "DC-RX-HUMAN", "DC-FLUOROURACIL", "DC-PLANT-SEVERE", "DC-PLANT-OTHER", "DOG-BREADDOUGH",
+            "BIRD-AVOCADO", "DC-SALT"}
+for _rule in RULES:
+    if _rule.id in _GUARDED:
+        _rule.neg_guard = True
+
+# rules (plus the chocolate calculator, id DC-CHOCOLATE) that mean "the pet was exposed to a poison": used for the hand-off card
+TOXIN_IDS = _GUARDED | {"DC-CHOCOLATE"}
+BAIT_IDS = {"DC-POISON-BAIT", "DC-METALDEHYDE", "DC-RODENTICIDE"}
 
 
 # ---- chocolate (dose-aware, from MSD figures) --------------------------------
@@ -466,6 +534,26 @@ def chocolate_assessment(text, weight_kg=None):
     return lvl, mgkg, "explicit amount" if explicit else "assumed amount"
 
 
+# ---- negation guard (exposure rules only) -----------------------------------------------------------------------
+# "he did NOT eat the grapes" must not fire the grape rule, but "I'm not sure he ate grapes" must. A negated clause runs
+# from the negation word to the next punctuation or "but/and", so a second, real exposure after "and" is still seen.
+_NEG = re.compile(
+    r"(?:\b(?:did ?n[o']?t|didn'?t|does ?n[o']?t|doesn'?t|do not|don'?t|never|not|no|without|hasn'?t|has not|haven'?t|have not|wasn'?t|was not|isn'?t|is not)\b|"
+    r"\bδεν\b|\bουτε\b|\bμην\b)\s+(?:\w+\s+){0,2}?"
+    r"(?:eat\w*|ate|eaten|swallow\w*|chew\w*|touch\w*|get|got|lick\w*|drank|drink\w*|take|took|taken|have|had|been|bit\w*|"
+    r"εφαγ\w*|φαει|φαγε|καταπι\w*|μασησ\w*|ακουμπ\w*|ηπι\w*|γλειψ\w*|πηρε|δαγκ\w*|βρηκε)"
+    r"[^.;,\n]*?(?=\bbut\b|\band\b|\bhowever\b|\bthough\b|\bthen\b|αλλα|\bκαι\b|ομως|[.;,\n]|$)")
+_UNSURE = re.compile(r"\bsure\b|certain|\bknow\b|ξερω|βεβαι|\bthink|believe|νομιζ|maybe|might|perhaps|possib|ισως|wonder|worried|afraid|φοβαμαι|can'?t tell|cannot tell|not clear")
+
+
+def strip_negated(text):
+    """Remove clauses in which the owner says the exposure did NOT happen. Uncertain wording is kept (safer)."""
+    def repl(m):
+        window = text[max(0, m.start() - 20):m.end()]
+        return " " if not _UNSURE.search(window) else m.group(0)
+    return _NEG.sub(repl, text)
+
+
 def evaluate(species_key, user_texts, profile=None):
     """Check every owner message of the current chat. Returns Result."""
     text = norm(" \n ".join(t for t in (user_texts or []) if t))
@@ -473,15 +561,17 @@ def evaluate(species_key, user_texts, profile=None):
     hits = []
     if not text.strip():
         return Result()
+    tg = strip_negated(text)
     for r in RULES:
         if r.species and sp not in r.species:
             continue
-        if r.exclude and re.search(r.exclude, text):
+        t = tg if r.neg_guard else text
+        if r.exclude and re.search(r.exclude, t):
             continue
-        if all(p.search(text) for p in r.all_of):
+        if all(p.search(t) for p in r.all_of):
             hits.append(Hit(r.id, r.level, r.en, r.el, r.source, r.basis, r.immediate))
     if sp in ("dog", "cat"):
-        lvl, mgkg, note = chocolate_assessment(text, _weight_kg(text, profile))
+        lvl, mgkg, note = chocolate_assessment(tg, _weight_kg(text, profile))
         if lvl:
             if mgkg is not None:
                 en = (f"Chocolate: estimated {mgkg:.0f} mg/kg of methylxanthines ({note}); "

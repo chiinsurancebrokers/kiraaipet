@@ -3,9 +3,12 @@
 App side:   schedule()  inserts a `followups` row when the owner presses the reminder button.
 Worker side: `python3 followups.py` sends the due rows through Resend. Run it every 15-30 minutes as a Railway cron
             service (same repo, start command `python3 followups.py`). Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-            RESEND_API_KEY, FOLLOWUP_FROM (e.g. "PetsAIHealth <care@yourdomain>"), APP_URL.
+            RESEND_API_KEY, FOLLOWUP_FROM (e.g. "PetsAIHealth <care@yourdomain>"), APP_URL, and for the one-tap outcome links
+            FOLLOWUP_OUTCOME_URL (the deployed `followup-outcome` edge function URL) + FOLLOWUP_SIGNING_SECRET (same value as that function's secret).
 The email never contains symptoms: only the pet's name, the level wording, a link back and the go-now reminder.
 """
+import hashlib
+import hmac
 import json
 import os
 import sys
@@ -53,7 +56,22 @@ def cancel(sb, email, pet_name=""):
     sb.table("followups").update({"status": "cancelled"}).eq("user_email", email).eq("pet_name", pet_name or "").eq("status", "pending").execute()
 
 
-def compose(row, app_url=""):
+def outcome_token(row_id, outcome, secret):
+    """HMAC the edge function `followup-outcome` recomputes: a link can only record the outcome it was minted for."""
+    return hmac.new(secret.encode(), f"{row_id}:{outcome}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def outcome_links(row, base_url, secret):
+    """{'ok': url, 'worse': url} or {} when the outcome endpoint is not configured."""
+    if not (base_url and secret and row.get("id") is not None):
+        return {}
+    from urllib.parse import urlencode
+    def mk(o):
+        return base_url.rstrip("/") + "?" + urlencode({"id": row["id"], "o": o, "t": outcome_token(row["id"], o, secret), "l": row.get("lang", "el")})
+    return {"ok": mk("ok"), "worse": mk("worse")}
+
+
+def compose(row, app_url="", links=None):
     """(subject, text) in the owner's language. No clinical detail."""
     name = row.get("pet_name") or ("το κατοικίδιό σου" if row["lang"] == "el" else "your pet")
     link = app_url or "https://petsaihealth.com"
@@ -62,13 +80,15 @@ def compose(row, app_url=""):
         body = (f"Γεια σου! Ζήτησες μια υπενθύμιση για να δούμε πώς είναι {name} μετά τον έλεγχο στην PetsAIHealth.\n\n"
                 "Αν τα συμπτώματα συνεχίζονται, επιδεινώνονται ή εμφανίστηκε κάτι νέο, επικοινώνησε με κτηνίατρο σήμερα· "
                 "αν δεις δύσκολη αναπνοή, χλωμά ούλα, σπασμό, κατάρρευση ή αδυναμία ούρησης, πήγαινε αμέσως σε κτηνιατρείο.\n\n"
-                f"Ξεκίνα νέο έλεγχο: {link}\n\nΑυτό είναι ένα μήνυμα που ζήτησες, δεν θα σου ξαναστείλουμε. Δεν αντικαθιστά κτηνιατρική εξέταση.")
+                f"Ξεκίνα νέο έλεγχο: {link}\n\n" + (f"Με ένα πάτημα πες μας πώς είναι:\n  Είναι καλύτερα: {links['ok']}\n  Είναι ακόμη χάλια ή χειρότερα: {links['worse']}\n\n" if links else "")
+                + "Αυτό είναι ένα μήνυμα που ζήτησες, δεν θα σου ξαναστείλουμε. Δεν αντικαθιστά κτηνιατρική εξέταση.")
     else:
         subj = f"How is {name} doing now?"
         body = (f"Hi! You asked us to check in on {name} after your PetsAIHealth assessment.\n\n"
                 "If the signs continue, get worse, or something new appears, contact a vet today; if you see difficulty breathing, "
                 "pale gums, a seizure, collapse or inability to urinate, go to a vet right away.\n\n"
-                f"Start a new check: {link}\n\nThis is a one-time message you asked for; we won't send another. It does not replace a vet exam.")
+                f"Start a new check: {link}\n\n" + (f"Tell us in one tap how they are:\n  Better: {links['ok']}\n  Still unwell or worse: {links['worse']}\n\n" if links else "")
+                + "This is a one-time message you asked for; we won't send another. It does not replace a vet exam.")
     return subj, body
 
 
@@ -83,7 +103,7 @@ def send_email(to, subject, text, api_key, sender):
                  {"from": sender, "to": [to], "subject": subject, "text": text})
 
 
-def run_due(sb, send, app_url="", now=None, limit=50):
+def run_due(sb, send, app_url="", now=None, limit=50, outcome_url="", secret=""):
     """Send every due reminder once. `send(to, subject, text)` is injected so tests need no network.
     Returns (sent, failed). A row is claimed (pending -> sending) before sending so two workers can't double-send."""
     now = now or datetime.now(timezone.utc)
@@ -95,7 +115,7 @@ def run_due(sb, send, app_url="", now=None, limit=50):
         if not claimed:
             continue
         try:
-            send(row["user_email"], *compose(row, app_url))
+            send(row["user_email"], *compose(row, app_url, outcome_links(row, outcome_url, secret)))
             sb.table("followups").update({"status": "sent", "sent_at": now.isoformat()}).eq("id", row["id"]).execute()
             sent += 1
         except Exception:
@@ -114,7 +134,8 @@ def main():
         return 1
     sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     key, sender = os.environ["RESEND_API_KEY"], os.environ["FOLLOWUP_FROM"]
-    sent, failed = run_due(sb, lambda to, s, t: send_email(to, s, t, key, sender), os.environ.get("APP_URL", ""))
+    sent, failed = run_due(sb, lambda to, s, t: send_email(to, s, t, key, sender), os.environ.get("APP_URL", ""),
+                      outcome_url=os.environ.get("FOLLOWUP_OUTCOME_URL", ""), secret=os.environ.get("FOLLOWUP_SIGNING_SECRET", ""))
     print(json.dumps({"event": "followups_worker", "ok": failed == 0, "sent": sent, "failed": failed}))
     return 0
 

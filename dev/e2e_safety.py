@@ -19,6 +19,7 @@ def fake_urlopen(req, *a, **k):
     is_facts = body.get("system", "").startswith("You extract facts")
     STATE["calls"].append("facts" if is_facts else "nurse")
     if not is_facts: STATE["nurse_system"] = body.get("system", "")
+    if is_facts: STATE["facts_model"] = body.get("model", "")
     if not is_facts and STATE["fail"]:
         raise urllib.error.URLError("simulated outage")
     text = STATE["facts"] if is_facts else STATE["nurse"]
@@ -84,6 +85,37 @@ expect("MSD rule: snakebite -> EMERGENCY", lv == "EMERGENCY", lv)
 expect("MSD facts reach the nurse prompt for that topic", "Snakebite" in STATE["nurse_system"] and "REFERENCE FACTS" in STATE["nurse_system"])
 lv, txt, calls = run("dog", "He is limping slightly", SELF)
 expect("no MSD facts injected for an unrelated message", "REFERENCE FACTS" not in STATE["nurse_system"])
+
+lv, txt, calls = run("dog", "He is limping slightly", SELF, facts='{"ingested":[],"symptoms":[]}')
+expect("extraction call uses the small model by default", "haiku" in STATE.get("facts_model", ""), STATE.get("facts_model"))
+
+lv, txt, calls = run("dog", "he did not eat the grapes, I counted them", SELF)
+expect("negation: 'did not eat the grapes' does not raise", lv == "SELF_CARE", lv)
+
+lv, txt, calls = run("other", "my guinea pig stopped eating", SELF)
+expect("small pet: guinea pig not eating -> URGENT + small-pet facts in the prompt", lv == "URGENT" and "Small pets (MSD)" in STATE["nurse_system"], f"{lv}")
+
+os.environ["VET_FLOOR"] = "off"
+lv, txt, calls = run("cat", "She chewed on a lily leaf", SELF)
+expect("kill switch VET_FLOOR=off: no raise, no extra call, no safety net, no facts", lv == "SELF_CARE" and "facts" not in calls
+       and "Go to a vet right away" not in txt and "REFERENCE FACTS" not in STATE["nurse_system"], f"{lv} {calls}")
+lv, txt, calls = run("cat", "She chewed on a lily leaf", "", fail=True)
+expect("kill switch off: the AI-failure fallback still protects", lv in ("URGENT", "EMERGENCY") and "Claude error" not in txt, lv)
+del os.environ["VET_FLOOR"]
+
+def has_poison_card(owner, nurse):
+    STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])
+    at = AppTest.from_file(os.path.join(ROOT, "dev", "harness.py"), default_timeout=90)
+    at.query_params["t"] = "triage"; at.run()
+    at.session_state["triage_chat"] = []; at.run()
+    at.text_area(key="pn_compose_text").set_value(owner)
+    [b for b in at.button if b.label.startswith("\u27a4")][0].click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return any(b.key == "pn_handoff_vets" for b in at.button), "N.E.C.C.A." in " ".join(str(c.value) for c in at.caption)
+card, bait = has_poison_card("He ate slug pellets and poisoned bait in the park", "Go to a vet now.\n[TRIAGE: EMERGENCY]")
+expect("hand-off card with vet finder and bait-report line after a bait poisoning", card and bait, f"{card} {bait}")
+card, _ = has_poison_card("He is limping slightly", SELF)
+expect("no hand-off card when nothing toxic", not card)
 
 def has_followup_btn(owner, nurse, email):
     STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])

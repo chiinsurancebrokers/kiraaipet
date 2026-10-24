@@ -96,6 +96,13 @@ TOPICS = [
      "face, chemical and electrical burns need immediate care. Hypothermia: dry the pet and wrap with warm (not hot) water bottles; shivering is not reliable. "
      "Do not remove objects stuck in the chest, skull or belly; do not muzzle dogs with chest injuries or short noses.",
      "special-pet-topics/emergencies/what-to-do-in-a-dog-or-cat-emergency"),
+    ("small_pets", r"guinea ?pig|cavy|hamster|ferret|\brat\b|\bmouse\b|chinchilla|ινδικ\w* χοιριδι|χοιριδι\w* ινδι|χαμστερ|κουναβι", ("other",),
+     "Small pets (MSD): a guinea pig, hamster or ferret that stops eating needs a prompt vet check (they dehydrate and can die suddenly); breathing difficulty is an emergency; "
+     "pneumonia is a leading cause of death in guinea pigs (nose/eye discharge, sneezing, wheeze, weak). Guinea pigs need vitamin C every day (at least 10 mg per kg, about 10 mg each; 30 mg per kg if pregnant): "
+     "deficiency causes swollen joints, limping, bleeding and can be fatal. Hamster diarrhoea (wet tail) is dangerous, worst in young animals; never give leftover or non-prescribed antibiotics. "
+     "Ferrets hide illness: go immediately for breathing trouble, no food or water for 24 hours, temperature over 40.5 C, seizures, staggering, weakness, hind-leg dragging, pale or blue gums, bloody or black tarry stool, "
+     "straining without urine or stool, or choking; vomiting or diarrhoea beyond 24 hours needs a vet within the day.",
+     "all-other-pets/ferrets/emergencies-of-ferrets"),
     ("bloat", r"bloat|swollen|belly|abdomen|retch|φουσκ|κοιλι|ξερομ", ("dog",),
      "Bloat (gastric dilatation-volvulus): restlessness, swollen painful belly, repeated unproductive retching, heavy drooling, fast breathing; a weak pulse or pale gums mean shock. "
      "About 25 to 30 percent of dogs die; large deep-chested breeds are at higher risk, especially after a big meal and exercise. Treat as an emergency.",

@@ -1,0 +1,65 @@
+{"id": "S001", "species": "dog", "lang": "en", "text": "I think he ate xylitol gum from my bag a few minutes ago", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S002", "species": "dog", "lang": "en", "text": "she ate a whole 200g bar of dark chocolate, she weighs 6 kg", "weight_kg": 6, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S003", "species": "dog", "lang": "en", "text": "ate a handful of raisins", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S004", "species": "dog", "lang": "el", "text": "έφαγε σταφύλια από το τραπέζι", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S005", "species": "cat", "lang": "en", "text": "she chewed a lily leaf", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S006", "species": "cat", "lang": "el", "text": "μασούλησε φύλλο από κρίνο", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S007", "species": "cat", "lang": "en", "text": "my male cat keeps going to the litter tray and nothing comes out, he is crying", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S008", "species": "dog", "lang": "en", "text": "hard swollen belly and unproductive retching, drooling", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S009", "species": "dog", "lang": "en", "text": "a viper bit him on the paw during our walk", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S010", "species": "dog", "lang": "el", "text": "τον δάγκωσε οχιά στο πόδι", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S011", "species": "dog", "lang": "en", "text": "he ate slug pellets in the garden", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S012", "species": "cat", "lang": "en", "text": "I put the dog flea drops on the cat by accident", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S013", "species": "dog", "lang": "en", "text": "he swallowed a button battery from a remote", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S014", "species": "dog", "lang": "en", "text": "chewed some oleander leaves", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S015", "species": "cat", "lang": "el", "text": "μάσησε πικροδάφνη στον κήπο", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S016", "species": "dog", "lang": "en", "text": "my 9 week old puppy has bloody diarrhea and vomiting", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S017", "species": "dog", "lang": "en", "text": "she was hit by a car, walking but limping", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S018", "species": "dog", "lang": "en", "text": "seizure lasting more than 5 minutes", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S019", "species": "cat", "lang": "en", "text": "gums are white and she is very weak", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S020", "species": "cat", "lang": "en", "text": "she is breathing with her mouth open", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S021", "species": "dog", "lang": "en", "text": "he is choking and pawing at his mouth", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S022", "species": "bird", "lang": "en", "text": "my parrot ate avocado guacamole", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S023", "species": "bird", "lang": "en", "text": "budgie fluffed on the cage floor, straining, probably an egg", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S024", "species": "bird", "lang": "en", "text": "tail bobbing with every breath", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S025", "species": "rabbit", "lang": "en", "text": "she stopped eating, belly bloated and she feels cold", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S026", "species": "rabbit", "lang": "en", "text": "8 week old rabbit with watery diarrhea", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S027", "species": "reptile", "lang": "en", "text": "tissue is hanging out of the vent", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S028", "species": "other", "lang": "en", "text": "my hamster is 5 weeks old and has wet tail", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S029", "species": "other", "lang": "en", "text": "my ferret is weak and dragging his back legs", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S030", "species": "dog", "lang": "en", "text": "he drank antifreeze from the garage floor", "weight_kg": null, "truth": "EMERGENCY", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S031", "species": "dog", "lang": "en", "text": "he ate two ibuprofen tablets", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S032", "species": "dog", "lang": "en", "text": "stole rat poison pellets yesterday, no signs yet", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S033", "species": "dog", "lang": "en", "text": "drank some bleach from the bucket", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S034", "species": "dog", "lang": "en", "text": "ate raw bread dough that was rising", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S035", "species": "dog", "lang": "en", "text": "he ate a sock yesterday", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S036", "species": "dog", "lang": "en", "text": "there is blood in his diarrhea since this morning", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S037", "species": "dog", "lang": "en", "text": "ate some of my sertraline tablets", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S038", "species": "dog", "lang": "en", "text": "chewed the dieffenbachia leaf", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S039", "species": "cat", "lang": "en", "text": "nibbled the petals of the bouquet, not sure which flowers", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S040", "species": "rabbit", "lang": "en", "text": "stopped eating this morning and no droppings", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S041", "species": "reptile", "lang": "en", "text": "bearded dragon breathing with open mouth and bubbles at the nose", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S042", "species": "other", "lang": "en", "text": "my guinea pig stopped eating since the morning", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S043", "species": "other", "lang": "en", "text": "my guinea pig is wheezing with a runny nose", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S044", "species": "other", "lang": "en", "text": "my guinea pig has swollen joints and is limping", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S045", "species": "dog", "lang": "en", "text": "short seizure about 20 minutes ago lasting 30 seconds, now normal", "weight_kg": null, "truth": "URGENT", "needs_rule": true, "reviewed_by": null, "note": ""}
+{"id": "S046", "species": "dog", "lang": "en", "text": "he did not eat the grapes, I counted them", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": "negation"}
+{"id": "S047", "species": "dog", "lang": "el", "text": "δεν έφαγε σοκολάτα, μόνο το χαρτάκι", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": "negation"}
+{"id": "S048", "species": "cat", "lang": "en", "text": "she never touched the lily", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": "negation"}
+{"id": "S049", "species": "dog", "lang": "en", "text": "licked a crumb of chocolate cake, 30 kg dog", "weight_kg": 30, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S050", "species": "dog", "lang": "en", "text": "ate 20 g of milk chocolate, he is 30 kg", "weight_kg": 30, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S051", "species": "cat", "lang": "en", "text": "ate half a leaf of a peace lily", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S052", "species": "dog", "lang": "en", "text": "we use a choke chain on walks", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S053", "species": "dog", "lang": "en", "text": "vaccinated for parvo last week and playful", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S054", "species": "cat", "lang": "en", "text": "I used the cat flea drops on the cat", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S055", "species": "dog", "lang": "en", "text": "threw up once, otherwise playful and eating", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S056", "species": "dog", "lang": "en", "text": "limping slightly since yesterday", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S057", "species": "cat", "lang": "en", "text": "sneezing a bit for two days, eating normally", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S058", "species": "dog", "lang": "en", "text": "licking a paw, red between the toes", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S059", "species": "rabbit", "lang": "en", "text": "he is eating hay and playing", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S060", "species": "bird", "lang": "en", "text": "my parrot is chirping and eating seeds", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S061", "species": "other", "lang": "en", "text": "my hamster is running on the wheel and eating well", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": ""}
+{"id": "S062", "species": "dog", "lang": "en", "text": "he has been drinking a lot more and peeing more for a week", "weight_kg": null, "truth": "URGENT", "needs_rule": false, "reviewed_by": null, "note": "ai-only"}
+{"id": "S063", "species": "cat", "lang": "en", "text": "she is hiding, not herself and has not eaten for 2 days", "weight_kg": null, "truth": "URGENT", "needs_rule": false, "reviewed_by": null, "note": "ai-only"}
+{"id": "S064", "species": "dog", "lang": "en", "text": "there is a lump on his side that has grown over a month", "weight_kg": null, "truth": "URGENT", "needs_rule": false, "reviewed_by": null, "note": "ai-only"}
+{"id": "S065", "species": "dog", "lang": "en", "text": "scratching his ears and shaking his head", "weight_kg": null, "truth": "SELF_CARE", "needs_rule": false, "reviewed_by": null, "note": "ai-only"}

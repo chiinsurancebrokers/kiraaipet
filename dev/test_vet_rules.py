@@ -113,7 +113,32 @@ CASES = [
     ("dog", "he swallowed a sock yesterday", None, "URGENT"),
     ("cat", "η γάτα κατάπιε κλωστή", None, "URGENT"),
     ("dog", "he ate rat poison and has bloody diarrhea", None, "EMERGENCY"),
+    # --- negation guard: exposure that did NOT happen must not fire; uncertainty must
+    ("dog", "he did not eat the grapes, I checked the bowl", None, None),
+    ("dog", "δεν έφαγε σταφίδες", None, None),
+    ("dog", "I'm not sure but I think he ate grapes", None, "EMERGENCY"),
+    ("dog", "he didn't eat the chocolate, only the wrapper, he's 20kg", None, None),
+    ("dog", "he did not eat anything but he ate grapes earlier", None, "EMERGENCY"),
+    ("dog", "he ate grapes and has no vomiting so far", None, "EMERGENCY"),
+    ("cat", "she never touched the lily, it is out of reach", None, None),
+    ("dog", "he wasn't bitten by the snake, it ran away", None, None),
+    ("dog", "he hasn't eaten for a day but did not get into the rat poison", None, None),
+    ("dog", "didn't eat xylitol gum", None, None),
+    # --- small mammals ("other")
+    ("other", "my guinea pig has stopped eating since this morning", None, "URGENT"),
+    ("other", "το ινδικό χοιρίδιο δεν τρώει", None, "URGENT"),
+    ("other", "my hamster has wet tail and he is only 5 weeks old", None, "EMERGENCY"),
+    ("other", "my hamster has diarrhea", None, "URGENT"),
+    ("other", "my guinea pig is wheezing and has a runny nose", None, "URGENT"),
+    ("other", "my ferret is weak and dragging his back legs", None, "EMERGENCY"),
+    ("other", "το κουνάβι σέρνει τα πίσω πόδια", None, "EMERGENCY"),
+    ("other", "my ferret has been vomiting and has black tarry stool", None, "URGENT"),
+    ("other", "my guinea pig has swollen joints and is limping", None, "URGENT"),
+    ("other", "his rectum is sticking out", None, "EMERGENCY"),
+    ("other", "my hamster is running on the wheel and eating well", None, None),
+    ("dog", "he is not eating and has diarrhea", None, None),     # small-mammal rules never fire on dogs
 ]
+
 
 
 fails = 0

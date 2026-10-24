@@ -266,3 +266,36 @@ def disagreement(species_key, floor_level, ai_level, rule_ids, raw_level="", fai
     if ai_level == "EMERGENCY" and not floor_level:
         return {"kind": "ai_only_emergency", "species": species_key, "ai": ai_level}
     return None
+
+
+# ── kill switch ─────────────────────────────────────────────────────────────────
+def flag(value, default="on"):
+    """Env/secret switch: anything except off/0/false/no/disabled counts as ON.
+    VET_FLOOR=off turns every rule/profile/vitals/knowledge/safety-net layer off (the nurse behaves as before this work);
+    VET_EXTRACT=off turns off only the extra fact-extraction AI call. The AI-failure fallback always stays on."""
+    return str(default if value is None or value == "" else value).strip().lower() not in ("off", "0", "false", "no", "disabled")
+
+
+# ── layer 7b: hand-off card for poisoning ───────────────────────────────────────
+# Greece has no veterinary poison helpline listed by the authorities. The only official numbers found (antipoison.necca.gov.gr,
+# "Useful contacts") are for REPORTING poisoned baits: N.E.C.C.A. 210 8089271 and the animal abuse line 10410. They are not clinical advice lines.
+NECCA_PHONE = "210 8089271"
+ABUSE_LINE = "10410"
+
+
+def handoff(rule_ids, lang="en"):
+    """What to show next to a poisoning verdict. Returns {} when no poison rule fired."""
+    ids = set(rule_ids or [])
+    toxin = bool(ids & vr.TOXIN_IDS)
+    if not toxin:
+        return {}
+    bait = bool(ids & vr.BAIT_IDS)
+    if lang == "el":
+        text = ("☎️ **Πιθανή δηλητηρίαση:** κάλεσε τώρα τον κτηνίατρό σου ή το πλησιέστερο 24ωρο κτηνιατρείο και πες τι, πόσο και πότε. "
+                "Πάρε μαζί τη συσκευασία ή μια φωτογραφία. Μην προκαλέσεις εμετό αν δεν στο πει ο κτηνίατρος.")
+        bait_text = (f"Αν υποψιάζεσαι δηλητηριασμένο δόλωμα, αφού φροντίσεις το ζώο ανάφερέ το: Ε.Ο.Κ.Α.Α./N.E.C.C.A. {NECCA_PHONE} ή Γραμμή Κακοποίησης Ζώων {ABUSE_LINE}.")
+    else:
+        text = ("☎️ **Suspected poisoning:** call your vet or the nearest 24-hour clinic now and say what, how much and when. "
+                "Bring the packaging or a photo. Do not make the pet vomit unless the vet tells you to.")
+        bait_text = f"If you suspect poisoned bait, report it once your pet is safe: N.E.C.C.A. {NECCA_PHONE} or the animal abuse line {ABUSE_LINE}."
+    return {"text": text, "bait_text": bait_text if bait else "", "show_vets": True}
