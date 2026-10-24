@@ -7131,10 +7131,18 @@ def render_pet_landing(gate=False):
             st.session_state["_login_plan"] = "free"; st.rerun()
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
-    _start("land_cta_top")
-    if gate:
-        st.markdown('<div style="text-align:center;font-size:13px;margin:-2px 0 6px;"><a href="#pn-plans" style="color:#1237C9;font-weight:600;">'
-                    + ("Δες τα πλάνα ↓" if el else "See the plans ↓") + '</a></div>', unsafe_allow_html=True)
+    st.markdown('<style>.st-key-pn_herocta [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;gap:10px !important;align-items:stretch !important;}'
+                '.st-key-pn_herocta [data-testid="stColumn"]{min-width:0 !important;width:auto !important;}'
+                '.st-key-pn_herocta .stButton button{background:#EE7340 !important;border:none !important;min-height:50px !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}'
+                '.st-key-pn_herocta .stButton button p{color:#0B1B4B !important;font-weight:800 !important;}</style>', unsafe_allow_html=True)
+    with st.container(key="pn_herocta"):
+        _h1, _h2 = st.columns(2, gap="small")
+        with _h1:
+            _start("land_cta_top", label=("Δοκίμασέ το δωρεάν" if el else "Try it free"))
+        with _h2:
+            st.markdown('<a class="pn-ghost" href="#pn-how">' + ("Δες πώς λειτουργεί" if el else "See how it works") + '</a>', unsafe_allow_html=True)
+    st.markdown(parts["chips"], unsafe_allow_html=True)
+    st.markdown('<div id="pn-how" style="scroll-margin-top:12px;"></div>', unsafe_allow_html=True)
     # Same explainer video as petsaihealth.com (override with EXPLAINER_VIDEO_URL; set it to "off" to hide)
     _vid = os.environ.get("EXPLAINER_VIDEO_URL", "https://petsaihealth.com/wp-content/uploads/2026/10/content-3.mp4").strip()
     if _vid and _vid.lower() != "off":

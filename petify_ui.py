@@ -453,6 +453,20 @@ LANDING_CSS = f"""
 .pn-l-svc details[open] > *:not(summary) {{ margin-top:12px; }}
 @media (max-width:640px) {{ .pn-l-hero p {{ display:none; }} .pn-l-hero h1 {{ font-size:27px; margin:10px 0 0; }} .pn-l-hero {{ padding:18px 18px 22px; gap:14px; }} }}
 @media (max-width:820px) {{ .pn-l-steps {{ grid-template-columns:1fr; }} .pn-l-step .im {{ aspect-ratio:400/150; }} }}
+.pn-team {{ position:relative; width:100%; aspect-ratio:400/270; border-radius:26px; overflow:hidden;
+  background:radial-gradient(90% 80% at 20% 0%, #E4E8FB 0%, rgba(228,232,251,0) 70%), linear-gradient(160deg,#C9D0F5,#AAB7EE); }}
+.pn-team img {{ position:absolute; height:auto; transform:scaleX(-1); filter:drop-shadow(0 10px 14px rgba(11,27,75,.22)); }}
+.pn-team .r {{ left:1%; top:20%; width:36%; }} .pn-team .b {{ left:35%; top:26%; width:22%; }}
+.pn-team .c {{ left:49%; top:1%; width:30%; }} .pn-team .d {{ right:0%; top:25%; width:42%; }}
+.pn-team i {{ position:absolute; width:9px; height:9px; background:#fff; opacity:.85; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); }}
+.pn-team .pill {{ position:absolute; right:12px; bottom:12px; background:#fff; border-radius:999px; padding:7px 15px; font:800 15px 'Sora',sans-serif; letter-spacing:-.03em; color:{BLUE}; box-shadow:0 10px 20px -10px rgba(11,27,75,.5); }}
+.pn-team .pill b {{ color:{ORANGE}; font-weight:800; }}
+.pn-l-hero .art.team {{ aspect-ratio:auto; overflow:visible; box-shadow:0 24px 50px -26px rgba(0,0,0,.55); border-radius:26px; }}
+.pn-chips {{ display:flex; flex-direction:column; align-items:flex-start; gap:9px; margin:12px 2px 6px; }}
+.pn-chips span {{ display:inline-flex; align-items:center; gap:10px; padding:9px 16px; border-radius:999px; background:#fff; border:1px solid {LINE}; color:{INK}; font:600 13.5px 'Inter',sans-serif; }}
+.pn-ghost {{ display:flex; align-items:center; justify-content:center; min-height:50px; border-radius:999px; border:1.5px solid {LAV2}; background:#fff; color:{BLUE} !important;
+  font:700 15px 'Inter',sans-serif; text-decoration:none !important; text-align:center; padding:0 10px; }}
+@media (min-width:821px) {{ .pn-chips {{ flex-direction:row; flex-wrap:wrap; }} }}
 .pn-brand {{ display:flex; align-items:center; gap:12px; padding:4px 2px 0; }}
 .pn-brand .tile {{ width:46px; height:46px; border-radius:15px; background:{ORANGE}; display:flex; align-items:center; justify-content:center; transform:rotate(-5deg);
   box-shadow:0 8px 18px -8px rgba(238,115,64,.9); flex-shrink:0; }}
@@ -479,7 +493,7 @@ LANDING_CSS = f"""
 .pn-l-more .t small {{ display:block; font:500 11.5px 'Inter',sans-serif; color:{MUTED}; margin-top:3px; letter-spacing:0; }}
 @media (max-width:900px) {{ .pn-l-more {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
 @media (max-width:820px) {{
-  .pn-l-hero {{ grid-template-columns:1fr; padding:24px 22px; }} .pn-l-hero h1 {{ font-size:30px; }} .pn-l-hero .art {{ order:-1; }}
+  .pn-l-hero {{ grid-template-columns:1fr; padding:24px 22px; }} .pn-l-hero h1 {{ font-size:30px; }} .pn-l-hero .art {{ order:0; }}
   .pn-l-svc {{ grid-template-columns:1fr; }} .pn-l-svc.flip .art {{ order:0; }} .pn-l-svc .art {{ padding:14px 14px 0; }}
   .pn-l-svc .bd {{ padding:20px 20px 22px; }} .pn-l-svc h2 {{ font-size:22px; }}
 }}
@@ -488,6 +502,23 @@ LANDING_CSS = f"""
 
 
 HERO_NAMES_UI = {"dog": "Perro", "cat": "Gata", "rabbit": "Gaz", "bird": "Ave"}
+
+
+def team_html() -> str:
+    """The flying hero team (same composition as the website banner)."""
+    sp = ''.join(f'<i style="left:{x}%;top:{y}%;transform:scale({z})"></i>' for x, y, z in ((6, 12, 1.1), (30, 8, .8), (88, 10, 1), (12, 62, .8), (44, 70, .7), (70, 8, .7)))
+    return ('<div class="pn-team">' + sp +
+            '<img class="r" src="/app/static/heroes/rabbit.png" alt="Gaz"/><img class="b" src="/app/static/heroes/bird.png" alt="Ave"/>'
+            '<img class="c" src="/app/static/heroes/cat.png" alt="Gata"/><img class="d" src="/app/static/heroes/dog.png" alt="Perro"/>'
+            '<div class="pill">Pets<b>AI</b>Health</div></div>')
+
+
+def chips_html(lang: str) -> str:
+    el = lang == "el"
+    items = [("📚", "Παραπομπές MSD Vet Manual" if el else "MSD Vet Manual references"),
+             ("🚨", "Έλεγχος επείγοντος πάντα ενεργός" if el else "Emergency check always on"),
+             ("🔒", "GDPR · χωρίς αποθήκευση φωτογραφιών" if el else "GDPR · no photos stored")]
+    return '<div class="pn-chips">' + "".join(f'<span>{i}&nbsp;{t}</span>' for i, t in items) + '</div>'
 
 
 def brand_html() -> str:
@@ -526,7 +557,7 @@ def landing_parts(lang: str, gr: bool = False) -> dict:
   <h1>{"Πες τι παρατηρείς. <span>Η PetsAIHealth ρωτά, εξηγεί και ετοιμάζει την αναφορά.</span>" if el else "Tell us what you notice. <span>PetsAIHealth asks, explains and prepares the report.</span>"}</h1>
   <p>{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD Vet Manual — και γύρω της υπηρεσίες για κάλυψη ασφαλιστηρίου, μακροζωία και ιατρική αναφορά. Συμπληρώνει, δεν αντικαθιστά τον κτηνίατρο." if el
       else "A structured symptom assessment with MSD Vet Manual references — with services around it for insurance coverage, longevity and the medical report. It complements your vet, never replaces them."}</p>
-</div><div class="art">{_art.scene("nurse", "dog")}</div></div>"""
+</div><div class="art team">{team_html()}</div></div>"""
 
     def svc(scene, flip, main, tag, title, summary, problem, steps, note=""):
         lis = "".join(f"<li>{x}</li>" for x in steps)
@@ -643,7 +674,7 @@ def landing_parts(lang: str, gr: bool = False) -> dict:
         foot = "PetsAIHealth does not provide veterinary diagnosis and does not replace your vet."
     more_html = (f'<div class="pn-sec">{more_t}</div><div class="pn-l-more">' +
                  "".join(f'<div class="c"><div class="im">{_art.scene(k, "dog")}</div><div class="t">{t}<small>{sm}</small></div></div>' for k, t, sm in more) + '</div>')
-    return {"hero": hero, "brand": brand_html(), "heroes": heroes_html(lang), "ready": ready_html(lang), "steps": steps, "svc_head": svc_head, "services": services, "more": more_html, "foot": foot}
+    return {"hero": hero, "brand": brand_html(), "chips": chips_html(lang), "heroes": heroes_html(lang), "ready": ready_html(lang), "steps": steps, "svc_head": svc_head, "services": services, "more": more_html, "foot": foot}
 
 
 # ── illustrated section cards (report), species picker and intake steps ───────
