@@ -298,7 +298,7 @@ RULES = [
          "Μάτι που έχει βγει από την κόγχη είναι επείγον.",
          "", "policy", immediate=True),
     Rule("MAM-DYSTOCIA", ("dog", "cat", "rabbit"), "EMERGENCY",
-         _r(r"(labou?r|giving birth|whelping|queening|straining).{0,40}(hours?|no (puppy|kitten)|stuck|green discharge)|"
+         _r(r"(labou?r|giving birth|whelping|queening).{0,40}(hours?|no (puppy|kitten)|stuck|green discharge)|straining.{0,40}(no (puppy|kitten)|stuck|green discharge|in labou?r|pregnant)|"
             r"τοκετ.{0,30}(ωρες|κολλησε|πρασιν)|γεννα\w*.{0,30}(ωρες|κολλησε)"),
          "Prolonged or stalled labour is an emergency.",
          "Παρατεταμένος ή σταματημένος τοκετός είναι επείγον.",
@@ -495,6 +495,49 @@ RULES = [
          "Not putting weight on a leg, holding it up, or yelping with a sudden severe limp can mean a fracture, a torn ligament or a bone problem: see a vet today.",
          "Αν δεν πατά το πόδι, το κρατά ψηλά ή ουρλιάζει με ξαφνικό σοβαρό κούτσαμα, μπορεί να είναι κάταγμα, ρήξη συνδέσμου ή πρόβλημα στο οστό: δες κτηνίατρο σήμερα.",
          SRC["emergency"], "msd"),
+    # ---- from the second batch of MSD case studies (M009-M021); policy basis unless noted: a vet must confirm
+    Rule("DC-CANT-WALK", ("dog", "cat"), "EMERGENCY",
+         _r(r"(can'?t|cannot|unable to|not able to|won'?t be able to|couldn'?t) (walk|stand|get up|use (his|her) (back|hind|rear) legs)|paraly[sz]|dragging (his|her) (back|hind|rear) (legs?|end)|"
+            r"δεν μπορει (πλεον )?να (περπατησ|σηκωθ|σταθ)|ακινητοποιηθηκε|παραλυσ|σερνει τα (πισω )?ποδια"),
+         "A pet that suddenly cannot walk or stand can have a spinal, nerve, heart or poisoning emergency: go to a vet now.",
+         "Ζώο που ξαφνικά δεν μπορεί να περπατήσει ή να σταθεί μπορεί να έχει επείγον πρόβλημα σπονδυλικής στήλης, νεύρων, καρδιάς ή δηλητηρίαση: πήγαινε σε κτηνίατρο αμέσως.",
+         SRC["cases"], "policy", immediate=True),
+    Rule("DC-NOSEBLEED", ("dog", "cat", "rabbit"), "EMERGENCY",
+         _r(r"nose ?bleed|epistaxis|blood (spray\w*|comes?|coming|pour\w*|drip\w*|runs?|running|squirt\w*) .{0,20}nose|bleed\w* (from|out of) (his|her|the|its) nose|blood from (his|her|the|its) nose|"
+            r"αιμορραγι\w* απο (τη|την) μυτη|αιμα απο (τη|την) μυτη|μυτη.{0,15}(αιμορραγ|αιματ)"),
+         "Heavy or repeated nosebleeds can mean a clotting problem, poisoning, a tumour or a nasal infection: go to a vet now.",
+         "Έντονη ή επαναλαμβανόμενη ρινορραγία μπορεί να οφείλεται σε διαταραχή πήξης, δηλητηρίαση, όγκο ή λοίμωξη της μύτης: πήγαινε σε κτηνίατρο αμέσως.",
+         SRC["cases"], "policy", immediate=True),
+    Rule("DC-JAUNDICE", ("dog", "cat"), "URGENT",
+         _r(r"yellow\w* (skin|gums?|eyes?|whites|ears?)|(skin|gums?|eyes?|whites|ears?).{0,20}yellow|jaundic|icter|"
+            r"κιτρινο (δερμα|ματια|ουλα)|(δερμα|ματια|ουλα).{0,20}κιτριν|κιτρινισ|ικτερ"),
+         "Yellow skin, gums or eyes (jaundice) means a liver, gallbladder or blood problem: see a vet today.",
+         "Κίτρινο δέρμα, ούλα ή μάτια (ίκτερος) δείχνει πρόβλημα στο συκώτι, στη χολή ή στο αίμα: δες κτηνίατρο σήμερα.",
+         SRC["cases"], "policy"),
+    Rule("DC-ANOREXIA-LONG", ("dog", "cat"), "URGENT",
+         _r(r"(not|n'?t|never|stopped|refus\w*) .{0,16}(eat|eaten|eating|food)\b",
+            r"(for|since|over|more than|nearly|almost) .{0,10}(24 ?(hours|hrs|h)|a day|one day|two days|\b([2-9]|\d\d)\b ?days|a week|week|weeks)|a week|\d+ days|24 hours"),
+         "A dog or cat that has not eaten for a day or more, especially with lethargy, vomiting or pain, should be seen by a vet today.",
+         "Σκύλος ή γάτα που δεν έχει φάει για μία μέρα ή περισσότερο, ιδίως με ληθαργικότητα, εμετό ή πόνο, πρέπει να εξεταστεί από κτηνίατρο σήμερα.",
+         SRC["cases"], "policy", exclude=r"\b(just|only) (a|one) (meal|bite)|fasting|fasted|surgery|before (the )?(op|operation|surgery)"),
+    Rule("DC-WOUND-NONHEAL", ("dog", "cat", "rabbit", "other"), "URGENT",
+         _r(r"not healing|won'?t heal|isn'?t healing|aren'?t healing|(wound|bite|bites|abscess|sore)s?.{0,50}(infected|pus|oozing|smell\w*|swollen|getting worse|worse)|"
+            r"δεν γιατρευ|δεν κλεινει|πληγ\w*.{0,30}(πυο|μολυσμ|χειροτερ|βρωμ)"),
+         "A wound or bite that is not healing, or is swollen, oozing or smelly, is infected until proven otherwise: see a vet today.",
+         "Πληγή ή δάγκωμα που δεν επουλώνεται ή είναι πρησμένο, τρέχει ή μυρίζει θεωρείται μολυσμένο μέχρι να αποδειχθεί το αντίθετο: δες κτηνίατρο σήμερα.",
+         SRC["cases"], "policy"),
+    Rule("DC-LUMP-OPEN", ("dog", "cat", "rabbit", "other"), "URGENT",
+         _r(r"(lumps?|swellings?|bumps?|masses|mass|growths?|tumou?rs?).{0,90}(burst|ruptur|\bopen\b|opened|oozing|draining|bleeding|discharg|ulcerat)|(burst|ruptured|opened).{0,20}(lumps?|swellings?|growths?)|"
+            r"(εξογκωμα|εξογκωματα|κομποι|ογκο\w*|μαζα|μπαλιτσα).{0,40}(εσπασ|ανοιξ|αιμορραγ|τρεχ|πυο)"),
+         "A lump that has opened, bleeds or oozes can be infected or a tumour: see a vet within the day.",
+         "Εξόγκωμα που άνοιξε, αιμορραγεί ή τρέχει μπορεί να είναι μολυσμένο ή όγκος: δες κτηνίατρο μέσα στην ημέρα.",
+         SRC["cases"], "policy"),
+    Rule("DOG-URINARY-STRAIN", ("dog",), "URGENT",
+         _r(r"strain\w* to (pee|urinate|wee)|strain\w* .{0,6}(pee|urinat|wee)|(pee|urinat|wee)\w* .{0,6}straining|trying to (pee|urinate|wee)|cannot (pee|urinate)|can'?t (pee|urinate)|"
+            r"προσπαθει να ουρησει|δυσκολευεται να ουρησει|ουρα.{0,12}(σταγον|δυσκολ)"),
+         "A dog straining to urinate can have stones, a blocked urethra, a prostate problem or a tumour: see a vet today, and go now if no urine comes out at all.",
+         "Σκύλος που δυσκολεύεται να ουρήσει μπορεί να έχει πέτρες, απόφραξη ουρήθρας, πρόβλημα προστάτη ή όγκο: δες κτηνίατρο σήμερα και πήγαινε αμέσως αν δεν βγαίνει καθόλου ούρο.",
+         SRC["cases"], "policy"),
     Rule("DC-YOUNG-GI", ("dog", "cat"), "URGENT",
          _r(r"puppy|\bpup\b|kitten|κουταβ|γατακ|\b([1-9]|1[0-9]|2[0-4]) ?[- ]?(weeks?|εβδομαδ)[- ]?(old|ων|ης)?|\b([1-5]) ?[- ]?(months?|μην\w*)[- ]?(old|ων|ης)?|young|new ?born",
             r"vomit|diarrh|letharg|not eating|poor appetite|reduced appetite|soft stool|yellow stool|εμετ|διαρρο|ληθαργ|δεν τρωει|αδυναμ|μαλακα κοπρανα"),

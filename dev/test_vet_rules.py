@@ -14,7 +14,7 @@ CASES = [
     ("dog", "threw up once this morning, otherwise playful and eating", None, None),
     ("cat", "sneezing a bit for two days, eating normally", None, None),
     ("dog", "limping slightly on back leg since yesterday", None, None),
-    ("cat", "hasn't eaten for 2 days", None, None),
+    ("cat", "hasn't eaten for 2 days", None, "URGENT"),
     ("dog", "ate a few grapes an hour ago", None, "EMERGENCY"),
     ("dog", "had a seizure that lasted 5 minutes", None, "EMERGENCY"),
     ("dog", "licking paw a lot, red between toes", None, None),
@@ -122,7 +122,7 @@ CASES = [
     ("dog", "he ate grapes and has no vomiting so far", None, "EMERGENCY"),
     ("cat", "she never touched the lily, it is out of reach", None, None),
     ("dog", "he wasn't bitten by the snake, it ran away", None, None),
-    ("dog", "he hasn't eaten for a day but did not get into the rat poison", None, None),
+    ("dog", "he is playing and did not get into the rat poison", None, None),
     ("dog", "didn't eat xylitol gum", None, None),
     # --- small mammals ("other")
     ("other", "my guinea pig has stopped eating since this morning", None, "URGENT"),
@@ -152,6 +152,18 @@ CASES = [
     ("dog", "our 2 month old puppy is lethargic and vomited after the dewormer", None, "URGENT"),
     ("dog", "our puppy is playful and eating well", None, None),
     ("dog", "ο σκύλος κρατάει ψηλά το πόδι και δεν πατάει", None, "URGENT"),
+    # second MSD case batch
+    ("dog", "she woke up and cannot walk at all", None, "EMERGENCY"),
+    ("dog", "he struggles to walk a bit after the long hike", None, None),
+    ("dog", "severe nosebleed, blood sprays from his nose when he sneezes", None, "EMERGENCY"),
+    ("cat", "her gums and skin look yellow", None, "URGENT"),
+    ("dog", "he has not wanted to eat for a week", None, "URGENT"),
+    ("dog", "he skipped breakfast before the surgery, not eating since last night", None, None),
+    ("dog", "bite wounds from a fight are not healing", None, "URGENT"),
+    ("dog", "a lump on her side has burst open and is oozing", None, "URGENT"),
+    ("dog", "he is straining to urinate since this morning", None, "URGENT"),
+    ("dog", "σηκωθηκε και δεν μπορει να περπατησει", None, "EMERGENCY"),
+    ("cat", "κιτρινο δερμα και ουλα", None, "URGENT"),
 ]
 
 
