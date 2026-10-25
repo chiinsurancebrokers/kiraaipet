@@ -287,6 +287,14 @@ CASES = [
     ("rabbit", "the vet gave amoxicillin tablets to my rabbit and now he is bloated", None, "EMERGENCY"),
     ("rabbit", "I used a fipronil flea spot-on on my rabbit", None, "EMERGENCY"),
     ("dog", "our collie got ivermectin horse paste and is stumbling and drooling", None, "EMERGENCY"),
+    # MSD immune / infectious pass
+    ("dog", "he had a tick two weeks ago and now has a fever and is lethargic", None, "URGENT"),
+    ("dog", "scaly skin with hair loss on his ears and face and he is losing weight", None, "URGENT"),
+    ("cat", "my cat has a swollen belly, lost weight and has a fever", None, "EMERGENCY"),
+    ("cat", "our newborn kitten is cold and not nursing", None, "EMERGENCY"),
+    ("dog", "the 3 week old puppy is crying nonstop and weak", None, "EMERGENCY"),
+    ("bird", "my budgie has eye discharge, fluffed feathers and green droppings and is sleepy", None, "EMERGENCY"),
+    ("dog", "he is a 3 year old dog who is playful and eating, one tick found and removed", None, None),
 ]
 
 
