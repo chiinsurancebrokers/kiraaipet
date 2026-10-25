@@ -183,14 +183,14 @@ def vitals_hits(species_key, vitals):
         return out
     br, hr, temp, spo2 = _num(v.get("br")), _num(v.get("hr")), _num(v.get("temp")), _num(v.get("spo2"))
     if br is not None and br >= 60:
-        hit("VIT-BR-HIGH", "EMERGENCY", f"Measured {br:.0f} breaths per minute at rest: far above the normal 15 to 30 and a sign of serious breathing or heart trouble.",
-            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: πολύ πάνω από τις φυσιολογικές 15 έως 30, σημάδι σοβαρού αναπνευστικού ή καρδιακού προβλήματος.")
-    elif br is not None and br >= 40:
-        hit("VIT-BR-RAISED", "URGENT", f"Measured {br:.0f} breaths per minute at rest: sleeping or resting rates above about 30 to 40 are worth a vet check today.",
-            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: ρυθμοί πάνω από περίπου 30 έως 40 σε ύπνο ή ηρεμία θέλουν έλεγχο από κτηνίατρο σήμερα.")
-    if br is not None and 30 < br < 40 and sp == "dog":
-        hit("VIT-BR-DOG-SLEEP", "URGENT", f"Measured {br:.0f} breaths per minute at rest: a sleeping or resting dog above 30 can mean fluid in the lungs (early heart failure), a vet should check today.",
-            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: σκύλος που κοιμάται ή ξεκουράζεται πάνω από 30 μπορεί να έχει υγρό στους πνεύμονες (αρχόμενη καρδιακή ανεπάρκεια), χρειάζεται έλεγχο από κτηνίατρο σήμερα.")
+        hit("VIT-BR-HIGH", "EMERGENCY", f"Measured {br:.0f} breaths per minute at rest: far above the normal resting 18 to 34 (dog) or 16 to 40 (cat) and a sign of serious breathing or heart trouble.",
+            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: πολύ πάνω από τις φυσιολογικές σε ηρεμία 18 έως 34 (σκύλος) ή 16 έως 40 (γάτα), σημάδι σοβαρού αναπνευστικού ή καρδιακού προβλήματος.")
+    elif br is not None and br > 40:
+        hit("VIT-BR-RAISED", "URGENT", f"Measured {br:.0f} breaths per minute at rest: resting rates above 40 are above the normal range (MSD: dog 18 to 34, cat 16 to 40) and are worth a vet check today.",
+            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: ρυθμοί πάνω από 40 σε ηρεμία είναι πάνω από τα φυσιολογικά (MSD: σκύλος 18 έως 34, γάτα 16 έως 40) και θέλουν έλεγχο από κτηνίατρο σήμερα.")
+    if br is not None and 34 < br <= 40 and sp == "dog":
+        hit("VIT-BR-DOG-SLEEP", "URGENT", f"Measured {br:.0f} breaths per minute at rest: a resting dog above 34 (MSD normal 18 to 34) can mean fluid in the lungs (early heart failure), a vet should check today.",
+            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: σκύλος σε ηρεμία πάνω από 34 (φυσιολογικό MSD 18 έως 34) μπορεί να έχει υγρό στους πνεύμονες (αρχόμενη καρδιακή ανεπάρκεια), χρειάζεται έλεγχο από κτηνίατρο σήμερα.")
     if spo2 is not None and 0 < spo2 < 90:
         hit("VIT-SPO2-LOW", "EMERGENCY", f"Oxygen saturation {spo2:.0f}%: below 90% is an emergency.",
             f"Κορεσμός οξυγόνου {spo2:.0f}%: κάτω από 90% είναι επείγον.")
@@ -201,17 +201,17 @@ def vitals_hits(species_key, vitals):
         if temp >= 41.0 or temp <= 37.0:
             hit("VIT-TEMP-CRIT", "EMERGENCY", f"Temperature {temp:.1f} °C is dangerously {'high' if temp >= 41 else 'low'} (normal is about 38 to 39.2).",
                 f"Θερμοκρασία {temp:.1f} °C επικίνδυνα {'υψηλή' if temp >= 41 else 'χαμηλή'} (φυσιολογική περίπου 38 έως 39,2).")
-        elif temp >= 40.0 or temp <= 37.5:
-            hit("VIT-TEMP", "URGENT", f"Temperature {temp:.1f} °C is outside the safe range (normal is about 38 to 39.2): see a vet today.",
-                f"Θερμοκρασία {temp:.1f} °C εκτός ασφαλών ορίων (φυσιολογική περίπου 38 έως 39,2): κτηνίατρος σήμερα.")
+        elif temp >= 40.0 or temp < (37.5 if sp == "dog" else 38.1):
+            hit("VIT-TEMP", "URGENT", f"Temperature {temp:.1f} °C is outside the safe range (MSD normal: dog 37.5 to 39.2, cat 38.1 to 39.2): see a vet today.",
+                f"Θερμοκρασία {temp:.1f} °C εκτός ασφαλών ορίων (MSD φυσιολογική: σκύλος 37,5 έως 39,2, γάτα 38,1 έως 39,2): κτηνίατρος σήμερα.")
     if hr is not None:
         lo, hi = (60, 180) if sp == "dog" else (150, 220)  # MSD initial-triage page: dog <60-70 or >180, cat <150 or >220
         if hr and sp == "cat" and hr < 120:
             hit("VIT-HR-SHOCK", "EMERGENCY", f"Heart rate {hr:.0f} bpm is dangerously low for a cat (shock range): go to a vet now.",
                 f"Καρδιακός ρυθμός {hr:.0f} bpm επικίνδυνα χαμηλός για γάτα (εύρος shock): πήγαινε αμέσως σε κτηνίατρο.")
         elif hr and (hr < lo or hr > hi):
-            hit("VIT-HR", "URGENT", f"Heart rate {hr:.0f} bpm is outside the range expected for a resting {sp} ({lo} to {hi}).",
-                f"Καρδιακός ρυθμός {hr:.0f} bpm εκτός του αναμενόμενου για {('σκύλο' if sp == 'dog' else 'γάτα')} σε ηρεμία ({lo} έως {hi}).")
+            hit("VIT-HR", "URGENT", f"Heart rate {hr:.0f} bpm is outside the alert range used for emergency triage in a {sp} ({lo} to {hi}); a resting pulse count at home is easy to get wrong, so recount and tell a vet.",
+                f"Καρδιακός ρυθμός {hr:.0f} bpm εκτός του εύρους ειδοποίησης της επείγουσας διαλογής για {('σκύλο' if sp == 'dog' else 'γάτα')} ({lo} έως {hi}). Η μέτρηση σφυγμών στο σπίτι εύκολα γίνεται λάθος, ξαναμέτρησε και ενημέρωσε κτηνίατρο.")
     return out
 
 

@@ -162,6 +162,14 @@ TOPICS = [
      "A sick, thin or underweight tortoise or turtle must never be put into hibernation: see a reptile vet first. "
      "Keep a sick reptile in the upper part of its preferred temperature range, give it a proper UVB light (glass and plastic block UVB), and do not force-feed.",
      "all-other-pets/reptiles/providing-a-home-for-a-reptile"),
+    ("wound_care", r"bite|bitten|wound|cut\b|gash|puncture|δαγκωμ|πληγ|κοψιμο", ("dog", "cat", "rabbit", "other"),
+     "For a bite or wound: press on bleeding with a clean cloth, rinse with plain water or saline, and cover it. Do not use hydrogen peroxide, strong disinfectants or human creams unless a vet says so. "
+     "A small bite can hide deep damage (cat bites infect easily, dog bites can break ribs), so every bite should be seen by a vet.",
+     "special-pet-topics/emergencies/wound-management"),
+    ("anemia_drugs", r"pale gums|yellow (gums|eyes|skin)|jaundice|anemi|anaemi|ικτερ|χλωμα ουλα", ("dog", "cat"),
+     "Pale or yellow gums can mean anaemia. Never give human painkillers (paracetamol, aspirin, naproxen) or onion, garlic or fava beans: they can destroy red blood cells. "
+     "Tell the vet about recent drugs, vaccines, tick exposure and travel.",
+     "dog-owners/blood-disorders-of-dogs/anemia-in-dogs"),
     ("eclampsia", r"nursing|lactat|whelp|gave birth|puppies|kittens|θηλαζ|γεννησε|κουταβια", ("dog", "cat"),
      "Eclampsia (low blood calcium) most often hits small-breed mothers with large litters 1 to 4 weeks after giving birth: restlessness, panting, drooling, stiff walk, twitching, then seizures. "
      "It is an emergency; do not give calcium supplements during pregnancy, as they can make it more likely.",

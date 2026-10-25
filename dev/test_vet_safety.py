@@ -100,6 +100,10 @@ check("ai failure logged", vs.disagreement("cat", "", "", [], "", failed=True)["
 check("record holds only codes", all(isinstance(v, str) and len(v) < 220 for v in d.values()))
 
 ids = lambda sp, v: [h.id for h in vs.vitals_hits(sp, v)]
+check("dog 32 breaths/min is normal (MSD 18-34)", ids("dog", {"br": 32}) == [])
+check("cat 40 breaths/min is normal (MSD 16-40)", ids("cat", {"br": 40}) == [])
+check("dog 37.5 C is normal", ids("dog", {"temp": 37.5}) == [])
+check("cat 38.0 C is URGENT", ids("cat", {"temp": 38.0}) == ["VIT-TEMP"])
 check("sleeping dog 35 breaths/min is URGENT", ids("dog", {"br": 35}) == ["VIT-BR-DOG-SLEEP"])
 check("sleeping dog 28 breaths/min is fine", ids("dog", {"br": 28}) == [])
 check("cat 35 breaths/min not flagged", ids("cat", {"br": 35}) == [])

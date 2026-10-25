@@ -171,7 +171,7 @@ CASES = [
     ("dog", "my cat scratched her eye yesterday", None, "URGENT"),
     ("dog", "he fell down the stairs but is walking fine", None, "URGENT"),
     ("dog", "got bitten in a fight and the neck is swollen", None, "EMERGENCY"),
-    ("dog", "the bite wound on his leg is clean and he is playful", None, None),
+    ("dog", "the bite wound on his leg is clean and he is playful", None, "URGENT"),
     ("cat", "το ματι ειναι κοκκινο και θολο", None, "URGENT"),
     # MSD urinary + musculoskeletal pages
     ("dog", "he squats and strains but only a few drops come out", None, "EMERGENCY"),
@@ -305,6 +305,12 @@ CASES = [
     ("reptile", "my tortoise has bubbles at the nose and an open mouth", None, "EMERGENCY"),
     ("other", "my hedgehog feels cold and is not moving", None, "EMERGENCY"),
     ("rabbit", "my rabbit is hopping around happily, eating hay and it is a cool day", None, None),
+    ("dog", "her gums are yellow and she collapsed this morning", None, "EMERGENCY"),
+    ("cat", "κιτρινα ουλα και δεν σηκωνεται", None, "EMERGENCY"),
+    ("dog", "his eyes look a bit yellow but he is playing and eating", None, "URGENT"),
+    ("dog", "my dog was bitten by another dog on the leg", None, "URGENT"),
+    ("cat", "η γατα δαγκωθηκε, υπαρχει δαγκωμα στο ποδι", None, "URGENT"),
+    ("dog", "he bit into his chew toy", None, None),
 ]
 
 
