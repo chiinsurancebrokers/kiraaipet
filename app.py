@@ -7307,16 +7307,6 @@ def render_pet_landing(gate=False):
     st.markdown(parts["svc_head"], unsafe_allow_html=True)
     st.markdown(parts["services"], unsafe_allow_html=True)
     st.markdown(parts["more"], unsafe_allow_html=True)
-    # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
-    if os.environ.get("SHOW_BENCHMARK", "off").strip().lower() in ("1", "on", "true", "yes"):
-        render_benchmark_section(lang)
-    st.markdown('<style>.st-key-pn_ready{background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%),#1237C9;'
-                'border-radius:28px;padding:26px 22px 22px;margin:8px 0 6px;box-shadow:0 30px 60px -34px rgba(18,55,201,.8);}'
-                '.st-key-pn_ready .stButton button{background:#EE7340 !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}</style>',
-                unsafe_allow_html=True)
-    with st.container(key="pn_ready"):
-        st.markdown(parts["ready"], unsafe_allow_html=True)
-        _start("land_cta_ready", label=("Ξεκίνα τώρα" if el else "Start now"))
     render_plans_section(lang, gate, _cta)
     if gate:
         if st.session_state.get("_login_plan"):
@@ -7327,6 +7317,16 @@ def render_pet_landing(gate=False):
             _g1, _g2, _g3 = st.columns([1, 2, 1])
             with _g2:
                 render_login_gate()
+    # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
+    if os.environ.get("SHOW_BENCHMARK", "off").strip().lower() in ("1", "on", "true", "yes"):
+        render_benchmark_section(lang)
+    st.markdown('<style>.st-key-pn_ready{background:radial-gradient(120% 100% at 100% 0%, rgba(47,85,240,.7) 0%, rgba(47,85,240,0) 60%),#1237C9;'
+                'border-radius:28px;padding:26px 22px 22px;margin:8px 0 6px;box-shadow:0 30px 60px -34px rgba(18,55,201,.8);}'
+                '.st-key-pn_ready .stButton button{background:#EE7340 !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}</style>',
+                unsafe_allow_html=True)
+    with st.container(key="pn_ready"):
+        st.markdown(parts["ready"], unsafe_allow_html=True)
+        _start("land_cta_ready", label=("Ξεκίνα τώρα" if el else "Start now"))
     st.markdown(f'<div style="text-align:center;color:#6B7390;font-size:12.5px;margin:18px 0 8px;">{parts["foot"]}</div>',
                 unsafe_allow_html=True)
 
