@@ -200,6 +200,12 @@ CASES = [
     ("dog", "there was a house fire and we got him out", None, "EMERGENCY"),
     ("bird", "my bird was near a non-stick pan that overheated and smoked", None, "EMERGENCY"),
     ("dog", "τσιγαρο εφαγε ο σκυλος", None, "URGENT"),
+    # MSD quiz check
+    ("dog", "his breathing is noisy and high-pitched when he breathes in", None, "URGENT"),
+    ("cat", "she has a wheeze when she breathes", None, "URGENT"),
+    ("dog", "he is panting after a walk, normal breathing otherwise", None, None),
+    ("dog", "he has been vomiting and has diarrhea, many times since last night", None, "URGENT"),
+    ("dog", "he vomited once and has soft stool, still playful", None, None),
 ]
 
 
