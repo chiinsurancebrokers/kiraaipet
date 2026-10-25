@@ -154,6 +154,10 @@ TOPICS = [
      "Anticoagulant rat bait stops blood clotting, but signs often do not start until more than 24 hours after it was eaten (bruises, nosebleeds, bleeding gums, pale gums, weakness, sudden collapse from internal bleeding). "
      "A pet that looks well after eating rat bait is NOT safe: it needs a vet the same day for treatment before bleeding begins, and the effect can last 2 to 4 weeks with newer products.",
      "toxicology/rodenticide-poisoning/anticoagulant-rodenticide-poisoning"),
+    ("drinking_more", r"drinking (much |a lot |far )?more|drinks (a lot|too much)|thirsty|excessive thirst|πινει πολυ|διψα", ("dog", "cat"),
+     "A pet that suddenly drinks and pees much more is ill (diabetes, kidney, liver, Cushing's, womb infection and other causes) and needs a vet within a day or two. "
+     "Never take the water away or limit it to 'see if it helps': pets that cannot concentrate their urine dehydrate quickly. Always keep fresh water available.",
+     "endocrine-system/the-pituitary-gland/diabetes-insipidus-in-animals"),
     ("eclampsia", r"nursing|lactat|whelp|gave birth|puppies|kittens|θηλαζ|γεννησε|κουταβια", ("dog", "cat"),
      "Eclampsia (low blood calcium) most often hits small-breed mothers with large litters 1 to 4 weeks after giving birth: restlessness, panting, drooling, stiff walk, twitching, then seizures. "
      "It is an emergency; do not give calcium supplements during pregnancy, as they can make it more likely.",

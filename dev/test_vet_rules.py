@@ -259,6 +259,19 @@ CASES = [
     ("dog", "she had ticks last week and now has dark urine, pale gums and is weak", None, "EMERGENCY"),
     ("dog", "the vet said heartworm and he coughs and tires easily", None, "URGENT"),
     ("reptile", "my tortoise is stargazing with its neck twisted", None, "URGENT"),
+    # MSD eye/ear/endocrine pass
+    ("dog", "his eye popped out of the socket after a fight", None, "EMERGENCY"),
+    ("dog", "her left eye is red and cloudy and she is squinting and pawing at it", None, "EMERGENCY"),
+    ("dog", "I saw tiny white worms moving on his eye", None, "URGENT"),
+    ("dog", "her ear flap is swollen like a balloon after shaking her head", None, "URGENT"),
+    ("dog", "he has an ear infection and now a head tilt, is lethargic and not eating", None, "EMERGENCY"),
+    ("dog", "a grass seed is stuck in his ear and he keeps shaking his head and crying", None, "URGENT"),
+    ("dog", "he is diabetic and has started vomiting and won't eat", None, "EMERGENCY"),
+    ("dog", "we gave a double dose of insulin by mistake", None, "EMERGENCY"),
+    ("dog", "he has Addison's disease and is vomiting", None, "EMERGENCY"),
+    ("cat", "I gave her a Fleet enema for constipation", None, "EMERGENCY"),
+    ("dog", "she keeps rubbing her face and her ears twitch", None, "URGENT"),
+    ("dog", "my diabetic dog gets insulin twice a day and is eating well and playing", None, None),
 ]
 
 
