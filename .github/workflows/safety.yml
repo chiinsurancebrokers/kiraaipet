@@ -15,6 +15,7 @@ jobs:
       - run: python3 -I dev/test_vet_safety.py
       - run: python3 -I dev/test_followups.py
       - run: python3 -I dev/test_vet_knowledge.py
+      - run: python3 -I dev/test_rule_samples.py
       - run: python3 -I dev/test_vet_extras.py
       - run: python3 -I dev/run_vet_benchmark.py   # labelled cases: fails on any missed red flag or false alarm
   e2e:

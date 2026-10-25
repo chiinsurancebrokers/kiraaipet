@@ -1,0 +1,1294 @@
+[
+{
+"id": "ALL-ANAPHYLAXIS",
+"species": "dog",
+"en": "My dog got stung and his face is swollen and he is struggling to breathe.",
+"el": "Ο σκύλος μου έχει πρησμένο πρόσωπο και δυσκολεύεται στην αναπνοή.",
+"neg": "My dog has a small itchy spot but is playful and breathing normally.",
+"neg_el": "Ο σκύλος μου έχει μια μικρή φαγούρα."
+},
+{
+"id": "ALL-BREATH",
+"species": "dog",
+"en": "My dog is gasping and struggling to breathe.",
+"el": "Ο σκύλος μου δεν μπορεί να αναπνεύσει και ασφυκτιά.",
+"neg": "My dog is breathing normally while he sleeps."
+},
+{
+"id": "ALL-BURN",
+"species": "dog",
+"en": "My dog stepped on a hot pan and burned his paw, the skin is red.",
+"el": "Ο σκύλος μου έκαψε την πατούσα του σε καυτό τηγάνι και το δέρμα είναι κόκκινο.",
+"neg": "My dog lay in the sun and is fine, no skin problem."
+},
+{
+"id": "ALL-COLLAPSE",
+"species": "dog",
+"en": "My dog collapsed during our walk and won't wake up properly.",
+"el": "Ο σκύλος μου κατέρρευσε στη βόλτα και δεν ανταποκρίνεται.",
+"neg": "My dog is tired after the walk but happily eating his dinner.",
+"neg_el": "Ο σκύλος μου είναι κουρασμένος μετά τη βόλτα."
+},
+{
+"id": "ALL-DROWNING",
+"species": "dog",
+"en": "My dog fell into the pool and went under water for a while.",
+"el": "Ο σκύλος μου επέσε στην πισίνα και βυθίστηκε.",
+"neg": "My dog loves swimming and walking by the pool, always dry and fine.",
+"neg_el": "Ο σκύλος μου περπατάει δίπλα στην πισίνα."
+},
+{
+"id": "ALL-EYE-PENETRATING",
+"species": "dog",
+"en": "My dog's eye was punctured by a thorn branch while running.",
+"el": "Το μάτι του σκύλου μου τρυπήθηκε από κλαδί.",
+"neg": "My dog has a little eye goo in the morning but opens it normally.",
+"neg_el": "Ο σκύλος μου έχει λίγη τσίμπλα στο μάτι."
+},
+{
+"id": "ALL-EYE-PROPTOSIS",
+"species": "dog",
+"en": "After a fight my dog's eye popped out of the socket.",
+"el": "Μετά από καβγά το μάτι του έχει βγει έξω από την κόγχη.",
+"neg": "My dog has a little redness in the corner of his eye."
+},
+{
+"id": "ALL-EYE-URGENT",
+"species": "dog",
+"en": "My dog's eye is red and he keeps squinting.",
+"el": "Το μάτι του σκύλου μου είναι κόκκινο και πρησμένο και το κρατάει κλειστό.",
+"neg": "My dog's eyes look clear and bright."
+},
+{
+"id": "ALL-GUMS",
+"species": "dog",
+"en": "My dog's gums are pale white and he seems very tired.",
+"el": "Τα ούλα του σκύλου μου είναι χλωμά και φαίνεται πολύ κουρασμένος.",
+"neg": "My dog's gums are nice and pink and he is playing."
+},
+{
+"id": "ALL-HEATSTROKE",
+"species": "dog",
+"en": "My dog was left in the hot car and I think he has heatstroke.",
+"el": "Ο σκύλος μου έπαθε θερμοπληξία μετά από βόλτα στον ήλιο.",
+"neg": "It is a hot day so I am keeping my dog in the shade with water."
+},
+{
+"id": "ALL-HYPOTHERMIA",
+"species": "dog",
+"en": "My dog was outside overnight in the snow, his body feels ice cold and he is weak.",
+"el": "Ο σκύλος μου έμεινε έξω όλη νύχτα στο χιόνι, είναι παγωμένος και αδύναμος.",
+"neg": "My dog is wearing a coat on our walk and enjoying the snow."
+},
+{
+"id": "ALL-MAGGOTS",
+"species": "dog",
+"en": "My dog has maggots in a wound on his back.",
+"el": "Ο σκύλος μου έχει σκουλήκια στην πληγή.",
+"neg": "I saw a fly near my dog's bowl but nothing on him.",
+"neg_el": "Είδα μια μύγα στο μπολ του σκύλου."
+},
+{
+"id": "ALL-NEURO",
+"species": "dog",
+"en": "My dog is walking in circles and seems disoriented since an hour ago.",
+"el": "Ο σκύλος μου γυρνάει κύκλους και τρικλίζει.",
+"neg": "My dog is walking normally and playing in the garden.",
+"neg_el": "Ο σκύλος μου περπατάει φυσιολογικά και παίζει."
+},
+{
+"id": "ALL-NOISY-BREATH",
+"species": "dog",
+"en": "My dog's breathing is noisy and raspy since yesterday.",
+"el": "Ο σκύλος μου έχει θορυβώδη αναπνοή από χθες.",
+"neg": "My dog is breathing quietly and normally."
+},
+{
+"id": "ALL-SEIZURE",
+"species": "dog",
+"en": "My dog just had a seizure on the floor, shaking and paddling for a minute.",
+"el": "Ο σκύλος μου έπαθε σπασμό και έτρεμε στο πάτωμα.",
+"neg": "My dog twitches his paws a little while dreaming.",
+"neg_el": "Ο σκύλος μου κοιμάται ήρεμα."
+},
+{
+"id": "ALL-SEIZURE-LONG",
+"species": "dog",
+"en": "My dog is having a seizure and it has been going for more than 5 minutes.",
+"el": "Ο σκύλος μου έχει σπασμούς και δεν σταματά εδώ και πολλά λεπτά.",
+"neg": "My dog's leg twitched for a second while he was sleeping, he woke up normal."
+},
+{
+"id": "ALL-SMOKE",
+"species": "cat",
+"en": "There was a fire in the kitchen and my cat breathed in a lot of smoke.",
+"el": "Έγινε φωτιά στο σπίτι και η γάτα μου εισέπνευσε καπνό.",
+"neg": "I smell a barbecue next door but the cat is inside."
+},
+{
+"id": "ALL-TRAUMA-BLEED",
+"species": "dog",
+"en": "My dog was hit by a car and is bleeding heavily.",
+"el": "Ο σκύλος μου παρασύρθηκε από αυτοκίνητο και αιμορραγεί πολύ.",
+"neg": "My dog got a tiny scratch on his paw and it stopped bleeding right away."
+},
+{
+"id": "ALL-TRAUMA-MINOR",
+"species": "dog",
+"en": "My dog got kicked by a horse but he seems okay.",
+"el": "Ο σκύλος μου επεσε απο τον καναπε και φαινεται καλα.",
+"neg": "My dog is jumping around and playing normally."
+},
+{
+"id": "BIRD-AVOCADO",
+"species": "bird",
+"en": "My parrot ate a piece of avocado.",
+"el": "Ο παπαγάλος μου έφαγε λίγο αβοκάντο.",
+"neg": "I bought avocados for myself and keep them in the fridge."
+},
+{
+"id": "BIRD-EGGBOUND",
+"species": "bird",
+"en": "My budgie is sitting on the cage floor with fluffed feathers and keeps straining to lay an egg.",
+"el": "Το παπαγαλάκι μου κάθεται στο πάτωμα του κλουβιού φουσκωμένο και προσπαθεί να γεννήσει αυγό.",
+"neg": "My budgie laid an egg yesterday and is perched and singing happily."
+},
+{
+"id": "BIRD-FLUFFED-FLOOR",
+"species": "bird",
+"en": "My budgie is fluffed up and sitting on the cage floor.",
+"el": "Το παπαγαλάκι μου είναι φουσκωμένο και κάθεται στο πάτωμα του κλουβιού.",
+"neg": "My budgie is perched, chirping and preening happily.",
+"neg_el": "Το παπαγαλάκι μου κελαηδάει στο κοτσί."
+},
+{
+"id": "BIRD-FUMES",
+"species": "bird",
+"en": "My parrot was in the kitchen when I used the non-stick pan and the air fryer smoked.",
+"el": "Ο παπαγάλος μου ήταν στην κουζίνα όταν καπνίστηκε το αντικολλητικό τηγάνι.",
+"neg": "my parrot is in a smoke free room with no sprays"
+},
+{
+"id": "BIRD-METAL-NEURO",
+"species": "bird",
+"en": "My budgie has tremors and fell off the perch.",
+"el": "Ο παπαγάλος μου έχει σπασμούς και τρέμει.",
+"neg": "My budgie is chirping and sitting calmly on the perch."
+},
+{
+"id": "BIRD-PSITTACOSIS",
+"species": "bird",
+"en": "My parrot has eye discharge, green droppings and is lethargic.",
+"el": "Ο παπαγάλος μου έχει έκκριμα στα μάτια, πράσινα περιττώματα και ληθαργία.",
+"neg": "My parrot's droppings are normal and he is chatty.",
+"neg_el": "Ο παπαγάλος μου μιλάει και είναι χαρούμενος."
+},
+{
+"id": "BIRD-REPTILE-PROLAPSE",
+"species": "bird",
+"en": "My budgie has tissue hanging out of her vent and looks tired.",
+"el": "Το παπαγαλάκι μου έχει ιστό που προβάλλει από την κλοάκα και φαίνεται κουρασμένο.",
+"neg": "My budgie is eating and singing normally and her vent looks clean."
+},
+{
+"id": "BIRD-TAILBOB",
+"species": "bird",
+"en": "My budgie's tail keeps bobbing up and down with every breath.",
+"el": "Ο παπαγάλος μου κουνάει την ουρά του πάνω κάτω με κάθε αναπνοή.",
+"neg": "My budgie is singing and hopping around, breathing normally."
+},
+{
+"id": "CAT-ABDOMEN",
+"species": "cat",
+"en": "My cat has a swollen belly and is lethargic and not eating.",
+"el": "Η γάτα μου έχει φουσκωμένη κοιλιά και είναι ληθαργική και δεν τρώει.",
+"neg": "My cat has a normal belly and is eating and playing well."
+},
+{
+"id": "CAT-DOGFLEA",
+"species": "cat",
+"en": "I used a flea product made for dogs on my cat by mistake.",
+"el": "Εφάρμοσα κατά λάθος σταγόνες για σκύλους στη γάτα μου.",
+"neg": "I bought flea drops made for cats and will apply them tomorrow.",
+"neg_el": "Αγόρασα αντιπαρασιτικό για γάτες και θα το βάλω αύριο."
+},
+{
+"id": "CAT-ESSENTIAL-OIL",
+"species": "cat",
+"en": "My cat licked some tea tree oil that spilled on the floor.",
+"el": "Η γάτα μου έγλειψε αιθέριο έλαιο που χύθηκε.",
+"neg": "I use a candle in the living room, no oils, and my cat is fine.",
+"neg_el": "Άναψα ένα κερί και η γάτα είναι καλά."
+},
+{
+"id": "CAT-FAST-BREATH",
+"species": "cat",
+"en": "My cat is breathing very fast even while resting.",
+"el": "Η γάτα μου αναπνέει γρήγορα ακόμα και όταν ξεκουράζεται.",
+"neg": "My cat purrs and breathes slowly while sleeping."
+},
+{
+"id": "CAT-FIP",
+"species": "cat",
+"en": "My cat has a swollen belly and weight loss.",
+"el": "Η γάτα μου έχει φουσκωμένη κοιλιά και έχει πυρετό.",
+"neg": "My cat is playful with a normal belly."
+},
+{
+"id": "CAT-FLOWERS",
+"species": "cat",
+"en": "My cat chewed on the bouquet of flowers I got yesterday.",
+"el": "Η γάτα μου μάσησε την ανθοδέσμη με τα λουλούδια που πήρα χθες.",
+"neg": "My cat knocked over the vase of flowers but did not touch them."
+},
+{
+"id": "CAT-LILY",
+"species": "cat",
+"en": "My cat chewed on a lily from the bouquet, what should I do?",
+"el": "Η γάτα μου μάσησε ένα φύλλο από κρίνο στο μπουκέτο, τι να κάνω;",
+"neg": "My cat chewed on a peace lily leaf, is that ok?"
+},
+{
+"id": "CAT-LUTD",
+"species": "cat",
+"en": "My cat is peeing outside the litter box and going very often, in small amounts of urine.",
+"el": "Η γάτα μου ουρεί έξω από την άμμο και πολύ συχνά, λίγο λίγο.",
+"neg": "My cat uses the litter box normally once or twice a day."
+},
+{
+"id": "CAT-NOT-EATING-1D",
+"species": "cat",
+"en": "My cat hasn't eaten since yesterday and is hiding.",
+"el": "Η γάτα μου δεν έχει φάει από χθες.",
+"neg": "My cat ate her breakfast and dinner as usual today.",
+"neg_el": "Η γάτα μου έφαγε κανονικά σήμερα."
+},
+{
+"id": "CAT-OPENMOUTH",
+"species": "cat",
+"en": "My cat is breathing with her mouth open and seems to be panting.",
+"el": "Η γάτα μου λαχανιάζει με ανοιχτό στόμα και φαίνεται να δυσκολεύεται.",
+"neg": "My cat is breathing quietly with her mouth closed while sleeping."
+},
+{
+"id": "CAT-PANLEUK",
+"species": "cat",
+"en": "My unvaccinated kitten is vomiting and won't eat.",
+"el": "Το ανεμβολίαστο γατάκι μου κάνει εμετό και δεν τρώει.",
+"neg": "My vaccinated adult cat ate well and had no vomiting."
+},
+{
+"id": "CAT-PARACETAMOL",
+"species": "cat",
+"en": "I gave my cat a Panadol tablet for her fever, is that bad?",
+"el": "Έδωσα στη γάτα μου μισό χάπι Depon για τον πυρετό, πειράζει;",
+"neg": "My cat has a fever and I will call the vet about a pet-safe medicine.",
+"neg_el": "Η γάτα μου έχει πυρετό και θα πάω στον κτηνίατρο."
+},
+{
+"id": "CAT-RAVENOUS-THIN",
+"species": "cat",
+"en": "My old cat is always hungry but she is losing weight.",
+"el": "Η γάτα μου τρώει πολύ περισσότερο αλλά χάνει βάρος.",
+"neg": "My cat eats normally and her weight is stable."
+},
+{
+"id": "CAT-SADDLE",
+"species": "cat",
+"en": "My cat suddenly cannot use her back legs and she is crying.",
+"el": "Η γάτα μου ξαφνικά δεν μπορεί να κουνήσει τα πίσω πόδια και κλαίει.",
+"neg": "My cat is jumping on the sofa and using her back legs normally."
+},
+{
+"id": "CAT-URETHRAL",
+"species": "cat",
+"en": "My male cat keeps going to the litter box and straining but nothing comes out.",
+"el": "Ο γάτος μου πηγαίνει συνέχεια στην άμμο και σφίγγεται αλλά δεν βγάζει καθόλου ούρα.",
+"neg": "My cat went to the litter box and peed a normal amount, he's eating fine."
+},
+{
+"id": "CAT-WEAK-NECK",
+"species": "cat",
+"en": "My cat's neck is drooping and she suddenly looks weak.",
+"el": "Η γάτα μου έχει ξαφνική αδυναμία και κρεμάει το κεφάλι.",
+"neg": "My cat sleeps with her head down on the sofa but is playful when awake.",
+"neg_el": "Η γάτα μου παίζει και τρώει κανονικά."
+},
+{
+"id": "DC-ABORTION",
+"species": "dog",
+"en": "My dog miscarried and delivered stillborn puppies last night.",
+"el": "Η σκυλίτσα μου έκανε έκτρωση και γέννησε νεκρά κουτάβια.",
+"neg": "My dog is not pregnant, just in heat, and acting normal.",
+"neg_el": "Η σκυλίτσα μου είναι καλά."
+},
+{
+"id": "DC-ALCOHOL",
+"species": "dog",
+"en": "My dog drank some beer that was spilled on the floor.",
+"el": "Ο σκύλος μου ήπιε λίγη μπύρα που χύθηκε στο πάτωμα.",
+"neg": "I had a glass of wine at dinner and the dog was in his bed asleep."
+},
+{
+"id": "DC-ANAL-SAC",
+"species": "dog",
+"en": "My dog has a red swollen area next to his anus that is draining pus.",
+"el": "Ο σκύλος μου έχει πρησμένη κόκκινη περιοχή δίπλα στον πρωκτό με πύο.",
+"neg": "My dog is eating and playing and nothing looks wrong near his bottom."
+},
+{
+"id": "DC-ANEMIA-JAUNDICE-WEAK",
+"species": "dog",
+"en": "My dog's gums look yellow and he collapsed this morning.",
+"el": "Ο σκύλος μου έχει κίτρινα ούλα και δεν σηκώνεται από το πρωί.",
+"neg": "My dog's gums are pink and he is walking normally."
+},
+{
+"id": "DC-ANOREXIA-LONG",
+"species": "dog",
+"en": "My dog hasn't eaten anything for two days and seems down.",
+"el": "Ο σκύλος μου δεν έχει φάει εδώ και δύο μέρες.",
+"neg": "My dog skipped dinner once but ate breakfast normally.",
+"neg_el": "Ο σκύλος μου τρώει κανονικά."
+},
+{
+"id": "DC-ANTIFREEZE",
+"species": "dog",
+"en": "I think my dog drank some antifreeze from the garage floor.",
+"el": "Νομίζω ότι ο σκύλος μου ήπιε αντιψυκτικό από το πάτωμα του γκαράζ.",
+"neg": "I need to buy new windscreen washer fluid for the car, the dog is fine."
+},
+{
+"id": "DC-ASPIRATION",
+"species": "dog",
+"en": "My dog inhaled some water when drinking and now coughs.",
+"el": "Ο σκύλος μου ήπιε νερό, του πήγε στραβά και τώρα βήχει.",
+"neg": "My dog drank water normally and is fine."
+},
+{
+"id": "DC-BATTERY",
+"species": "dog",
+"en": "My dog swallowed a button battery from the remote.",
+"el": "Ο σκύλος μου κατάπιε μια μπαταρία κουμπί από το τηλεχειριστήριο.",
+"neg": "I need to buy new batteries for my dog's collar light."
+},
+{
+"id": "DC-BITE-ANY",
+"species": "dog",
+"en": "My dog was bitten by another dog at the park.",
+"el": "Άλλος σκύλος δάγκωσε τον σκύλο μου στο πάρκο.",
+"neg": "My dog was not bitten, he only barked at the other dog."
+},
+{
+"id": "DC-BITE-NECK-SWELL",
+"species": "dog",
+"en": "My dog was bitten by another dog on the neck and now his throat is swollen.",
+"el": "Ο σκύλος μου δαγκώθηκε από άλλον σκύλο στον λαιμό και τώρα ο λαιμός του πρήστηκε.",
+"neg": "My dog's neck is fine, he only has a small scratch on his paw after a fight."
+},
+{
+"id": "DC-BLOODPARASITE",
+"species": "dog",
+"en": "My dog had a tick and now has dark urine and pale gums and is weak.",
+"el": "Ο σκύλος μου είχε τσιμπούρι και τώρα έχει σκούρα ούρα, χλωμά ούλα και αδυναμία.",
+"neg": "I found a tick on my dog and removed it, he is acting normally."
+},
+{
+"id": "DC-BLOODY-GI",
+"species": "dog",
+"en": "My dog has bloody diarrhea since last night.",
+"el": "Ο σκύλος μου έχει αιματηρή διάρροια από χθες το βράδυ.",
+"neg": "My dog has watery diarrhea and is still playful."
+},
+{
+"id": "DC-CANT-WALK",
+"species": "dog",
+"en": "My dog suddenly can't walk and is dragging his back legs.",
+"el": "Ο σκύλος μου δεν μπορεί να περπατήσει και σέρνει τα πίσω πόδια.",
+"neg": "My dog is limping a little but he can walk and run fine."
+},
+{
+"id": "DC-CHOKING",
+"species": "dog",
+"en": "My dog is choking on something, he is pawing at his mouth and gagging.",
+"el": "Ο σκύλος μου πνίγεται, κάτι κόλλησε στο λαιμό του.",
+"neg": "My dog wears a choke chain on walks and pulls a lot.",
+"neg_el": "Ο σκύλος μου φοράει κολάρο στραγγαλισμού στη βόλτα."
+},
+{
+"id": "DC-CLEANER-POD",
+"species": "dog",
+"en": "My dog bit into a laundry pod and is foaming.",
+"el": "Ο σκύλος μου δάγκωσε μια κάψουλα πλυντηρίου και αφρίζει.",
+"neg": "I bought laundry pods and keep them on a high shelf."
+},
+{
+"id": "DC-CORROSIVE",
+"species": "dog",
+"en": "My dog licked some drain cleaner that spilled on the floor.",
+"el": "Ο σκύλος μου έγλειψε αποφρακτικό που χύθηκε στο πάτωμα.",
+"neg": "I used bleach to clean the floor and the dog stayed in another room."
+},
+{
+"id": "DC-DISTEMPER",
+"species": "dog",
+"en": "My unvaccinated puppy has a fever, eye discharge and muscle twitching.",
+"el": "Το ανεμβολίαστο κουτάβι μου έχει πυρετό, εκκρίματα και συσπάσεις.",
+"neg": "My vaccinated adult dog is healthy and playful.",
+"neg_el": "Ο εμβολιασμένος σκύλος μου είναι υγιής."
+},
+{
+"id": "DC-DKA",
+"species": "dog",
+"en": "My diabetic dog is vomiting and won't eat.",
+"el": "Ο διαβητικός σκύλος μου κάνει εμετό και δεν τρώει.",
+"neg": "My diabetic dog is eating well and active after his insulin."
+},
+{
+"id": "DC-EAR-BRAIN",
+"species": "dog",
+"en": "My dog has an ear infection and is tilting his head, losing balance, with a fever.",
+"el": "Ο σκύλος μου έχει ωτίτιδα, γέρνει το κεφάλι, πέφτει και έχει πυρετό.",
+"neg": "My dog scratches his ear a bit, no other problems, eating well.",
+"neg_el": "Ο σκύλος μου ξύνει το αυτί του."
+},
+{
+"id": "DC-EAR-FOREIGN",
+"species": "dog",
+"en": "My dog got a grass seed stuck in his ear and keeps shaking his head.",
+"el": "Ο σπόρος κόλλησε στο αυτί του σκύλου μου και τινάζει το κεφάλι.",
+"neg": "My dog's ears are clean and he doesn't scratch them."
+},
+{
+"id": "DC-EAR-HEMATOMA",
+"species": "dog",
+"en": "My dog has been shaking his head and now his ear flap is swollen like a pillow.",
+"el": "Ο σκύλος μου τινάζει το κεφάλι και τώρα το αυτί του είναι πρησμένο σαν μαξιλάρι.",
+"neg": "My dog's ears are clean and he doesn't scratch them."
+},
+{
+"id": "DC-ELECTRIC-CORD",
+"species": "cat",
+"en": "My cat chewed on a phone charger cable that was plugged in.",
+"el": "Η γάτα μου μασούλησε το καλώδιο του φορτιστή που ήταν στην πρίζα.",
+"neg": "My cat chewed a cable but it was unplugged."
+},
+{
+"id": "DC-ENEMA-PHOSPHATE",
+"species": "cat",
+"en": "I gave my constipated cat a Fleet enema.",
+"el": "Έδωσα στη γάτα μου ένα υποκλυσμό Fleet γιατί έχει δυσκοιλιότητα.",
+"neg": "The vet mentioned a Fleet enema but I didn't try it."
+},
+{
+"id": "DC-ESOPH-FB",
+"species": "dog",
+"en": "My dog swallowed a bone and now he is drooling and gagging.",
+"el": "Ο σκύλος μου κατάπιε ένα κόκαλο και τώρα σαλιαρίζει και πνίγεται.",
+"neg": "My dog is chewing a bone happily and eating normally."
+},
+{
+"id": "DC-EYE-GLAUCOMA",
+"species": "dog",
+"en": "My dog's eye is red and cloudy and he is squinting in pain.",
+"el": "Το μάτι του σκύλου μου είναι κόκκινο και θολό και πονάει, είναι μισοκλειστό.",
+"neg": "My dog's eye is red but no pain and he isn't squinting."
+},
+{
+"id": "DC-EYE-PROPTOSIS",
+"species": "dog",
+"en": "My pug's eye popped out of the socket after a fight.",
+"el": "Το μάτι του σκύλου μου βγήκε από την κόγχη.",
+"neg": "My pug's eyes look big but normal, as always.",
+"neg_el": "Τα μάτια του σκύλου μου είναι φυσιολογικά."
+},
+{
+"id": "DC-EYEWORM",
+"species": "dog",
+"en": "I can see small white worms moving on my dog's eye.",
+"el": "Βλέπω μικρά λευκά σκουλήκια να κινούνται στο μάτι του σκύλου μου.",
+"neg": "My dog has a little eye discharge in the morning."
+},
+{
+"id": "DC-FLUOROURACIL",
+"species": "dog",
+"en": "My dog chewed a tube of Efudex fluorouracil cream.",
+"el": "Ο σκύλος μου έφαγε ένα σωληνάριο με κρέμα φθοριουρακίλης.",
+"neg": "My doctor prescribed fluorouracil cream for my skin and I keep it locked away from the dog."
+},
+{
+"id": "DC-FOREIGN-BODY",
+"species": "dog",
+"en": "My dog swallowed a sock and has not thrown it up.",
+"el": "Ο σκύλος μου κατάπιε μια κάλτσα και δεν την έβγαλε.",
+"neg": "The dog is playing tug with a sock and it is still in his mouth, he is fine."
+},
+{
+"id": "DC-FRACTURE",
+"species": "dog",
+"en": "I think my dog has a broken leg, it is hanging at an odd angle.",
+"el": "Νομίζω ότι ο σκύλος μου έχει σπασμένο πόδι και κρέμεται στραβά.",
+"neg": "My dog is limping slightly after play but the leg looks normal."
+},
+{
+"id": "DC-FRACTURE-OPEN",
+"species": "dog",
+"en": "My dog was hit by a car and a bone is sticking out of his leg.",
+"el": "Ο σκύλος μου χτυπήθηκε από αυτοκίνητο και το κόκκαλο φαίνεται έξω.",
+"neg": "My dog's leg X-ray showed the bone healed well after the old fracture.",
+"neg_el": "Το πόδι του σκύλου μου έχει επουλωθεί."
+},
+{
+"id": "DC-GI-PERSISTENT",
+"species": "dog",
+"en": "My dog has had diarrhea for three days now and is still not right.",
+"el": "Ο σκύλος μου έχει διάρροια εδώ και μέρες.",
+"neg": "My dog vomited once this morning and is fine now."
+},
+{
+"id": "DC-GI-PROFUSE",
+"species": "dog",
+"en": "My dog has vomited many times and has diarrhea too since last night.",
+"el": "Ο σκύλος μου κάνει εμετό πολλές φορές και έχει και διάρροια.",
+"neg": "My dog vomited once and his stool is normal.",
+"neg_el": "Ο σκύλος μου έκανε έναν εμετό και είναι καλά."
+},
+{
+"id": "DC-HEARTWORM-SIGNS",
+"species": "dog",
+"en": "My dog has heartworm and now has a cough and tires easily.",
+"el": "Ο σκύλος μου έχει διροφιλαρίωση και βήχει και κουράζεται εύκολα.",
+"neg": "My dog is on heartworm prevention and is healthy."
+},
+{
+"id": "DC-HEMATURIA",
+"species": "dog",
+"en": "I noticed blood in the urine of my dog this morning, it looks pink.",
+"el": "Παρατήρησα αίμα στα ούρα του σκύλου μου σήμερα το πρωί.",
+"neg": "My dog peed normally and the urine looks clear and pale yellow."
+},
+{
+"id": "DC-HYPOCA-SIGNS",
+"species": "dog",
+"en": "My dog keeps rubbing his face and his ears are twitching.",
+"el": "Ο σκύλος μου τρίβει το πρόσωπό του και έχει τρεμούλο στο πρόσωπο.",
+"neg": "My dog is wagging his tail and walking normally."
+},
+{
+"id": "DC-HYPOGLY-EPISODE",
+"species": "dog",
+"en": "My dog has episodes of weakness and staring that get better after eating.",
+"el": "Ο σκύλος μου έχει επεισόδια αδυναμίας και είναι πιο καλά μετά το φαγητό.",
+"neg": "My dog eats well and has plenty of energy all day."
+},
+{
+"id": "DC-INSULIN-LOW",
+"species": "dog",
+"en": "I gave my dog a double dose of insulin and he is wobbly.",
+"el": "Έδωσα στον σκύλο μου διπλή δόση ινσουλίνης και τρικλίζει.",
+"neg": "I gave my dog his usual insulin dose with his breakfast and he ate everything."
+},
+{
+"id": "DC-JAUNDICE",
+"species": "dog",
+"en": "My dog's gums and the whites of his eyes look yellow.",
+"el": "Ο σκύλος μου έχει κίτρινο δέρμα και κίτρινα ούλα.",
+"neg": "My dog's gums are a healthy pink and his eyes are bright."
+},
+{
+"id": "DC-JOINT-ACUTE",
+"species": "dog",
+"en": "My dog's knee is swollen and hot since this morning and he is limping.",
+"el": "Το γόνατό του είναι πρησμένο και ζεστό από σήμερα και κουτσαίνει.",
+"neg": "My dog's knee has been swollen for three months and he is comfortable."
+},
+{
+"id": "DC-KITTEN-URI",
+"species": "cat",
+"en": "My kitten is sneezing with runny eyes and won't eat.",
+"el": "Το γατάκι μου φταρνίζεται, δακρύζει και δεν τρώει.",
+"neg": "My kitten is eating well and playing, no sneezing."
+},
+{
+"id": "DC-LAME-SEVERE",
+"species": "dog",
+"en": "My dog yelped when he jumped and now won't put weight on his back leg.",
+"el": "Ο σκύλος μου δεν πατάει το πίσω πόδι και το κρατάει ψηλά.",
+"neg": "My dog has a very slight limp that disappeared after a minute.",
+"neg_el": "Ο σκύλος μου περπατάει φυσιολογικά."
+},
+{
+"id": "DC-LEPTO",
+"species": "dog",
+"en": "My dog swam in a stagnant pond and now is lethargic and vomiting.",
+"el": "Ο σκύλος μου κολύμπησε σε λίμνη και τώρα έχει ληθαργία και εμετό.",
+"neg": "My dog swam in a stagnant pond but he is energetic and eating fine."
+},
+{
+"id": "DC-LUMP-OPEN",
+"species": "dog",
+"en": "The lump on my dog's side has burst and is oozing.",
+"el": "Το εξόγκωμα στο πλάι του σκύλου μου άνοιξε και τρέχει υγρό.",
+"neg": "My dog has a small lump on his side that has not changed in years."
+},
+{
+"id": "DC-MASTITIS",
+"species": "dog",
+"en": "My nursing dog has a hard, hot and swollen mammary gland.",
+"el": "Η σκυλίτσα μου που θηλάζει έχει σκληρό, ζεστό και πρησμένο μαστό.",
+"neg": "My dog's mammary glands are soft and normal and the puppies feed well."
+},
+{
+"id": "DC-MELENA",
+"species": "dog",
+"en": "My dog has black tarry stool since yesterday.",
+"el": "Ο σκύλος μου έχει μαύρα κόπρανα σαν πίσσα.",
+"neg": "My dog's stool is brown and firm."
+},
+{
+"id": "DC-METALDEHYDE",
+"species": "dog",
+"en": "My dog ate some slug bait pellets from the garden shed.",
+"el": "Ο σκύλος μου έφαγε δόλωμα για σαλιγκάρια από τον κήπο.",
+"neg": "I bought slug pellets for the garden but they are locked away from the dog."
+},
+{
+"id": "DC-METRITIS",
+"species": "dog",
+"en": "My dog gave birth last week and now has a smelly discharge.",
+"el": "Η σκύλα μου γέννησε πριν λίγες μέρες και έχει βρωμερό έκκριμα.",
+"neg": "My dog gave birth last week and everything looks clean and normal."
+},
+{
+"id": "DC-MOTHBALL",
+"species": "dog",
+"en": "My dog ate a mothball from the wardrobe.",
+"el": "Ο σκύλος μου έφαγε μια ναφθαλίνη από την ντουλάπα.",
+"neg": "I put mothballs in the wardrobe, the dog can't reach it."
+},
+{
+"id": "DC-MUSHROOM",
+"species": "dog",
+"en": "My dog ate a wild mushroom in the woods.",
+"el": "Ο σκύλος μου έφαγε ένα άγριο μανιτάρι στο δάσος.",
+"neg": "I cooked mushroom soup for dinner and the dog was sleeping."
+},
+{
+"id": "DC-NEONATE",
+"species": "dog",
+"en": "My newborn puppy is cold and not nursing.",
+"el": "Το νεογέννητο κουτάβι μου είναι κρύο και δεν θηλάζει.",
+"neg": "My 8 year old dog is nursing no one and sleeps all day normally."
+},
+{
+"id": "DC-NEURO-FEVER",
+"species": "dog",
+"en": "My dog has a stiff neck and a fever and is lethargic.",
+"el": "Ο σκύλος μου έχει πυρετό, είναι ληθαργικός και ο λαιμός του πονάει.",
+"neg": "My dog has a fever but his neck moves freely."
+},
+{
+"id": "DC-NO-LIE-DOWN",
+"species": "dog",
+"en": "My dog won't lie down and is panting hard all night.",
+"el": "Ο σκύλος μου δεν ξαπλώνει και έχει δύσκολη αναπνοή όλη νύχτα.",
+"neg": "My dog lies down and sleeps peacefully."
+},
+{
+"id": "DC-NO-URINE-DAY",
+"species": "dog",
+"en": "he hasn't peed since yesterday morning",
+"el": "δεν έχει κατουρήσει από χθες το πρωί",
+"neg": "he peed twice this morning and is fine",
+"neg_el": "κατούρησε δύο φορές το πρωί και είναι μια χαρά"
+},
+{
+"id": "DC-NOSE-ONESIDE",
+"species": "dog",
+"en": "My dog has blood coming from one nostril and sneezing a lot.",
+"el": "Ο σκύλος μου έχει έκκριμα από ένα ρουθούνι και φταρνίζεται.",
+"neg": "My dog's nose is dry and clean, no sneezing.",
+"neg_el": "Η μύτη του σκύλου μου είναι καθαρή."
+},
+{
+"id": "DC-NOSEBLEED",
+"species": "dog",
+"en": "My dog has a nosebleed that keeps coming back.",
+"el": "Ο σκύλος μου έχει αιμορραγία από τη μύτη που ξαναγυρίζει.",
+"neg": "My dog scratched his nose on a branch and there is a tiny scab."
+},
+{
+"id": "DC-NSAID",
+"species": "dog",
+"en": "My dog ate two ibuprofen tablets that fell off the counter.",
+"el": "Ο σκύλος μου έφαγε δύο χάπια ιβουπροφαίνη που έπεσαν από το τραπέζι.",
+"neg": "I have ibuprofen in the cabinet but my dog never got near it."
+},
+{
+"id": "DC-ONION-GARLIC",
+"species": "dog",
+"en": "My dog ate a whole onion from the kitchen counter.",
+"el": "Ο σκύλος μου έφαγε ένα ολόκληρο κρεμμύδι.",
+"neg": "I am cooking with onions and garlic tonight."
+},
+{
+"id": "DC-OTC-STIMULANT",
+"species": "dog",
+"en": "My dog chewed up and swallowed a pack of Sudafed tablets.",
+"el": "Ο σκύλος μου έφαγε ένα κουτί ασπιρίνη.",
+"neg": "I take Sudafed for my cold and keep it in my bag, the dog has not touched it.",
+"neg_el": "Παίρνω ασπιρίνη για πονοκέφαλο και ο σκύλος δεν την πλησίασε."
+},
+{
+"id": "DC-PARAPHIMOSIS",
+"species": "dog",
+"en": "My dog's penis is stuck out of the sheath and won't go back.",
+"el": "Ο πέος του σκύλου μου είναι έξω από τη θήκη και δεν μπαίνει μέσα.",
+"neg": "My dog's penis looked normal at the vet check."
+},
+{
+"id": "DC-PERITONITIS",
+"species": "dog",
+"en": "My dog's belly is swollen and painful since his surgery last week.",
+"el": "Η κοιλιά του σκύλου μου είναι φουσκωμένη και πονάει μετά το χειρουργείο.",
+"neg": "My dog's belly is soft and he is recovering well from surgery."
+},
+{
+"id": "DC-PETECHIAE",
+"species": "dog",
+"en": "My dog has tiny red spots on his gums and belly.",
+"el": "Ο σκύλος μου έχει κόκκινες τελίες στην κοιλιά και αιμορραγούν τα ούλα του.",
+"neg": "My dog has a normal pink belly and healthy gums."
+},
+{
+"id": "DC-PLANT-OTHER",
+"species": "cat",
+"en": "My cat chewed a leaf of the dieffenbachia plant and is drooling.",
+"el": "Η γάτα μου έφαγε φύλλο από φιλόδενδρο και σαλιαρίζει.",
+"neg": "I bought a dieffenbachia plant and put it in the living room out of reach, my cat ignores it.",
+"neg_el": "Αγόρασα ένα φιλόδενδρο και το έβαλα ψηλά."
+},
+{
+"id": "DC-PLANT-SEVERE",
+"species": "dog",
+"en": "My dog chewed on an oleander branch in the garden.",
+"el": "Ο σκύλος μου μασούλησε ένα κλαδί πικροδάφνης στον κήπο.",
+"neg": "We have an oleander in the garden but the dog never touches it."
+},
+{
+"id": "DC-POISON-BAIT",
+"species": "dog",
+"en": "I think my dog ate poisoned bait in the park, he is drooling a lot.",
+"el": "Νομίζω ο σκύλος μου έφαγε δηλητηριασμένο δόλωμα στο πάρκο και σαλιαρίζει πολύ.",
+"neg": "there was no poison bait, I checked the park",
+"neg_el": "δεν υπήρχε δηλητηριασμένο δόλωμα εκεί"
+},
+{
+"id": "DC-PRIAPISM",
+"species": "dog",
+"en": "My dog has had an erection for hours and it won't go down.",
+"el": "Ο σκύλος μου έχει στύση εδώ και ώρες που δεν περνάει.",
+"neg": "My dog got excited briefly and then calmed down."
+},
+{
+"id": "DC-PUPD-WEIGHT",
+"species": "dog",
+"en": "My dog drinks a lot more water than before and is losing weight.",
+"el": "Ο σκύλος μου πίνει πολύ περισσότερο νερό και χάνει βάρος.",
+"neg": "My dog drank a lot after the long hot walk today."
+},
+{
+"id": "DC-PYOMETRA",
+"species": "dog",
+"en": "My unspayed dog had a heat last month and now has vaginal discharge, drinks a lot more and is lethargic.",
+"el": "Η σκυλίτσα μου δεν έχει στειρωθεί, έχει έκκριμα, πίνει πολύ και είναι ληθαργική.",
+"neg": "My spayed dog is lethargic after a long hike but eating and drinking normally.",
+"neg_el": "Η σκυλίτσα μου είναι στειρωμένη και τρώει κανονικά."
+},
+{
+"id": "DC-PYOMETRA-DISCHARGE",
+"species": "dog",
+"en": "My dog is not spayed and has a smelly yellow discharge.",
+"el": "Η σκυλίτσα μου δεν έχει στειρωθεί και έχει βρωμερό έκκριμα.",
+"neg": "My dog is spayed and she is healthy."
+},
+{
+"id": "DC-RABIES-EXPOSURE",
+"species": "dog",
+"en": "A fox bit my dog during their fight.",
+"el": "Μια αλεπού δάγκωσε τον σκύλο μου.",
+"neg": "I saw a fox far away in the field while walking."
+},
+{
+"id": "DC-REGURG-COUGH",
+"species": "dog",
+"en": "My dog regurgitates his food and is also coughing and breathing fast.",
+"el": "Ο σκύλος μου βγάζει το φαγητό και έχει βήχα.",
+"neg": "My dog ate and kept it down, no regurgitation, only a quiet sneeze.",
+"neg_el": "Ο σκύλος μου έφαγε και είναι καλά."
+},
+{
+"id": "DC-RODENTICIDE",
+"species": "dog",
+"en": "My dog ate rat poison from the garage an hour ago.",
+"el": "Ο σκύλος μου έφαγε ποντικοφάρμακο από την αποθήκη πριν από μία ώρα.",
+"neg": "There is rat poison in the garage but my dog never goes near it."
+},
+{
+"id": "DC-RODENTICIDE-BLEED",
+"species": "dog",
+"en": "My dog got into rat poison in the garage and now there is blood in his stool.",
+"el": "Ο σκύλος μου έφαγε ποντικοφάρμακο και τώρα έχει αίμα στα κόπρανα.",
+"neg": "There is rat poison in the garage but my dog has not been near it and is fine.",
+"neg_el": "Έχουμε ποντικοφάρμακο στην αποθήκη αλλά ο σκύλος δεν το πλησίασε."
+},
+{
+"id": "DC-RODENTICIDE-NEURO",
+"species": "dog",
+"en": "My dog ate some rat poison with bromethalin.",
+"el": "Ο σκύλος μου έφαγε ποντικοφάρμακο με βρομεθαλίνη.",
+"neg": "I read that bromethalin is a rat poison but we have none at home."
+},
+{
+"id": "DC-RX-HUMAN",
+"species": "dog",
+"en": "My dog ate some of my sertraline tablets.",
+"el": "Ο σκύλος μου έφαγε χάπια αντικαταθλιπτικά που είχα στο τραπεζάκι.",
+"neg": "I take sertraline every day and keep it locked away from the dog."
+},
+{
+"id": "DC-SALT",
+"species": "dog",
+"en": "My dog ate a whole bag of salt from the kitchen.",
+"el": "Ο σκύλος μου έφαγε πολύ αλάτι, σχεδόν ένα ολόκληρο πακέτο.",
+"neg": "I put a little salt on my food and my dog watched me eat."
+},
+{
+"id": "DC-SCROTUM",
+"species": "dog",
+"en": "My dog's testicle is swollen and painful.",
+"el": "Ο όρχις του σκύλου μου είναι πρησμένος και πονάει.",
+"neg": "My dog was neutered last year and everything looks normal."
+},
+{
+"id": "DC-SNAKEBITE",
+"species": "dog",
+"en": "I think a snake bit my dog on the leg while we were hiking.",
+"el": "Νομίζω ότι ένα φίδι δάγκωσε τον σκύλο μου στο πόδι στη βόλτα.",
+"neg": "We saw a snake on the path but it slithered away and the dog is fine."
+},
+{
+"id": "DC-SPINE-PAIN-NSAID",
+"species": "dog",
+"en": "My dog has back pain and I gave him ibuprofen.",
+"el": "Ο σκύλος μου έχει πρόβλημα με τον δίσκο στη μέση και του έδωσα παρακεταμόλη.",
+"neg": "My dog has back pain and the vet gave us dog medicine."
+},
+{
+"id": "DC-STIFF-HOT",
+"species": "dog",
+"en": "My dog has stiff legs and very hot body, panting hard after a run.",
+"el": "Ο σκύλος μου έχει σκληρά πόδια και υψηλό πυρετό, λαχανιάζει πολύ.",
+"neg": "My dog is a little stiff in the morning after a long walk but he is eating and walking fine."
+},
+{
+"id": "DC-STING-FACE",
+"species": "dog",
+"en": "My dog was stung by a bee on the face and it is swelling.",
+"el": "Τον σκύλο μου τον τσίμπησε μέλισσα στο πρόσωπο και πρήζεται.",
+"neg": "I saw a bee in the garden but it flew away."
+},
+{
+"id": "DC-SUDDEN-BLIND",
+"species": "dog",
+"en": "My dog suddenly can't see and is bumping into furniture.",
+"el": "Ο σκύλος μου ξαφνικά δεν βλέπει και χτυπάει πάνω στα έπιπλα.",
+"neg": "My old dog's eyes have looked cloudy for years, no change, he sees fine.",
+"neg_el": "Τα μάτια του σκύλου μου είναι καθαρά."
+},
+{
+"id": "DC-TETANUS",
+"species": "dog",
+"en": "My dog has stiff muscles and spasms after a puncture wound.",
+"el": "Ο σκύλος μου έχει σκληρούς μύες και σπασμούς μετά από ένα τραύμα.",
+"neg": "My dog is a bit stiff in the morning after a long hike."
+},
+{
+"id": "DC-THC",
+"species": "dog",
+"en": "My dog ate a pot brownie with cannabis.",
+"el": "Ο σκύλος μου έφαγε ένα μπράουνι με κάνναβη.",
+"neg": "My neighbour grows cannabis plants on his balcony but my dog is fine and stays inside."
+},
+{
+"id": "DC-TICK-PARALYSIS",
+"species": "dog",
+"en": "My dog has a tick and now his back legs are wobbly and weak.",
+"el": "Ο σκύλος μου έχει τσιμπούρι και τώρα έχει αδυναμία στα πίσω πόδια.",
+"neg": "I found a tick on my dog and removed it, he is playing as usual."
+},
+{
+"id": "DC-TOPICAL-HUMAN",
+"species": "dog",
+"en": "My dog ate a nicotine patch that fell on the floor.",
+"el": "Ο σκύλος μου έφαγε ένα τσιγάρο από το τασάκι.",
+"neg": "I quit smoking nicotine last year, my dog has nothing to do with it.",
+"neg_el": "Έκοψα το κάπνισμα και ο σκύλος είναι καλά."
+},
+{
+"id": "DC-URINARY-SICK",
+"species": "cat",
+"en": "My cat is straining to pee and has vomited twice.",
+"el": "Η γάτα μου προσπαθεί να ουρήσει και έκανε εμετό δύο φορές.",
+"neg": "My cat is straining to pee a little but she is eating and bright."
+},
+{
+"id": "DC-VOMIT-WATER",
+"species": "dog",
+"en": "My dog can't keep water down, he vomits even water.",
+"el": "Ο σκύλος μου δεν κρατάει το νερό, ξερνάει και το νερό.",
+"neg": "My dog drank water and kept it down, no vomiting at all.",
+"neg_el": "Ο σκύλος μου πίνει νερό κανονικά."
+},
+{
+"id": "DC-VULVA-MASS",
+"species": "dog",
+"en": "There is a pink mass sticking out of my dog's vulva.",
+"el": "Από τον κόλπο της σκυλίτσας μου βγαίνει μια ροζ μάζα.",
+"neg": "My dog's vulva is slightly swollen during her heat, nothing else."
+},
+{
+"id": "DC-WOUND-NONHEAL",
+"species": "dog",
+"en": "The wound on my dog's leg is not healing and looks infected with pus.",
+"el": "Η πληγή στο πόδι του σκύλου μου δεν γιατρεύεται και έχει πύο.",
+"neg": "My dog's small scratch healed nicely after a few days."
+},
+{
+"id": "DC-YOUNG-GI",
+"species": "dog",
+"en": "My 10 week old puppy has been vomiting and has diarrhoea.",
+"el": "Το κουτάβι μου 10 εβδομάδων κάνει εμετό και έχει διάρροια.",
+"neg": "My puppy is eating well and playing normally."
+},
+{
+"id": "DOG-ADDISON-KNOWN",
+"species": "dog",
+"en": "My dog has Addison's disease and is vomiting and weak today.",
+"el": "Ο σκύλος μου έχει νόσο Addison και κάνει εμετό και είναι αδύναμος.",
+"neg": "My dog's vet says he does not have Addison's, just normal bloodwork.",
+"neg_el": "Ο σκύλος μου έχει φυσιολογικές εξετάσεις."
+},
+{
+"id": "DOG-BREADDOUGH",
+"species": "dog",
+"en": "My dog ate raw bread dough that was rising on the counter.",
+"el": "Ο σκύλος μου έφαγε ωμή ζύμη ψωμιού που φούσκωνε στον πάγκο.",
+"neg": "I am making dough for pizza and the dog is sleeping in the other room."
+},
+{
+"id": "DOG-ECLAMPSIA",
+"species": "dog",
+"en": "My dog gave birth two weeks ago and is now trembling and panting.",
+"el": "Η σκυλίτσα μου γέννησε πριν δύο εβδομάδες και τώρα τρέμει και λαχανιάζει.",
+"neg": "My dog gave birth last week and is nursing happily and calm."
+},
+{
+"id": "DOG-ESSENTIAL-OIL",
+"species": "dog",
+"en": "My dog licked some tea tree oil that spilled on the floor.",
+"el": "Ο σκύλος μου έγλειψε αιθέριο έλαιο που χύθηκε στο πάτωμα.",
+"neg": "I use essential oil in a diffuser in another room, the dog does not go there."
+},
+{
+"id": "DOG-GDV",
+"species": "dog",
+"en": "My dog's belly looks swollen and hard and he keeps retching but nothing comes up.",
+"el": "Η κοιλιά του σκύλου μου είναι φουσκωμένη και σκληρή και κάνει ξερατά αλλά δεν βγαίνει τίποτα.",
+"neg": "My dog's belly is a bit swollen after a big dinner but he is happy and playing."
+},
+{
+"id": "DOG-GRAPES",
+"species": "dog",
+"en": "My dog ate a handful of raisins from the counter, what should I do?",
+"el": "Ο σκύλος μου έφαγε μια χούφτα σταφίδες από τον πάγκο, τι κάνω;",
+"neg": "My dog loves grape flavored chew toys and is fine.",
+"neg_el": "Ο σκύλος μου έφαγε μπισκότο με γεύση σταφύλι."
+},
+{
+"id": "DOG-HONK-COUGH",
+"species": "dog",
+"en": "My dog has a goose honk cough when he gets excited.",
+"el": "Ο σκύλος μου βήχει πολύ τη νύχτα και κάθε μέρα.",
+"neg": "My dog coughed once after drinking water and is fine."
+},
+{
+"id": "DOG-LABOUR-LONG",
+"species": "dog",
+"en": "My dog has been pushing for an hour and no puppy came out yet.",
+"el": "Η σκυλίτσα μου έχει εγκυμοσύνη και έχει πρασινωπό έκκριμα.",
+"neg": "My dog is pregnant, we are at day 50 and she is calm.",
+"neg_el": "Η σκυλίτσα μου είναι έγκυος και ήρεμη."
+},
+{
+"id": "DOG-LEISHMANIA",
+"species": "dog",
+"en": "My dog has leishmaniasis, losing weight, and has crusty sores on his ears.",
+"el": "Ο σκύλος μου έχει λεϊσμανίαση και χάνει βάρος, αδυνατίζει.",
+"neg": "I read about leishmaniasis, my dog is healthy and active."
+},
+{
+"id": "DOG-MACADAMIA",
+"species": "dog",
+"en": "My dog ate a handful of macadamia nuts.",
+"el": "Ο σκύλος μου έφαγε μια χούφτα μακαδάμια.",
+"neg": "I bake with macadamia nuts and keep them in a sealed jar the dog cannot reach."
+},
+{
+"id": "DOG-MDR1",
+"species": "dog",
+"en": "My border collie got some ivermectin horse paste and now he is staggering and drooling.",
+"el": "Το κόλλεϋ μου έφαγε αντιπαρασιτικό αλόγου με ιβερμεκτίνη και τρικλίζει και σαλιαρίζει.",
+"neg": "My labrador had his normal flea treatment and he is fine."
+},
+{
+"id": "DOG-NECK-PAIN",
+"species": "dog",
+"en": "My dog has neck pain and yelps when I touch his head.",
+"el": "Ο σκύλος μου πονάει στον λαιμό και δεν γυρίζει το κεφάλι.",
+"neg": "My dog is running and jumping and his neck seems fine."
+},
+{
+"id": "DOG-PARVO",
+"species": "dog",
+"en": "My 10 week old puppy has bloody diarrhea and keeps vomiting, could it be parvo?",
+"el": "Το κουτάβι μου έχει αιματηρή διάρροια και κάνει εμετό, μήπως είναι παρβοϊός;",
+"neg": "My puppy is fully vaccinated for parvo and is eating well."
+},
+{
+"id": "DOG-STRIDOR",
+"species": "dog",
+"en": "My dog has harsh noisy breathing and his gums look blue, he is struggling on this hot day.",
+"el": "Ο σκύλος μου έχει βραχνή αναπνοή και μπλε ούλα και δυσκολεύεται.",
+"neg": "My dog snores a bit in his sleep but is otherwise happy."
+},
+{
+"id": "DOG-TICK-FEVER",
+"species": "dog",
+"en": "I removed a tick last week and now my dog has a fever and is lethargic.",
+"el": "Αφαίρεσα ένα τσιμπούρι και ο σκύλος έχει πυρετό και είναι ληθαργικός.",
+"neg": "I use a tick collar and my dog is healthy and active.",
+"neg_el": "Ο σκύλος μου είναι υγιής και δραστήριος."
+},
+{
+"id": "DOG-URETHRAL",
+"species": "dog",
+"en": "My male dog keeps squatting and straining to pee but nothing comes out.",
+"el": "Ο σκύλος μου σκύβει και προσπαθεί να ουρήσει αλλά δεν βγαίνει τίποτα.",
+"neg": "My dog pees normally and a lot every walk.",
+"neg_el": "Ο σκύλος μου κατουράει κανονικά."
+},
+{
+"id": "DOG-URINARY-STRAIN",
+"species": "dog",
+"en": "My dog is straining to pee and only a few drops come out.",
+"el": "Ο σκύλος μου προσπαθεί να ουρήσει και βγαίνουν μόνο σταγόνες.",
+"neg": "My dog peed normally on our walk and had no trouble."
+},
+{
+"id": "DOG-XYLITOL",
+"species": "dog",
+"en": "My dog just ate a pack of sugar-free gum with xylitol.",
+"el": "Ο σκύλος μου μόλις έφαγε ένα πακέτο τσιχλόφουσκες με ξυλιτόλη.",
+"neg": "My dog ate a piece of chocolate-flavoured biscuit, nothing else."
+},
+{
+"id": "FERRET-URINE-STRAIN",
+"species": "other",
+"en": "My ferret is straining to pee and only dribbles.",
+"el": "Το ferret μου σφίγγεται να ουρήσει και βγάζει σταγόνες.",
+"neg": "My ferret is playing and using the litter tray normally."
+},
+{
+"id": "HAMSTER-WETTAIL",
+"species": "other",
+"en": "My hamster has a wet tail and diarrhea and is hunched.",
+"el": "Το χάμστερ μου έχει υγρή ουρά και διάρροια και είναι σκυφτό.",
+"neg": "My hamster is running on his wheel and eating fine.",
+"neg_el": "Το χάμστερ μου τρέχει στον τροχό."
+},
+{
+"id": "HEDGEHOG-TORPOR",
+"species": "other",
+"en": "My hedgehog feels cold and won't wake up.",
+"el": "Ο σκαντζόχοιρός μου είναι κρύος και δεν ξυπνάει.",
+"neg": "My hedgehog is curled up asleep in the day, warm and normal.",
+"neg_el": "Ο σκαντζόχοιρός μου είναι ζεστός και δραστήριος."
+},
+{
+"id": "MAM-DYSTOCIA",
+"species": "dog",
+"en": "My dog has been in labor for hours and no puppy has come out, there is green discharge.",
+"el": "Η σκυλίτσα μου γεννάει και έχουν περάσει ώρες, κόλλησε ένα κουτάβι.",
+"neg": "My dog is pregnant and eating well, the vet says the due date is in two weeks.",
+"neg_el": "Η σκυλίτσα μου είναι έγκυος και τρώει κανονικά."
+},
+{
+"id": "OTH-DIARRHEA",
+"species": "other",
+"en": "My hamster has watery stool and a wet tail.",
+"el": "Το χάμστερ μου έχει νερουλά κόπρανα και υγρή ουρά.",
+"neg": "My hamster is eating and his droppings look normal."
+},
+{
+"id": "OTH-DIARRHEA-YOUNG",
+"species": "other",
+"en": "My baby hamster, just weaned, has wet tail and watery diarrhoea.",
+"el": "Το μικρό χάμστερ μου που μόλις απογαλακτίστηκε έχει διάρροια.",
+"neg": "My adult hamster is healthy and eating normally."
+},
+{
+"id": "OTH-FERRET-GI",
+"species": "other",
+"en": "My ferret has been vomiting since this morning.",
+"el": "Το κουνάβι μου κάνει εμετό από το πρωί.",
+"neg": "My ferret is playing and eating well today."
+},
+{
+"id": "OTH-FERRET-NEURO",
+"species": "other",
+"en": "My ferret is staggering and very weak since this morning.",
+"el": "Το κουνάβι μου τρικλίζει και είναι πολύ αδύναμο από το πρωί.",
+"neg": "My ferret is playing and running around the house like always."
+},
+{
+"id": "OTH-GP-SCURVY",
+"species": "other",
+"en": "My guinea pig is limping and has swollen joints.",
+"el": "Το ινδικό χοιρίδιο μου κουτσαίνει και έχει πρησμένες αρθρώσεις.",
+"neg": "My guinea pig is running around happily and eating his vegetables."
+},
+{
+"id": "OTH-NOEAT",
+"species": "other",
+"en": "My guinea pig has stopped eating and just sits in the corner.",
+"el": "Το ινδικό χοιρίδιο μου δεν τρώει από το πρωί.",
+"neg": "My guinea pig is eating hay and veggies as usual and is very active.",
+"neg_el": "Το ινδικό χοιρίδιο μου τρώει κανονικά."
+},
+{
+"id": "OTH-PROLAPSE",
+"species": "rabbit",
+"en": "My rabbit has something red sticking out of his bottom, I think it's a prolapse.",
+"el": "Το κουνέλι μου έχει πρόπτωση, έντερο έξω από τον πρωκτό.",
+"neg": "My rabbit has a clean bottom and normal droppings.",
+"neg_el": "Το κουνέλι μου έχει καθαρό πίσω μέρος."
+},
+{
+"id": "OTH-RESP",
+"species": "other",
+"en": "My hamster is wheezing and has a runny nose.",
+"el": "Το χάμστερ μου συριγμό και τρέχει η μύτη του, φταρνίζεται συνέχεια.",
+"neg": "My hamster is running on the wheel and breathing quietly."
+},
+{
+"id": "RAB-DIARRHEA",
+"species": "rabbit",
+"en": "My rabbit has watery diarrhoea since this morning.",
+"el": "Το κουνέλι μου έχει διάρροια από το πρωί.",
+"neg": "My rabbit's droppings are round and dry as usual and he is eating well."
+},
+{
+"id": "RAB-DIARRHEA-YOUNG",
+"species": "rabbit",
+"en": "My baby rabbit is 8 weeks old and has watery diarrhea since this morning.",
+"el": "Το μικρό μου κουνέλι έχει υδαρή διάρροια από το πρωί.",
+"neg": "My adult rabbit's poop is a bit soft once today but he is eating well.",
+"neg_el": "Το κουνέλι μου έχει φυσιολογικά κόπρανα και τρώει καλά."
+},
+{
+"id": "RAB-FIPRONIL",
+"species": "rabbit",
+"en": "I put Frontline spot on on my rabbit.",
+"el": "Έβαλα Frontline στο κουνέλι μου.",
+"neg": "My rabbit is healthy and eats hay normally."
+},
+{
+"id": "RAB-STASIS",
+"species": "rabbit",
+"en": "My rabbit stopped eating this morning and has no droppings.",
+"el": "Το κουνέλι μου δεν τρώει από το πρωί και δεν κάνει κόπρανα.",
+"neg": "My rabbit is eating hay normally and pooping fine."
+},
+{
+"id": "RAB-STASIS-SEVERE",
+"species": "rabbit",
+"en": "My rabbit stopped eating this morning and her belly looks bloated.",
+"el": "Το κουνέλι μου σταμάτησε να τρώει και η κοιλιά του είναι φουσκωμένη.",
+"neg": "My rabbit is eating hay normally and her belly looks normal."
+},
+{
+"id": "REP-EGGS",
+"species": "reptile",
+"en": "My bearded dragon looks gravid but she is straining and lethargic and hasn't laid her eggs.",
+"el": "Η σαύρα μου έχει αυγά αλλά δυσκολεύεται να γεννήσει και είναι αδύναμη.",
+"neg": "My bearded dragon laid her eggs this morning and is eating well."
+},
+{
+"id": "REP-NEURO",
+"species": "reptile",
+"en": "My bearded dragon is star gazing and his head is twisted to one side.",
+"el": "Η σαύρα μου έχει το κεφάλι γυρισμένο στο πλάι και δεν μπορεί να περπατήσει.",
+"neg": "My bearded dragon is basking and walking normally."
+},
+{
+"id": "REP-RESP",
+"species": "reptile",
+"en": "My bearded dragon is breathing with his mouth open and has bubbles at the nose.",
+"el": "Ο ιγκουάνα μου έχει ανοιχτό στόμα και εκκριση από τη μύτη.",
+"neg": "My bearded dragon opens his mouth wide for a second while basking and is otherwise normal.",
+"neg_el": "Το ερπετό μου κάνει μπάνιο και είναι ήρεμο."
+},
+{
+"id": "REP-STARGAZE",
+"species": "reptile",
+"en": "My bearded dragon is stargazing and keeps looking up, with tremors.",
+"el": "Το ερπετό μου κοιτά ψηλά και έχει τρεμούλιασμα.",
+"neg": "My bearded dragon is basking and eating normally."
+},
+{
+"id": "REP-TORTOISE-SERIOUS",
+"species": "reptile",
+"en": "My tortoise has bubbles from the nose and mouth open.",
+"el": "Η χελώνα μου έχει φυσαλίδες από τη μύτη και ανοιχτό στόμα.",
+"neg": "My tortoise is walking around the garden and eating dandelions."
+},
+{
+"id": "SMALL-ANTIBIOTIC",
+"species": "rabbit",
+"en": "I gave my rabbit amoxicillin that was left from my own prescription.",
+"el": "Έδωσα στο κουνέλι μου αμοξυκιλλίνη.",
+"neg": "My cat takes amoxicillin from the vet."
+},
+{
+"id": "SMALL-ANTIBIOTIC-DIARRHEA",
+"species": "rabbit",
+"en": "My rabbit got antibiotics and now has diarrhoea and is not eating.",
+"el": "Το κουνέλι μου πήρε αντιβιοτικό και τώρα έχει διάρροια και δεν τρώει.",
+"neg": "My rabbit finished a vitamin course and is eating hay."
+},
+{
+"id": "SMALL-BREATH",
+"species": "other",
+"en": "My guinea pig is gasping and struggling to breathe.",
+"el": "Το ινδικό χοιρίδιο μου δυσκολεύεται να αναπνεύσει.",
+"neg": "My guinea pig is eating and breathing quietly."
+},
+{
+"id": "SMALL-HEAT",
+"species": "rabbit",
+"en": "It's a hot day and my rabbit is panting and lying stretched out limp.",
+"el": "Με τον καύσωνα το κουνέλι μου λαχανιάζει και είναι ξαπλωμένο χαλαρό.",
+"neg": "My rabbit is resting in a cool room on a hot day, eating well."
+}
+]
