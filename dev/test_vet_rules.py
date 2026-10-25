@@ -272,6 +272,21 @@ CASES = [
     ("cat", "I gave her a Fleet enema for constipation", None, "EMERGENCY"),
     ("dog", "she keeps rubbing her face and her ears twitch", None, "URGENT"),
     ("dog", "my diabetic dog gets insulin twice a day and is eating well and playing", None, None),
+    # MSD first-aid / skin / pharmacology pass
+    ("dog", "he ate a wild mushroom on our walk but seems fine", None, "EMERGENCY"),
+    ("dog", "we put shop bought mushrooms in the pasta and he ate a bit", None, None),
+    ("dog", "she fell into the pool and went under water for a minute", None, "EMERGENCY"),
+    ("cat", "the kitten chewed a live phone charger cable", None, "EMERGENCY"),
+    ("dog", "he found it cold to the touch, wet and weak after the snow", None, "EMERGENCY"),
+    ("dog", "she was stung by a wasp on the face and the muzzle is swollen", None, "URGENT"),
+    ("dog", "his face is swollen and he is vomiting and drooling after the vaccine", None, "EMERGENCY"),
+    ("dog", "he swam in a stagnant pond and is lethargic and not eating", None, "URGENT"),
+    ("dog", "a bat bit the dog in the garden", None, "URGENT"),
+    ("dog", "he got a burn on his paw from the hot pavement and the pad is red and raw", None, "URGENT"),
+    ("dog", "there are maggots in the wound on his back", None, "EMERGENCY"),
+    ("rabbit", "the vet gave amoxicillin tablets to my rabbit and now he is bloated", None, "EMERGENCY"),
+    ("rabbit", "I used a fipronil flea spot-on on my rabbit", None, "EMERGENCY"),
+    ("dog", "our collie got ivermectin horse paste and is stumbling and drooling", None, "EMERGENCY"),
 ]
 
 
