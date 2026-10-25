@@ -5401,10 +5401,21 @@ def render_triage():
                 _kb = ""
             if _kb:
                 system_ctx += "\n\n" + _kb
-            reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
-                           system=system_ctx, max_tokens=3000)
-            _failed = _vet_safety.ai_failed(reply)
-            if _failed:                                 # AI down: never show an error or "all fine"; give a safe next step
+            # Act-now bypass: a clear life-threatening statement gets the fixed emergency message at once, without the
+            # six-question cycle and without waiting for the AI. Only once per rule: later messages go to the AI again.
+            _act = _vet_rules.act_now_hits(_vr) if _floor_on else []
+            _seen = {i for m in st.session_state.triage_chat if m["role"] == "assistant" for i in (m.get("bypass") or [])}
+            _bypass = [h for h in _act if h.id not in _seen]
+            if _bypass:
+                reply, _failed = _vet_rules.act_now_reply(_act, lang), False
+                log_event("safety_bypass", ok=True, rules=",".join(h.id for h in _act)[:200])
+            else:
+                reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
+                               system=system_ctx, max_tokens=3000)
+                _failed = _vet_safety.ai_failed(reply)
+            if _bypass:
+                _lvl = "EMERGENCY"
+            elif _failed:                                 # AI down: never show an error or "all fine"; give a safe next step
                 reply, _lvl = _vet_safety.fallback_reply(lang, _vr.level)
                 if _vr.hits:
                     reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
@@ -5440,7 +5451,10 @@ def render_triage():
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
-        st.session_state.triage_chat.append({"role":"assistant","content":reply,"level":_lvl})
+        _msg = {"role":"assistant","content":reply,"level":_lvl}
+        if _bypass:
+            _msg["bypass"] = [h.id for h in _act]
+        st.session_state.triage_chat.append(_msg)
         if _tool:
             _nurse_route(_tool)
             st.rerun()
@@ -5935,7 +5949,7 @@ MSD VETERINARY MANUAL REFERENCES:
 Write a structured veterinary report:
 1. CHIEF COMPLAINT
 2. CLINICAL HISTORY
-3. ASSESSMENT — Primary differential + top 2-3 differentials with probability %
+3. ASSESSMENT — Primary differential + top 2-3 differentials, each labelled "most likely", "possible" or "less likely". NEVER give percentages or numeric probabilities (there is no validated way to calculate them); this is decision support for the vet, not a diagnosis.
 4. RECOMMENDED WORKUP — Tests, diagnostics to discuss with vet
 5. SUPPORTIVE CARE — What owner can do at home (if safe)
 6. RED FLAGS — Symptoms requiring immediate emergency vet

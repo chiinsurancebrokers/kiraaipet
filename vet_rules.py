@@ -1347,6 +1347,41 @@ def evaluate(species_key, user_texts, profile=None):
 
 
 
+# Owner statements that are enough on their own to say "go now" without the six-question cycle: a collapsed or
+# blue-gummed animal, a confirmed toxin, a blocked airway or urethra, an eye out of its socket... Hand-picked from the
+# EMERGENCY rules (policy basis, vet to confirm). Everything else stays under the AI's question cycle; the floor still
+# raises the final verdict for those.
+ACT_NOW = frozenset({
+    "ALL-COLLAPSE", "ALL-GUMS", "ALL-BREATH", "CAT-OPENMOUTH", "ALL-SEIZURE-LONG", "ALL-TRAUMA-BLEED", "ALL-HEATSTROKE",
+    "ALL-DROWNING", "ALL-SMOKE", "ALL-ANAPHYLAXIS", "DC-ELECTRIC-CORD", "DC-CHOKING", "DC-SNAKEBITE", "DOG-GDV",
+    "CAT-URETHRAL", "DOG-URETHRAL", "DOG-XYLITOL", "DOG-GRAPES", "CAT-LILY", "CAT-PARACETAMOL", "DC-ANTIFREEZE",
+    "DC-RODENTICIDE-NEURO", "DC-POISON-BAIT", "DC-METALDEHYDE", "DC-FLUOROURACIL", "DC-BATTERY", "CAT-DOGFLEA",
+    "DC-MUSHROOM", "CAT-ESSENTIAL-OIL", "BIRD-FUMES", "BIRD-AVOCADO", "DC-BITE-NECK-SWELL", "DC-FRACTURE-OPEN",
+    "ALL-EYE-PROPTOSIS", "DC-EYE-PROPTOSIS", "ALL-EYE-PENETRATING", "DC-CHOCOLATE", "BIRD-TAILBOB",
+})
+
+
+def act_now_hits(result):
+    """EMERGENCY hits that justify skipping the question cycle."""
+    return [h for h in result.hits if h.level == "EMERGENCY" and h.id in ACT_NOW]
+
+
+def act_now_reply(hits, lang="en"):
+    """Fixed emergency message built from the rules, shown without waiting for the AI."""
+    top = hits[:3]
+    if lang == "el":
+        head = "🚨 **ΠΗΓΑΙΝΕ ΑΜΕΣΩΣ ΣΕ ΚΤΗΝΙΑΤΡΕΙΟ**"
+        body = "\n".join(f"- {h.el}" for h in top)
+        foot = ("Τηλεφώνησε στο κτηνιατρείο στον δρόμο ώστε να ετοιμαστούν. Μην δώσεις φαγητό, νερό ή φάρμακο αν δεν στο πει ο κτηνίατρος. "
+                "Μπορείς να συνεχίσεις να γράφεις εδώ, αλλά μην περιμένεις εμένα για να φύγεις.")
+    else:
+        head = "🚨 **GO TO A VET CLINIC IMMEDIATELY**"
+        body = "\n".join(f"- {h.en}" for h in top)
+        foot = ("Call the clinic on the way so they can prepare. Do not give food, water or any medicine unless the vet tells you to. "
+                "You can keep writing here, but do not wait for me before you leave.")
+    return f"{head}\n\n{body}\n\n{foot}"
+
+
 def outranks(floor_level, ai_level):
     """True when the rule floor is higher than the AI's final level."""
     return bool(floor_level) and RANK.get(floor_level, 0) > RANK.get(ai_level or "SELF_CARE", 0)

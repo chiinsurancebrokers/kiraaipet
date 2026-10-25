@@ -82,7 +82,9 @@ expect("no rule, no raise: unchanged SELF_CARE", lv == "SELF_CARE", lv)
 
 lv, txt, calls = run("dog", "A viper bit my dog on the leg", SELF)
 expect("MSD rule: snakebite -> EMERGENCY", lv == "EMERGENCY", lv)
-expect("MSD facts reach the nurse prompt for that topic", "Snakebite" in STATE["nurse_system"] and "REFERENCE FACTS" in STATE["nurse_system"])
+expect("act-now bypass: snakebite skips the AI and shows the fixed emergency message", "nurse" not in calls and "IMMEDIATELY" in txt.upper(), (calls, txt[:80]))
+lv, txt, calls = run("dog", "I found a tick on my dog, how do I remove it", SELF)
+expect("MSD facts reach the nurse prompt for that topic", "tick" in STATE["nurse_system"].lower() and "REFERENCE FACTS" in STATE["nurse_system"], STATE["nurse_system"][-300:])
 lv, txt, calls = run("dog", "He is limping slightly", SELF)
 expect("no MSD facts injected for an unrelated message", "REFERENCE FACTS" not in STATE["nurse_system"])
 

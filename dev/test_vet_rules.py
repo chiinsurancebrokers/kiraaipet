@@ -332,6 +332,21 @@ assert vr.outranks(r.level, "URGENT") and not vr.outranks(r.level, "EMERGENCY")
 assert not vr.outranks("", "SELF_CARE") and not vr.outranks("URGENT", "EMERGENCY")     # floor never lowers
 assert vr.prompt_hints(vr.Result()) == ""
 assert "DOG-XYLITOL" in vr.prompt_hints(r) and vr.floor_note(r, "el").startswith("⚠️ Κανόνας")
+# act-now bypass: fixed emergency message for clear life-threatening statements only
+def _hits(sp, txt):
+    return vr.act_now_hits(vr.evaluate(sp, [txt]))
+assert any(h.id == "ALL-COLLAPSE" for h in _hits("dog", "he just collapsed and will not wake")), "collapse should bypass"
+assert any(h.id == "DOG-GRAPES" for h in _hits("dog", "she ate a handful of grapes an hour ago")), "grapes should bypass"
+assert not _hits("dog", "he is vomiting since this morning but bright and eating"), "mild vomiting must not bypass"
+assert not _hits("dog", "she did not eat the grapes"), "negated exposure must not bypass"
+assert not _hits("dog", "my dog was bitten by another dog on the leg"), "URGENT-only rules must not bypass"
+_r1 = vr.act_now_reply(_hits("dog", "he just collapsed and will not wake"), "en")
+assert _r1.startswith("🚨") and "do not wait for me" in _r1
+_r2 = vr.act_now_reply(_hits("dog", "he just collapsed and will not wake"), "el")
+assert _r2.startswith("🚨") and "ΑΜΕΣΩΣ" in _r2
+for _i in vr.ACT_NOW:
+    if _i != "DC-CHOCOLATE":
+        assert any(r.id == _i and r.level == "EMERGENCY" for r in vr.RULES), "ACT_NOW id is not an EMERGENCY rule: " + _i
 # every rule has both languages and msd rules have a source
 for rule in vr.RULES:
     assert rule.en and rule.el, rule.id
