@@ -113,15 +113,15 @@ def has_poison_card(owner, nurse):
     at.text_area(key="pn_compose_text").set_value(owner)
     [b for b in at.button if b.label.startswith("\u27a4")][0].click().run()
     assert not at.exception, [e.value for e in at.exception]
-    return any(b.key == "pn_handoff_vets" for b in at.button), "N.E.C.C.A." in " ".join(str(c.value) for c in at.caption)
+    return any("pan-geo-card" in str(m.value) for m in at.markdown), "N.E.C.C.A." in " ".join(str(c.value) for c in at.caption)
 card, bait = has_poison_card("He ate slug pellets and poisoned bait in the park", "Go to a vet now.\n[TRIAGE: EMERGENCY]")
 expect("hand-off card with vet finder and bait-report line after a bait poisoning", card and bait, f"{card} {bait}")
 card, _ = has_poison_card("He is limping slightly", SELF)
 expect("no hand-off card when nothing toxic", not card)
 card, _ = has_poison_card("my dog collapsed", "")
-expect("any emergency (act-now bypass, not a poisoning) shows the Find a 24h vet button", card)
+expect("any emergency (act-now bypass, not a poisoning) shows the find-a-vet card inline", card)
 card, _ = has_poison_card("He threw up once, playful", SELF)
-expect("no vet button on a mild verdict", not card)
+expect("no vet card on a mild verdict", not card)
 
 def has_followup_btn(owner, nurse, email):
     STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])

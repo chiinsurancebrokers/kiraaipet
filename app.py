@@ -2373,13 +2373,12 @@ def _render_poison_handoff(lang):
     ho = _vet_safety.handoff(last.get("ids"), lang)
     if not ho:
         # any other emergency verdict (collapse, breathing...) still gets the way to a 24h vet, not only poisonings
-        if st.session_state.get("triage_emergency") and st.button(("🏥 Βρες 24ωρο κτηνιατρείο" if lang == "el" else "🏥 Find a 24h vet"),
-                                                                  key="pn_handoff_vets", type="primary", use_container_width=True):
-            _goto("vets")
+        if st.session_state.get("triage_emergency"):
+            render_nearby_vets_geo(lang)   # opens straight away, no extra tap
         return
     st.warning(ho["text"])
-    if ho.get("show_vets") and st.button(("🏥 Βρες 24ωρο κτηνιατρείο" if lang == "el" else "🏥 Find a 24h vet"), key="pn_handoff_vets", use_container_width=True):
-        _goto("vets")
+    if ho.get("show_vets"):
+        render_nearby_vets_geo(lang)
     if ho.get("bait_text"):
         st.caption(ho["bait_text"])
 
