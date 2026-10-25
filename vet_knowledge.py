@@ -140,8 +140,11 @@ TOPICS = [
      "A bone through the skin is an emergency: cover with a clean cloth and go now.",
      "musculoskeletal-system/osteopathies-in-small-animals/bone-fractures-in-dogs-and-cats"),
     ("ticks", r"\btick|ixodes|κροτων|τσιμπουρ", ("dog", "cat"),
-     "Tick removal: use fine-tipped tweezers or a tick-removal tool, grasp the tick as close to the skin as possible and pull steadily straight out; do not twist, crush, burn or smother it with oil. "
-     "Ticks can pass on Lyme disease, ehrlichiosis and other infections; watch for fever, tiredness, lameness or poor appetite in the following weeks.",
+     "Tick removal: use fine-tipped tweezers or a tick-removal tool, grasp the tick as close to the skin as possible and pull steadily straight out; do not twist, crush, burn or smother it with oil, alcohol or ether. "
+     "Remove visible ticks as soon as possible, because the sooner they are off the less chance of passing on infection. "
+     "In Greece the brown dog tick is the usual one; it can pass on ehrlichiosis, babesiosis and hepatozoonosis (Lyme is mainly a northern-tick problem); "
+     "watch for fever, tiredness, lameness, pale gums or poor appetite in the following weeks. Cats get ticks too: never use dog-only permethrin products on a cat. "
+     "(Source for the Greek tick and sand-fly points: ESCCAP ectoparasite guideline GL3, esccap.org.)",
      "dog-owners/skin-disorders-of-dogs/ticks-of-dogs"),
     ("cecotrophy", r"eat\w* (its|his|her|their) (own )?(poop|droppings|feces|faeces|stool)|cecotrop|night droppings|soft droppings|τρωει τις κουτσουλι|τρωει τα κοπρανα", ("rabbit", "other"),
      "Rabbits, guinea pigs and chinchillas normally eat soft, shiny, nutrient-rich night droppings (cecotropes) straight from the anus; this is healthy and needed. "
