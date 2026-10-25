@@ -139,6 +139,21 @@ TOPICS = [
      "Suspected fracture or dislocation: keep the pet still and, if needed, carry it on a firm board or blanket; do not try to straighten the limb. "
      "A bone through the skin is an emergency: cover with a clean cloth and go now.",
      "musculoskeletal-system/osteopathies-in-small-animals/bone-fractures-in-dogs-and-cats"),
+    ("ticks", r"\btick|ixodes|κροτων|τσιμπουρ", ("dog", "cat"),
+     "Tick removal: use fine-tipped tweezers or a tick-removal tool, grasp the tick as close to the skin as possible and pull steadily straight out; do not twist, crush, burn or smother it with oil. "
+     "Ticks can pass on Lyme disease, ehrlichiosis and other infections; watch for fever, tiredness, lameness or poor appetite in the following weeks.",
+     "dog-owners/skin-disorders-of-dogs/ticks-of-dogs"),
+    ("cecotrophy", r"eat\w* (its|his|her|their) (own )?(poop|droppings|feces|faeces|stool)|cecotrop|night droppings|soft droppings|τρωει τις κουτσουλι|τρωει τα κοπρανα", ("rabbit", "other"),
+     "Rabbits, guinea pigs and chinchillas normally eat soft, shiny, nutrient-rich night droppings (cecotropes) straight from the anus; this is healthy and needed. "
+     "Worry instead about no droppings, tiny dry droppings, uneaten cecotropes piling up, or diarrhoea.",
+     "all-other-pets/rabbits/diet-for-rabbits"),
+    ("trauma_watch", r"hit by|fell|fall|kicked|accident|trauma|crush|τροχαι|επεσε|χτυπησε", ("dog", "cat"),
+     "After a fall, car or other blunt injury the pet can look fine but hide chest, belly or spine injuries: watch breathing, gum colour and alertness every few hours for the first 48 hours, and see a vet even if the pet seems normal.",
+     "emergency-medicine-and-critical-care/specific-diagnostics-and-therapy/trauma-in-emergency-medicine-in-small-animals"),
+    ("eclampsia", r"nursing|lactat|whelp|gave birth|puppies|kittens|θηλαζ|γεννησε|κουταβια", ("dog", "cat"),
+     "Eclampsia (low blood calcium) most often hits small-breed mothers with large litters 1 to 4 weeks after giving birth: restlessness, panting, drooling, stiff walk, twitching, then seizures. "
+     "It is an emergency; do not give calcium supplements during pregnancy, as they can make it more likely.",
+     "metabolic-disorders/disorders-of-calcium-metabolism/eclampsia-in-small-animals"),
 ]
 
 _COMPILED = [(tid, re.compile(rx), sp, txt, MSD + page) for tid, rx, sp, txt, page in TOPICS]

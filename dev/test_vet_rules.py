@@ -206,6 +206,18 @@ CASES = [
     ("dog", "he is panting after a walk, normal breathing otherwise", None, None),
     ("dog", "he has been vomiting and has diarrhea, many times since last night", None, "URGENT"),
     ("dog", "he vomited once and has soft stool, still playful", None, None),
+    # full MSD quiz sweep
+    ("dog", "she whelped 2 weeks ago and is trembling and panting and restless", None, "EMERGENCY"),
+    ("dog", "she is panting after her walk, no puppies, she is fine", None, None),
+    ("cat", "my cat is breathing fast even while sleeping", None, "URGENT"),
+    ("cat", "my cat is purring and sleeping calmly", None, None),
+    ("dog", "he has a goose honk cough that is getting worse", None, "URGENT"),
+    ("dog", "he vomits everything, even water, since this morning", None, "URGENT"),
+    ("dog", "he is drinking much more and has lost weight but eats a lot", None, "URGENT"),
+    ("dog", "he drinks more water in summer, nothing else is different", None, None),
+    ("cat", "she is ravenous all day but losing weight", None, "URGENT"),
+    ("dog", "he yelps when I touch his neck and will not move his head", None, "URGENT"),
+    ("dog", "he is a bit stiff after a long hike and ate well", None, None),
 ]
 
 
