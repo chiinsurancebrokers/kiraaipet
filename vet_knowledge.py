@@ -158,6 +158,10 @@ TOPICS = [
      "A pet that suddenly drinks and pees much more is ill (diabetes, kidney, liver, Cushing's, womb infection and other causes) and needs a vet within a day or two. "
      "Never take the water away or limit it to 'see if it helps': pets that cannot concentrate their urine dehydrate quickly. Always keep fresh water available.",
      "endocrine-system/the-pituitary-gland/diabetes-insipidus-in-animals"),
+    ("tortoise_hibernation", r"hibernat|brumat|χειμερια ναρκη|χειμερινος υπνος", ("reptile",),
+     "A sick, thin or underweight tortoise or turtle must never be put into hibernation: see a reptile vet first. "
+     "Keep a sick reptile in the upper part of its preferred temperature range, give it a proper UVB light (glass and plastic block UVB), and do not force-feed.",
+     "all-other-pets/reptiles/providing-a-home-for-a-reptile"),
     ("eclampsia", r"nursing|lactat|whelp|gave birth|puppies|kittens|θηλαζ|γεννησε|κουταβια", ("dog", "cat"),
      "Eclampsia (low blood calcium) most often hits small-breed mothers with large litters 1 to 4 weeks after giving birth: restlessness, panting, drooling, stiff walk, twitching, then seizures. "
      "It is an emergency; do not give calcium supplements during pregnancy, as they can make it more likely.",

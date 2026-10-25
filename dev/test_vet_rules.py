@@ -295,6 +295,16 @@ CASES = [
     ("dog", "the 3 week old puppy is crying nonstop and weak", None, "EMERGENCY"),
     ("bird", "my budgie has eye discharge, fluffed feathers and green droppings and is sleepy", None, "EMERGENCY"),
     ("dog", "he is a 3 year old dog who is playful and eating, one tick found and removed", None, None),
+    # MSD exotic / small pet pass
+    ("rabbit", "my rabbit is in the hot sun on the balcony and lying stretched out, breathing fast", None, "EMERGENCY"),
+    ("other", "my guinea pig has trouble breathing and is wheezing", None, "EMERGENCY"),
+    ("rabbit", "she is on antibiotics and now has diarrhoea", None, "EMERGENCY"),
+    ("other", "my hamster has a wet tail and is hunched and not eating", None, "EMERGENCY"),
+    ("bird", "I overheated a non-stick pan and the bird is near", None, "EMERGENCY"),
+    ("bird", "the parrot has tremors and clenched feet", None, "EMERGENCY"),
+    ("reptile", "my tortoise has bubbles at the nose and an open mouth", None, "EMERGENCY"),
+    ("other", "my hedgehog feels cold and is not moving", None, "EMERGENCY"),
+    ("rabbit", "my rabbit is hopping around happily, eating hay and it is a cool day", None, None),
 ]
 
 
