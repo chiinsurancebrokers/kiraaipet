@@ -17,6 +17,11 @@ import logging as _logging
 import uuid as _uuid
 import html as _html
 import pet_longevity as _plg
+import vet_rules as _vet_rules   # deterministic safety floor under the nurse chat (MSD-based)
+import followups as _followups   # opt-in one-time check-in email after URGENT / SELF_CARE
+import safety_events as _safety_events   # code-only safety event log (Supabase) for the weekly report
+import vet_knowledge as _vet_knowledge   # MSD owner-level facts for the topics a chat mentions
+import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
                        result_card_html as _pet_result_card_html, banner_html as _pn_banner,
@@ -1004,13 +1009,13 @@ def gpt4o(prompt, system="", max_tokens=3000):
         return f"GPT-4o unavailable: {type(e).__name__}: {e}"
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-def claude(messages, system="", max_tokens=3000, timeout=60):
+def claude(messages, system="", max_tokens=3000, timeout=60, model=None):
     _t0 = time.time()
     key = get_claude_key()
     if not key:
         log_event("claude_chat", ok=False, error="missing_api_key")
         return "⚠️ Claude API key not set."
-    body = json.dumps({"model":CLAUDE_MODEL,"max_tokens":max_tokens,
+    body = json.dumps({"model":model or CLAUDE_MODEL,"max_tokens":max_tokens,
         "system":system,"messages":messages}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json"})
@@ -1399,16 +1404,19 @@ def render_network_clinics(triage_level="SELF_CARE", lang="en", provider=""):
                    else "Required before every visit. The network can change (catalogue 09.25).") + '</div>', unsafe_allow_html=True)
 
 
-def render_insurance_prompt(lang="en"):
-    """Shown after the assessment when no insurance programme is selected yet."""
+def render_insurance_prompt(lang="en", hide_if_declined=False):
+    """Shown after the assessment when no insurance programme is selected yet.
+    hide_if_declined: in the chat, stay quiet once the owner said they have no Eurolife plan."""
     el = lang == "el"
+    if hide_if_declined and st.session_state.get("ins_declined"):
+        return
     st.markdown(
         '<div style="background:#E7EAFB;border:1px solid #D0D6F5;border-radius:22px;padding:16px 18px;margin:12px 0 6px;">'
         '<div style="font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;">🛡️ '
         + ("Είναι ασφαλισμένο το κατοικίδιό σου;" if el else "Is your pet insured?") + '</div>'
         '<div style="font-size:13px;color:#5B6794;margin-top:4px;line-height:1.5;">'
-        + ("Επίλεξε το πρόγραμμα Eurolife My Happy Pet για να δεις αν καλύπτεται η περίπτωση, πόσο θα πληρώσεις και ποια συμβεβλημένα κτηνιατρεία είναι κοντά σου."
-           if el else "Choose your Eurolife My Happy Pet programme to see whether this is covered, what you would pay and which contracted clinics are near you.")
+        + ("Αν έχεις πρόγραμμα Eurolife My Happy Pet, επίλεξέ το για να δεις αν καλύπτεται η περίπτωση, πόσο θα πληρώσεις και ποια συμβεβλημένα κτηνιατρεία είναι κοντά σου."
+           if el else "If you have a Eurolife My Happy Pet programme, choose it to see whether this is covered, what you would pay and which contracted clinics are near you.")
         + '</div></div>', unsafe_allow_html=True)
     _prov = {"Plus": "Eurolife FFH — My Happy Pet Plus", "Standard": "Eurolife FFH — My Happy Pet Standard"}
     c1, c2 = st.columns(2)
@@ -1417,9 +1425,14 @@ def render_insurance_prompt(lang="en"):
             if st.button(f"My Happy Pet {lbl}", key=f"pn_ins_pick_{lbl}", use_container_width=True,
                          type="primary" if lbl == "Plus" else "secondary"):
                 st.session_state["pet_insurance_provider"] = val
+                st.session_state["ins_declined"] = False
                 if isinstance(st.session_state.get("pet"), dict):
                     st.session_state.pet["insurance_provider"] = val
                 st.rerun()
+    if st.button("Δεν έχω Eurolife / δεν έχω ασφάλιση" if el else "I don't have a Eurolife plan",
+                 key="pn_ins_none", use_container_width=True):
+        st.session_state["ins_declined"] = True
+        st.rerun()
 
 
 
@@ -2352,6 +2365,47 @@ def record_triage_check(email: str = ""):
         log_event("usage_write", ok=True, kind="triage_check")
     except Exception as e:
         log_event("usage_write", ok=False, error=str(e))
+
+
+def _render_poison_handoff(lang):
+    """Next-step card beside a poisoning verdict: call the vet / 24h clinic now, plus the official bait-report lines when relevant."""
+    last = st.session_state.get("_vs_last") or {}
+    ho = _vet_safety.handoff(last.get("ids"), lang)
+    if not ho:
+        # any other emergency verdict (collapse, breathing...) still gets the way to a 24h vet, not only poisonings
+        if st.session_state.get("triage_emergency"):
+            render_nearby_vets_geo(lang)   # opens straight away, no extra tap
+        return
+    st.warning(ho["text"])
+    if ho.get("show_vets"):
+        render_nearby_vets_geo(lang)
+    if ho.get("bait_text"):
+        st.caption(ho["bait_text"])
+
+
+def _render_followup_offer(pet, lang, level):
+    """Opt-in reminder: one email later asking how the pet is. Only for signed-in owners and non-emergency verdicts."""
+    email = st.session_state.get("auth_user", "")
+    if level not in ("URGENT", "SELF_CARE") or not email:
+        return
+    key = f"_fu_done_{pet.get('name','')}_{len(st.session_state.get('triage_chat', []))}"
+    nm = pet.get("name") or ("το κατοικίδιο" if lang == "el" else "your pet")
+    if st.session_state.get(key):
+        st.success((f"🔔 Εντάξει! Θα σου στείλω ένα email σε περίπου {_followups.DELAY_HOURS[level]} ώρες για να δούμε πώς είναι {nm}."
+                    if lang == "el" else f"🔔 Done! I'll email you in about {_followups.DELAY_HOURS[level]} hours to ask how {nm} is doing."))
+        return
+    if st.button(("🔔 Υπενθύμισέ μου να ελέγξουμε πώς είναι " + nm) if lang == "el" else ("🔔 Remind me to check in on " + nm),
+                 key="pn_followup_btn", use_container_width=True):
+        try:
+            due = _followups.schedule(_supabase_client(), email, pet, level, lang)
+            log_event("followup_schedule", ok=bool(due), level=level)
+            st.session_state[key] = bool(due)
+        except Exception as e:
+            log_event("followup_schedule", ok=False, error=str(e))
+            st.warning("Δεν μπόρεσα να ορίσω την υπενθύμιση, δοκίμασε ξανά." if lang == "el" else "Couldn't set the reminder, please try again.")
+        st.rerun()
+    st.caption("Ένα μόνο email, μόνο επειδή το ζήτησες· χωρίς συμπτώματα μέσα. Διαγράφεται με τη διαγραφή δεδομένων." if lang == "el"
+               else "One email only, because you asked; it contains no symptoms. Removed when you delete your data.")
 
 
 def render_plus_paywall(lang="en", feature_label="", full=True):
@@ -5302,6 +5356,7 @@ def render_triage():
             return
         if not st.session_state.triage_chat and paywall_enabled() and not has_plus():
             record_triage_check()   # a new assessment = one of the free monthly checks
+        user_text = _vet_safety.clean_user_text(user_text)     # owner text is data: strip [TRIAGE:..]/[TOOL:..] lookalikes
         st.session_state.triage_chat.append({"role":"user","content":user_text})
         with st.spinner("PetsAIHealth..."):
             p = pet
@@ -5315,9 +5370,81 @@ def render_triage():
             vitals_ctx = ("Ζωτικές: " + ", ".join(f"{k}={val}" for k,val in st.session_state.vitals.items())
                           if st.session_state.vitals else "Ζωτικές: δεν παρασχέθηκαν")
             system_ctx = petainurse_system(pet) + f"\n\n{profile_ctx}\n{vitals_ctx}"
-            reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
-                           system=system_ctx, max_tokens=3000)
-            reply, _lvl = parse_triage_tag(reply)
+            # Safety floor: deterministic rules over everything the owner has written in this chat, plus the extracted
+            # facts, the pet's profile and measured vitals. They only ever RAISE a final verdict; they never lower it
+            # and never cut the question cycle short.
+            _owner_texts = [m["content"] for m in st.session_state.triage_chat if m["role"] == "user"]
+            _sk = p.get("species_key", "dog")
+            _floor_on = _vet_safety.flag(_secret("VET_FLOOR", "on"))          # kill switch: VET_FLOOR=off restores the old behaviour
+            _extract_on = _floor_on and _vet_safety.flag(_secret("VET_EXTRACT", "on"))
+            _facts = {}
+            try:
+                if _extract_on and _vet_rules.evaluate(_sk, _owner_texts, p).level != "EMERGENCY":   # emergency floor already reached: skip the call
+                    _fk = hash(tuple(_owner_texts))
+                    _cached = st.session_state.get("_vs_facts")
+                    if _cached and _cached[0] == _fk:
+                        _facts = _cached[1]
+                    else:
+                        _xm = _secret("CLAUDE_EXTRACT_MODEL", "claude-haiku-5-5")      # small, fast model: this is a plain extraction task
+                        _xp = [{"role": "user", "content": _vet_safety.extract_prompt(_owner_texts)}]
+                        _fraw = claude(_xp, system=_vet_safety.EXTRACT_SYSTEM, max_tokens=1200, timeout=20, model=_xm)
+                        if _vet_safety.ai_failed(_fraw) and _xm != CLAUDE_MODEL:              # model name not available: retry once with the main model
+                            _fraw = claude(_xp, system=_vet_safety.EXTRACT_SYSTEM, max_tokens=2000, timeout=20)
+                        _facts = {} if _vet_safety.ai_failed(_fraw) else _vet_safety.parse_facts(_fraw)
+                        log_event("vet_extract", ok=bool(_facts), model=_xm)
+                        st.session_state["_vs_facts"] = (_fk, _facts)
+            except Exception:
+                _facts = {}
+            try:
+                if _floor_on:
+                    _vr, _kw_lvl = _vet_safety.evaluate_all(_sk, _owner_texts, p, st.session_state.get("vitals"), _facts)
+                else:
+                    _vr, _kw_lvl = _vet_rules.Result(), ""
+            except Exception:
+                _vr, _kw_lvl = _vet_rules.Result(), ""
+            st.session_state["_vs_last"] = {"ids": [h.id for h in _vr.hits], "level": _vr.level}     # read by the hand-off card
+            _hints = _vet_rules.prompt_hints(_vr)
+            if _hints:
+                system_ctx += "\n\n" + _hints
+            try:
+                _kb = _vet_knowledge.prompt_block(_sk, _owner_texts + [_vet_safety.facts_text(_facts)]) if _floor_on else ""
+            except Exception:
+                _kb = ""
+            if _kb:
+                system_ctx += "\n\n" + _kb
+            # Act-now bypass: a clear life-threatening statement gets the fixed emergency message at once, without the
+            # six-question cycle and without waiting for the AI. Only once per rule: later messages go to the AI again.
+            _act = _vet_rules.act_now_hits(_vr) if _floor_on else []
+            _seen = {i for m in st.session_state.triage_chat if m["role"] == "assistant" for i in (m.get("bypass") or [])}
+            _bypass = [h for h in _act if h.id not in _seen]
+            if _bypass:
+                reply, _failed = _vet_rules.act_now_reply(_act, lang), False
+                log_event("safety_bypass", ok=True, rules=",".join(h.id for h in _act)[:200])
+            else:
+                reply = claude([{"role":m["role"],"content":m["content"]} for m in st.session_state.triage_chat],
+                               system=system_ctx, max_tokens=3000)
+                _failed = _vet_safety.ai_failed(reply)
+            if _bypass:
+                _lvl = "EMERGENCY"
+            elif _failed:                                 # AI down: never show an error or "all fine"; give a safe next step
+                reply, _lvl = _vet_safety.fallback_reply(lang, _vr.level)
+                if _vr.hits:
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                _lvl = _vr.level if _vr.level and _vet_rules.RANK[_vr.level] > _vet_rules.RANK[_lvl] else _lvl
+            else:
+                reply, _lvl = parse_triage_tag(reply)
+                if _lvl and _vet_rules.outranks(_vr.level, _lvl):      # final verdict below the floor -> raise it
+                    _lvl = _vr.level
+                    reply = reply.rstrip() + "\n\n" + _vet_rules.floor_note(_vr, lang)
+                if _floor_on and _lvl in ("URGENT", "SELF_CARE"):
+                    reply = reply.rstrip() + "\n\n" + _vet_safety.safety_net(_sk, _lvl, lang)
+            try:                                        # layer 6: codes only, no owner text
+                _dis = _vet_safety.disagreement(_sk, _vr.level, _lvl, [h.id for h in _vr.hits], _kw_lvl, failed=_failed)
+                if _dis:
+                    log_event("safety_disagreement", ok=not _failed, **_dis)
+                    _safety_events.record(_supabase_client(), _dis)
+            except Exception:
+                pass
             reply, _tool = parse_tool_request(reply)
             reply = sanitize_ai_text(reply)
             if _lvl is None:
@@ -5335,7 +5462,10 @@ def render_triage():
             if reply and reply.strip() and reply.strip()[-1] not in ".!?»)":
                 reply = reply.rstrip() + " ..."
         reply = _re_san.sub(r"(?m)^#{1,6}\s*", "", reply)  # chat bubbles never use big headings
-        st.session_state.triage_chat.append({"role":"assistant","content":reply,"level":_lvl})
+        _msg = {"role":"assistant","content":reply,"level":_lvl}
+        if _bypass:
+            _msg["bypass"] = [h.id for h in _act]
+        st.session_state.triage_chat.append(_msg)
         if _tool:
             _nurse_route(_tool)
             st.rerun()
@@ -5450,6 +5580,9 @@ def render_triage():
     _ai_lvl = _ai_triage_level()
     _is_emergency_msg = (_ai_lvl == "EMERGENCY") if _ai_lvl else any(_strip_accents(p) in _last_lower_check for p in _emergency_phrases)
     _insurance_show = triage_ready or _is_emergency_msg  # ΜΟΝΟ όταν ολοκληρωθεί ή EMERGENCY
+    if _ai_lvl:
+        _render_poison_handoff(lang)
+    _render_followup_offer(pet, lang, _ai_lvl)
     # Διαβάζουμε provider από session_state ή από pet dict (επιβιώνει μεταξύ screens)
     _provider_ss  = st.session_state.get("pet_insurance_provider", "")
     _provider_pet = pet.get("insurance_provider", "") if isinstance(pet, dict) else ""
@@ -5469,7 +5602,7 @@ def render_triage():
     if _insurance_show and _ins_locked:
         render_insurance_upsell(lang)      # insurance (cover, costs, contracted clinics) is a Plus feature
     elif _insurance_show and not _has_provider:
-        render_insurance_prompt(lang)
+        render_insurance_prompt(lang, hide_if_declined=True)
     if _insurance_show and _has_provider and not _ins_locked:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
@@ -5827,7 +5960,7 @@ MSD VETERINARY MANUAL REFERENCES:
 Write a structured veterinary report:
 1. CHIEF COMPLAINT
 2. CLINICAL HISTORY
-3. ASSESSMENT — Primary differential + top 2-3 differentials with probability %
+3. ASSESSMENT — Primary differential + top 2-3 differentials, each labelled "most likely", "possible" or "less likely". NEVER give percentages or numeric probabilities (there is no validated way to calculate them); this is decision support for the vet, not a diagnosis.
 4. RECOMMENDED WORKUP — Tests, diagnostics to discuss with vet
 5. SUPPORTIVE CARE — What owner can do at home (if safe)
 6. RED FLAGS — Symptoms requiring immediate emergency vet
@@ -6579,6 +6712,7 @@ def render_privacy_page():
                 if sb:
                     try:
                         sb.table("user_prefs").delete().eq("user_email", _email).execute()
+                        sb.table("followups").delete().eq("user_email", _email).execute()
                         log_event("gdpr_delete", ok=True)
                     except Exception as e:
                         log_event("gdpr_delete", ok=False, error=str(e))
