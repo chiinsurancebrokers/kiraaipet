@@ -118,6 +118,10 @@ card, bait = has_poison_card("He ate slug pellets and poisoned bait in the park"
 expect("hand-off card with vet finder and bait-report line after a bait poisoning", card and bait, f"{card} {bait}")
 card, _ = has_poison_card("He is limping slightly", SELF)
 expect("no hand-off card when nothing toxic", not card)
+card, _ = has_poison_card("my dog collapsed", "")
+expect("any emergency (act-now bypass, not a poisoning) shows the Find a 24h vet button", card)
+card, _ = has_poison_card("He threw up once, playful", SELF)
+expect("no vet button on a mild verdict", not card)
 
 def has_followup_btn(owner, nurse, email):
     STATE.update(nurse=nurse, facts="{}", fail=False, calls=[])
