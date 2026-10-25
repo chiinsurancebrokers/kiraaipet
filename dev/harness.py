@@ -1,7 +1,8 @@
 import os, sys, runpy
 import streamlit as st
-APP="/home/claude/kiraaipet/app.py"
-os.chdir("/home/claude/kiraaipet"); sys.path.insert(0,"/home/claude/kiraaipet")
+ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # repo root, wherever it is checked out (CI runner, laptop, sandbox)
+APP=os.path.join(ROOT,"app.py")
+os.chdir(ROOT); sys.path.insert(0,ROOT)
 if not st.session_state.get("_h_init"):
     st.session_state["_h_init"]=True
     scr=st.query_params.get("t","home")
