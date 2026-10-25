@@ -146,6 +146,13 @@ TOPICS = [
      "watch for fever, tiredness, lameness, pale gums or poor appetite in the following weeks. Cats get ticks too: never use dog-only permethrin products on a cat. "
      "(Source for the Greek tick and sand-fly points: ESCCAP ectoparasite guideline GL3, esccap.org.)",
      "dog-owners/skin-disorders-of-dogs/ticks-of-dogs"),
+    ("med_parasites", r"leishman|sand ?fl(y|ies)|heartworm|dirofil|mosquito|λεισμαν|φλεβοτομ|καρδιοσκωληκ|κουνουπ", ("dog", "cat"),
+     "Sand flies and heartworm in Greece (ESCCAP): leishmaniosis is endemic around the Mediterranean and spreads by sand-fly bites, mostly dusk to dawn, "
+     "roughly April to November; in Greece protection can be needed all year. Vets use repellent collars or spot-ons on dogs, and permethrin products must never be used on cats. "
+     "Signs can be slow: skin sores or scaly hair loss, long nails, swollen glands, weight loss, nosebleeds, drinking and peeing more, lameness, eye problems. "
+     "Heartworm is spread by mosquitoes and is endemic in southern Europe: dogs get a chronic cough, tire easily, may faint; cats may cough, breathe fast, vomit, or collapse suddenly. "
+     "Prevention is a vet's decision (monthly preventives through the mosquito season, a test first); do not suggest products or doses.",
+     "https://www.esccap.org/guidelines/gl5/"),
     ("cecotrophy", r"eat\w* (its|his|her|their) (own )?(poop|droppings|feces|faeces|stool)|cecotrop|night droppings|soft droppings|τρωει τις κουτσουλι|τρωει τα κοπρανα", ("rabbit", "other"),
      "Rabbits, guinea pigs and chinchillas normally eat soft, shiny, nutrient-rich night droppings (cecotropes) straight from the anus; this is healthy and needed. "
      "Worry instead about no droppings, tiny dry droppings, uneaten cecotropes piling up, or diarrhoea.",
@@ -180,7 +187,7 @@ TOPICS = [
 ]
 
 from vet_rules import _fold_pat
-_COMPILED = [(tid, re.compile(_fold_pat(rx)), sp, txt, MSD + page) for tid, rx, sp, txt, page in TOPICS]
+_COMPILED = [(tid, re.compile(_fold_pat(rx)), sp, txt, (page if page.startswith("http") else MSD + page)) for tid, rx, sp, txt, page in TOPICS]
 
 
 def relevant(species_key, texts, limit=4):
@@ -200,7 +207,7 @@ def prompt_block(species_key, texts, limit=4):
     topics = relevant(species_key, texts, limit)
     if not topics:
         return ""
-    lines = [ALWAYS, "REFERENCE FACTS for this conversation (MSD Veterinary Manual, paraphrased; use them to ask better questions and to give safe first-aid wording, "
+    lines = [ALWAYS, "REFERENCE FACTS for this conversation (MSD Veterinary Manual and ESCCAP, paraphrased; use them to ask better questions and to give safe first-aid wording, "
              "not to diagnose):"]
     lines += [f"- {txt}" for _tid, txt, _url in topics]
     return "\n".join(lines)

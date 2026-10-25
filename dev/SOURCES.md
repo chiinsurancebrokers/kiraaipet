@@ -24,3 +24,23 @@ Read: https://www.esccap.org/uploads/docs/cgqtqpf1_0720_ESCCAP_GL3__English_v19_
 - Sand flies (*Phlebotomus*) transmit *Leishmania infantum*; prevention = repellent insecticides all season, keep dogs indoors after dusk. The guideline lists no clinical signs (see ESCCAP GL5, not yet read) → `DOG-LEISHMANIA` signs still rest on MSD.
 - Still to do: read GL5 (vector-borne diseases) for signs and the cat section; GL1/GL5 worms and heartworm (*Dirofilaria*), which the rules do not cover yet.
 - This is still not vet-reviewed.
+
+## What was actually read (2026-10-25) — licence terms and findings
+| Source | Read | Result that changes how we use it |
+|---|---|---|
+| ESCCAP GL5 (vector-borne, 2024) | full PDF | © ESCCAP, all rights reserved, redistribution needs written permission: **paraphrase and cite, never copy**. Facts used: leishmaniosis endemic in southern Europe, Greece needs year-round sand-fly protection, season April–November, repellent collars/spot-ons, permethrin never on cats; heartworm (*D. immitis*) endemic in southern Europe incl. Greece, monthly preventives May–late November, test first; signs of babesiosis, ehrlichiosis, anaplasmosis. Now in `vet_knowledge.py` topic `med_parasites`. |
+| ESCCAP GL3 (ectoparasites) | PDF | see section above |
+| WSAVA guidelines | list page + 2024 vaccination PDF | © WSAVA, all rights reserved. Core vaccines dog: distemper, adenovirus, parvovirus; cat: panleukopenia, calicivirus, herpesvirus; rabies/leptospirosis/FeLV conditional; last puppy/kitten dose at 16+ weeks. No leishmania vaccine mention in the part read. Not used in rules yet. |
+| FEDIAF nutritional guidelines 2025 | download page | Free to download, but **commercial use prohibited without FEDIAF's written permission**. Cross-check only; do not copy tables into the product. |
+| ASPCA toxic plants | list page | © ASPCA, all rights reserved, no licence stated. Use as a cross-check of our plant rules; do not copy the list. |
+| VetCompass (RVC) | landing page | Publishes open research via a Learn Zone library; no reuse terms on the page. Not yet used to check thresholds. |
+| AAFP / ISFM / AAHA | AAFP guidelines list | List found (2024 NSAIDs in cats, 2022 antimicrobial stewardship, 2021 life stage, 2020 vaccination, 2015 pain...). Free-download status and reuse terms unknown: not read. |
+| RECOVER | search + eScholarship abstract | Found the 2024 BLS guidelines abstract (favours bag-mask over mouth-to-nose when not intubated; continuous compressions). Full text/licence not read. |
+| WikiVet | licence page failed to load | Not read; CC BY-SA is unconfirmed. |
+| AAHA | not opened beyond the list | Not read. |
+
+### Cross-check of existing rules against ESCCAP GL5 (for the vet)
+- DOG-LEISHMANIA: signs match (skin, nails, weight loss, nosebleed, drinking/peeing more). ESCCAP also lists swollen lymph nodes, eye inflammation and lameness; the trigger does not include swollen lymph nodes or eye signs yet.
+- DC-HEARTWORM-SIGNS exists (MSD); ESCCAP adds that cats can die suddenly and that Greece is endemic. No change made.
+- DOG-TICK-FEVER: ESCCAP babesiosis signs include jaundice and "rusty" urine, ehrlichiosis includes petechiae, nosebleeds, blood in urine or stool; consistent with the rule's "go now" signs.
+- Still not vet-reviewed.
