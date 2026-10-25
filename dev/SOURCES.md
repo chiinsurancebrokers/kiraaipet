@@ -12,7 +12,7 @@ Rule for every rule: **a source URL and a vet sign-off** (`reviewed_by`). Paraph
 | ASPCA Animal Poison Control | toxic plant and food lists | free |
 | FEDIAF | EU pet nutrition | free |
 | VetCompass (Royal Veterinary College) | what dogs and cats actually present with; check rule thresholds | open-access papers |
-| WikiVet | background | CC BY-SA (attribute, share alike) |
+| WikiVet | background | **CC BY-NC-ND 3.0** (read on the site footer): no commercial use, no adaptation: cite and link only. Earlier note said CC BY-SA; corrected. |
 | PMC open access | citations | free |
 | MSD Vet Manual | current base of `vet_rules.py` | paraphrase only |
 
@@ -36,11 +36,15 @@ Read: https://www.esccap.org/uploads/docs/cgqtqpf1_0720_ESCCAP_GL3__English_v19_
 | VetCompass (RVC) | landing page | Publishes open research via a Learn Zone library; no reuse terms on the page. Not yet used to check thresholds. |
 | AAFP / ISFM / AAHA | AAFP guidelines list | List found (2024 NSAIDs in cats, 2022 antimicrobial stewardship, 2021 life stage, 2020 vaccination, 2015 pain...). Free-download status and reuse terms unknown: not read. |
 | RECOVER | search + eScholarship abstract | Found the 2024 BLS guidelines abstract (favours bag-mask over mouth-to-nose when not intubated; continuous compressions). Full text/licence not read. |
-| WikiVet | licence page failed to load | Not read; CC BY-SA is unconfirmed. |
-| AAHA | not opened beyond the list | Not read. |
+| WikiVet | main page footer | CC BY-NC-ND 3.0: cite/link only, never paraphrase into the product. |
+| AAHA | 2021 feline life-stage page | © AAHA; downloads may be members only; page text says routine wellness exams (young adult, 7-10 mature, >10 senior) and vaccines; nothing on pain or symptom triage. Terms of Use page not read. |
 
 ### Cross-check of existing rules against ESCCAP GL5 (for the vet)
 - DOG-LEISHMANIA: signs match (skin, nails, weight loss, nosebleed, drinking/peeing more). ESCCAP also lists swollen lymph nodes, eye inflammation and lameness; the trigger does not include swollen lymph nodes or eye signs yet.
 - DC-HEARTWORM-SIGNS exists (MSD); ESCCAP adds that cats can die suddenly and that Greece is endemic. No change made.
 - DOG-TICK-FEVER: ESCCAP babesiosis signs include jaundice and "rusty" urine, ehrlichiosis includes petechiae, nosebleeds, blood in urine or stool; consistent with the rule's "go now" signs.
 - Still not vet-reviewed.
+
+### Retry (same day)
+- Europe PMC blocked by robots.txt; PMC article pages show a reCAPTCHA; RECOVER 2012 full text still not read (only the 2024 BLS abstract).
+- AAHA: only the life-stage page read (see table). Free-download status for other AAHA/AAFP guidelines still unknown.
