@@ -20,7 +20,7 @@ Next step: map ESCCAP tick/leishmania pages to rules (DOG-TICK-FEVER, DOG-LEISHM
 
 ## ESCCAP GL3 (ectoparasites) — read and applied
 Read: https://www.esccap.org/uploads/docs/cgqtqpf1_0720_ESCCAP_GL3__English_v19_1p.pdf (general to southern Europe; no Greece-only data).
-- Brown dog tick (*Rhipicephalus sanguineus*) is the main southern-Europe tick; it carries *Ehrlichia canis*, *Babesia vogeli*, *Hepatozoon canis*, *Rickettsia conorii*. Lyme (*Ixodes*) is mainly a northern problem. → `vet_knowledge.py` "ticks" topic updated (removal: tool, no oil/alcohol/ether; remove ticks promptly; cats get ticks; no dog-only permethrin on cats).
+- Brown dog tick (*Rhipicephalus sanguineus*) is the main southern-Europe tick; it carries *Ehrlichia canis*, *Babesia vogeli*, *Hepatozoon canis*, *Rickettsia conorii*. Ixodes ticks carry Borrelia (Lyme) throughout Europe, usually subclinical in dogs. → `vet_knowledge.py` "ticks" topic updated (removal: tool, no oil/alcohol/ether; remove ticks promptly; cats get ticks; no dog-only permethrin on cats).
 - Sand flies (*Phlebotomus*) transmit *Leishmania infantum*; prevention = repellent insecticides all season, keep dogs indoors after dusk. The guideline lists no clinical signs (see ESCCAP GL5, not yet read) → `DOG-LEISHMANIA` signs still rest on MSD.
 - Still to do: read GL5 (vector-borne diseases) for signs and the cat section; GL1/GL5 worms and heartworm (*Dirofilaria*), which the rules do not cover yet.
 - This is still not vet-reviewed.

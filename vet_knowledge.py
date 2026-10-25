@@ -142,7 +142,7 @@ TOPICS = [
     ("ticks", r"\btick|ixodes|κροτων|τσιμπουρ", ("dog", "cat"),
      "Tick removal: use fine-tipped tweezers or a tick-removal tool, grasp the tick as close to the skin as possible and pull steadily straight out; do not twist, crush, burn or smother it with oil, alcohol or ether. "
      "Remove visible ticks as soon as possible, because the sooner they are off the less chance of passing on infection. "
-     "In Greece the brown dog tick is the usual one; it can pass on ehrlichiosis, babesiosis and hepatozoonosis (Lyme is mainly a northern-tick problem); "
+     "In Greece the brown dog tick is the usual one; it can pass on ehrlichiosis, babesiosis and hepatozoonosis (Ixodes ticks carry Lyme bacteria across Europe, usually without signs in dogs); "
      "watch for fever, tiredness, lameness, pale gums or poor appetite in the following weeks. Cats get ticks too: never use dog-only permethrin products on a cat. "
      "(Source for the Greek tick and sand-fly points: ESCCAP ectoparasite guideline GL3, esccap.org.)",
      "dog-owners/skin-disorders-of-dogs/ticks-of-dogs"),
