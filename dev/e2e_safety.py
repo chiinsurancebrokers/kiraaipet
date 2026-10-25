@@ -136,4 +136,16 @@ def has_followup_btn(owner, nurse, email):
 expect("reminder: offered after SELF_CARE when signed in", has_followup_btn("He is limping slightly", SELF, "a@b.gr"))
 expect("reminder: not offered when signed out", not has_followup_btn("He is limping slightly", SELF, ""))
 expect("reminder: not offered after an EMERGENCY", not has_followup_btn("He ate xylitol gum", SELF, "a@b.gr"))
+def ins_card(declined):
+    STATE.update(nurse=URG, facts="{}", fail=False, calls=[])
+    at = AppTest.from_file(os.path.join(ROOT, "dev", "harness.py"), default_timeout=90)
+    at.query_params["t"] = "triage"; at.run()
+    if declined: at.session_state["ins_declined"] = True
+    at.session_state["triage_chat"] = []; at.run()
+    at.text_area(key="pn_compose_text").set_value("He is limping slightly")
+    [b for b in at.button if b.label.startswith("\u27a4")][0].click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return [b.key for b in at.button if b.key in ("pn_ins_none", "pn_ins_pick_Plus")]
+expect("insurance card offers 'no Eurolife plan' next to the programmes", ins_card(False) in (["pn_ins_pick_Plus", "pn_ins_none"], []) )
+expect("insurance card hidden in chat once declined", ins_card(True) == [])
 sys.exit(0 if ok else 1)

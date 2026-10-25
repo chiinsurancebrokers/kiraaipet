@@ -1404,16 +1404,19 @@ def render_network_clinics(triage_level="SELF_CARE", lang="en", provider=""):
                    else "Required before every visit. The network can change (catalogue 09.25).") + '</div>', unsafe_allow_html=True)
 
 
-def render_insurance_prompt(lang="en"):
-    """Shown after the assessment when no insurance programme is selected yet."""
+def render_insurance_prompt(lang="en", hide_if_declined=False):
+    """Shown after the assessment when no insurance programme is selected yet.
+    hide_if_declined: in the chat, stay quiet once the owner said they have no Eurolife plan."""
     el = lang == "el"
+    if hide_if_declined and st.session_state.get("ins_declined"):
+        return
     st.markdown(
         '<div style="background:#E7EAFB;border:1px solid #D0D6F5;border-radius:22px;padding:16px 18px;margin:12px 0 6px;">'
         '<div style="font:700 16px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;">🛡️ '
         + ("Είναι ασφαλισμένο το κατοικίδιό σου;" if el else "Is your pet insured?") + '</div>'
         '<div style="font-size:13px;color:#5B6794;margin-top:4px;line-height:1.5;">'
-        + ("Επίλεξε το πρόγραμμα Eurolife My Happy Pet για να δεις αν καλύπτεται η περίπτωση, πόσο θα πληρώσεις και ποια συμβεβλημένα κτηνιατρεία είναι κοντά σου."
-           if el else "Choose your Eurolife My Happy Pet programme to see whether this is covered, what you would pay and which contracted clinics are near you.")
+        + ("Αν έχεις πρόγραμμα Eurolife My Happy Pet, επίλεξέ το για να δεις αν καλύπτεται η περίπτωση, πόσο θα πληρώσεις και ποια συμβεβλημένα κτηνιατρεία είναι κοντά σου."
+           if el else "If you have a Eurolife My Happy Pet programme, choose it to see whether this is covered, what you would pay and which contracted clinics are near you.")
         + '</div></div>', unsafe_allow_html=True)
     _prov = {"Plus": "Eurolife FFH — My Happy Pet Plus", "Standard": "Eurolife FFH — My Happy Pet Standard"}
     c1, c2 = st.columns(2)
@@ -1422,9 +1425,14 @@ def render_insurance_prompt(lang="en"):
             if st.button(f"My Happy Pet {lbl}", key=f"pn_ins_pick_{lbl}", use_container_width=True,
                          type="primary" if lbl == "Plus" else "secondary"):
                 st.session_state["pet_insurance_provider"] = val
+                st.session_state["ins_declined"] = False
                 if isinstance(st.session_state.get("pet"), dict):
                     st.session_state.pet["insurance_provider"] = val
                 st.rerun()
+    if st.button("Δεν έχω Eurolife / δεν έχω ασφάλιση" if el else "I don't have a Eurolife plan",
+                 key="pn_ins_none", use_container_width=True):
+        st.session_state["ins_declined"] = True
+        st.rerun()
 
 
 
@@ -5595,7 +5603,7 @@ def render_triage():
     if _insurance_show and _ins_locked:
         render_insurance_upsell(lang)      # insurance (cover, costs, contracted clinics) is a Plus feature
     elif _insurance_show and not _has_provider:
-        render_insurance_prompt(lang)
+        render_insurance_prompt(lang, hide_if_declined=True)
     if _insurance_show and _has_provider and not _ins_locked:
         _email = st.session_state.get("auth_user", "")
         # Extract triage level from last assistant message
