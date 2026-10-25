@@ -164,6 +164,15 @@ CASES = [
     ("dog", "he is straining to urinate since this morning", None, "URGENT"),
     ("dog", "σηκωθηκε και δεν μπορει να περπατησει", None, "EMERGENCY"),
     ("cat", "κιτρινο δερμα και ουλα", None, "URGENT"),
+    # MSD veterinary emergency-medicine pages
+    ("dog", "a stick went into his eye and it is punctured", None, "EMERGENCY"),
+    ("cat", "her eye is red and cloudy and she keeps it closed", None, "URGENT"),
+    ("dog", "he suddenly went blind and is bumping into furniture", None, "URGENT"),
+    ("dog", "my cat scratched her eye yesterday", None, "URGENT"),
+    ("dog", "he fell down the stairs but is walking fine", None, "URGENT"),
+    ("dog", "got bitten in a fight and the neck is swollen", None, "EMERGENCY"),
+    ("dog", "the bite wound on his leg is clean and he is playful", None, None),
+    ("cat", "το ματι ειναι κοκκινο και θολο", None, "URGENT"),
 ]
 
 

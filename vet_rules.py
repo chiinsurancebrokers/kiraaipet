@@ -538,6 +538,33 @@ RULES = [
          "A dog straining to urinate can have stones, a blocked urethra, a prostate problem or a tumour: see a vet today, and go now if no urine comes out at all.",
          "Σκύλος που δυσκολεύεται να ουρήσει μπορεί να έχει πέτρες, απόφραξη ουρήθρας, πρόβλημα προστάτη ή όγκο: δες κτηνίατρο σήμερα και πήγαινε αμέσως αν δεν βγαίνει καθόλου ούρο.",
          SRC["cases"], "policy"),
+    # ---- from the MSD veterinary Emergency Medicine pages (policy basis: owner-level reading of clinician text)
+    Rule("ALL-EYE-PENETRATING", ("dog", "cat", "rabbit", "other"), "EMERGENCY",
+         _r(r"eye.{0,30}(punctur|pierc|stabb|ruptur|burst|cut open|lacerat|gash)|(punctur|pierc|stabb|ruptur|lacerat)\w* .{0,15}eye|"
+            r"ματι.{0,30}(τρυπ|σκισ|σπασ|χτυπ.{0,10}αιμ)|τρυπησε.{0,15}ματι"),
+         "A punctured, cut or ruptured eye can be lost within hours: go to a vet now and do not press on the eye.",
+         "Μάτι που τρυπήθηκε, κόπηκε ή έσπασε μπορεί να χαθεί μέσα σε ώρες: πήγαινε αμέσως σε κτηνίατρο και μην πιέζεις το μάτι.",
+         MSD + "emergency-medicine-and-critical-care/ophthalmic-emergencies-in-small-animals/overview-of-ophthalmic-emergencies-in-small-animals", "policy", immediate=True),
+    Rule("ALL-EYE-URGENT", ("dog", "cat", "rabbit", "other"), "URGENT",
+         _r(r"(suddenly|sudden|overnight) .{0,12}(blind|can'?t see|lost (his|her) (sight|vision)|vision loss)|went blind|bumping into (things|furniture|walls)|"
+            r"(eye|eyes?).{0,30}(cloudy|cloud|blue|hazy|bloodshot).{0,40}(pain|squint|red|closed|rubbing)|(red|cloudy|painful|squinting|swollen|bulging).{0,20}eye|eye.{0,20}(red and|swollen shut|squint|kept closed|closed shut)|"
+            r"something (stuck|in) (in )?(his|her|the) eye|scratch\w* .{0,12}eye|eye.{0,15}scratch|"
+            r"ξαφνικα (τυφλ|δεν βλεπ)|χτυπαει στα (πραγματα|επιπλα)|ματι.{0,25}(κοκκιν|θολο|πρησμεν|κλειστο|πονα)|(κοκκινο|θολο|πρησμενο) ματι"),
+         "A red, cloudy, swollen or squinting eye, a scratch or foreign body in the eye, or sudden loss of vision can damage the eye permanently within a day or two: see a vet today.",
+         "Κόκκινο, θολό, πρησμένο ή μισόκλειστο μάτι, γρατζουνιά ή ξένο σώμα στο μάτι ή ξαφνική απώλεια όρασης μπορεί να βλάψει μόνιμα το μάτι μέσα σε μια-δυο μέρες: δες κτηνίατρο σήμερα.",
+         MSD + "emergency-medicine-and-critical-care/ophthalmic-emergencies-in-small-animals/overview-of-ophthalmic-emergencies-in-small-animals", "policy"),
+    Rule("ALL-TRAUMA-MINOR", ("dog", "cat", "rabbit", "other"), "URGENT",
+         _r(r"kicked|stepped on|trod on|dropped (him|her|the)|fell (down )?(the )?(stairs|steps)|fell (off|from) (the )?(couch|bed|sofa|table|counter|chair)|crushed|trapped (in|under)|slammed|caught in (a |the )?door|"
+            r"κλωτσ|πατησε|του εφυγε απο τα χερια|επεσε (απο )?τις σκαλες|επεσε απο (τον|το|την) (καναπε|κρεβατι|τραπεζι|καρεκλα)|πιαστηκε στην πορτα|καταπλακωθ|πιεστηκε"),
+         "Even a knock that looks minor can cause internal bleeding, chest or spine injury that shows up hours or days later: see a vet today.",
+         "Ακόμη και ένα χτύπημα που φαίνεται μικρό μπορεί να προκαλέσει εσωτερική αιμορραγία ή τραυματισμό θώρακα ή σπονδυλικής που φαίνεται ώρες ή μέρες μετά: δες κτηνίατρο σήμερα.",
+         MSD + "emergency-medicine-and-critical-care/specific-diagnostics-and-therapy/trauma-in-emergency-medicine-in-small-animals", "policy"),
+    Rule("DC-BITE-NECK-SWELL", ("dog", "cat"), "EMERGENCY",
+         _r(r"(bit|bite|bites|bitten|fight|attack\w*).{0,60}(neck|throat).{0,60}(swell|swollen|swelling|puffy)|(neck|throat).{0,40}(swell|swollen|swelling).{0,60}(bit|bite|bites|bitten|fight|attack)|"
+            r"(δαγκ|καβγ|επιθεσ).{0,60}(λαιμ|τραχηλ).{0,60}(πρησ|πρηξ|φουσκ)|(λαιμ|τραχηλ).{0,40}(πρησ|πρηξ|φουσκ).{0,60}(δαγκ|καβγ|επιθεσ)"),
+         "Swelling of the neck after a bite can squeeze the windpipe: go to a vet now.",
+         "Πρήξιμο του λαιμού μετά από δάγκωμα μπορεί να πιέσει την τραχεία: πήγαινε αμέσως σε κτηνίατρο.",
+         MSD + "emergency-medicine-and-critical-care/specific-diagnostics-and-therapy/trauma-in-emergency-medicine-in-small-animals", "policy", immediate=True),
     Rule("DC-YOUNG-GI", ("dog", "cat"), "URGENT",
          _r(r"puppy|\bpup\b|kitten|κουταβ|γατακ|\b([1-9]|1[0-9]|2[0-4]) ?[- ]?(weeks?|εβδομαδ)[- ]?(old|ων|ης)?|\b([1-5]) ?[- ]?(months?|μην\w*)[- ]?(old|ων|ης)?|young|new ?born",
             r"vomit|diarrh|letharg|not eating|poor appetite|reduced appetite|soft stool|yellow stool|εμετ|διαρρο|ληθαργ|δεν τρωει|αδυναμ|μαλακα κοπρανα"),

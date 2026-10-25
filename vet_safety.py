@@ -202,8 +202,11 @@ def vitals_hits(species_key, vitals):
             hit("VIT-TEMP", "URGENT", f"Temperature {temp:.1f} °C is outside the safe range (normal is about 38 to 39.2): see a vet today.",
                 f"Θερμοκρασία {temp:.1f} °C εκτός ασφαλών ορίων (φυσιολογική περίπου 38 έως 39,2): κτηνίατρος σήμερα.")
     if hr is not None:
-        lo, hi = (40, 220) if sp == "dog" else (100, 260)
-        if hr and (hr < lo or hr > hi):
+        lo, hi = (60, 180) if sp == "dog" else (150, 220)  # MSD initial-triage page: dog <60-70 or >180, cat <150 or >220
+        if hr and sp == "cat" and hr < 120:
+            hit("VIT-HR-SHOCK", "EMERGENCY", f"Heart rate {hr:.0f} bpm is dangerously low for a cat (shock range): go to a vet now.",
+                f"Καρδιακός ρυθμός {hr:.0f} bpm επικίνδυνα χαμηλός για γάτα (εύρος shock): πήγαινε αμέσως σε κτηνίατρο.")
+        elif hr and (hr < lo or hr > hi):
             hit("VIT-HR", "URGENT", f"Heart rate {hr:.0f} bpm is outside the range expected for a resting {sp} ({lo} to {hi}).",
                 f"Καρδιακός ρυθμός {hr:.0f} bpm εκτός του αναμενόμενου για {('σκύλο' if sp == 'dog' else 'γάτα')} σε ηρεμία ({lo} έως {hi}).")
     return out
