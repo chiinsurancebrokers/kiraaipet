@@ -104,11 +104,12 @@ def fallback_reply(lang, floor_level=""):
 
 
 # ── layer 4: profile floors ─────────────────────────────────────────────────────
-_VOMIT = re.compile(r"vomit|throw(?:ing)? up|threw up|diarrh|εμετ|διαρρ|ξερναει|ξεράσ|ξερασ")
-_NOEAT = re.compile(r"not eating|won'?t eat|hasn'?t eaten|stopped eating|no appetite|refus\w* (?:food|to eat)|δεν τρωει|δεν εφαγε|δεν θελει να φαει|ανορεξ")
-_THIRST = re.compile(r"drinking (?:much )?more|more water|excessive(?:ly)? thirst|polydips|πινει πολυ|αυξημενη διψα|διψα")
-_RESP = re.compile(r"cough|breath|panting|wheez|βηχ|αναπνο|λαχαν|δυσπν")
-_LETH = re.compile(r"letharg|weak|listless|collaps|λυθαργ|αδυναμ|χαλαρ")
+from vet_rules import _fold_pat
+_VOMIT = re.compile(_fold_pat(r"vomit|throw(?:ing)? up|threw up|diarrh|εμετ|διαρρ|ξερναει|ξεράσ|ξερασ"))
+_NOEAT = re.compile(_fold_pat(r"not eating|won'?t eat|hasn'?t eaten|stopped eating|no appetite|refus\w* (?:food|to eat)|δεν τρωει|δεν εφαγε|δεν θελει να φαει|ανορεξ"))
+_THIRST = re.compile(_fold_pat(r"drinking (?:much )?more|more water|excessive(?:ly)? thirst|polydips|πινει πολυ|αυξημενη διψα|διψα"))
+_RESP = re.compile(_fold_pat(r"cough|breath|panting|wheez|βηχ|αναπνο|λαχαν|δυσπν"))
+_LETH = re.compile(_fold_pat(r"letharg|weak|listless|collaps|λυθαργ|αδυναμ|χαλαρ"))
 _COND = {
     "diabetes": re.compile(r"diabet|insulin|διαβητ|ινσουλιν"),
     "kidney": re.compile(r"kidney|renal|\bckd\b|νεφρ"),

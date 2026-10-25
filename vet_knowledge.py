@@ -176,7 +176,8 @@ TOPICS = [
      "metabolic-disorders/disorders-of-calcium-metabolism/eclampsia-in-small-animals"),
 ]
 
-_COMPILED = [(tid, re.compile(rx), sp, txt, MSD + page) for tid, rx, sp, txt, page in TOPICS]
+from vet_rules import _fold_pat
+_COMPILED = [(tid, re.compile(_fold_pat(rx)), sp, txt, MSD + page) for tid, rx, sp, txt, page in TOPICS]
 
 
 def relevant(species_key, texts, limit=4):
