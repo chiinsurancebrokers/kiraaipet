@@ -99,6 +99,11 @@ check("agreement not logged", vs.disagreement("dog", "URGENT", "URGENT", ["X"], 
 check("ai failure logged", vs.disagreement("cat", "", "", [], "", failed=True)["kind"] == "ai_failed")
 check("record holds only codes", all(isinstance(v, str) and len(v) < 220 for v in d.values()))
 
+ids = lambda sp, v: [h.id for h in vs.vitals_hits(sp, v)]
+check("sleeping dog 35 breaths/min is URGENT", ids("dog", {"br": 35}) == ["VIT-BR-DOG-SLEEP"])
+check("sleeping dog 28 breaths/min is fine", ids("dog", {"br": 28}) == [])
+check("cat 35 breaths/min not flagged", ids("cat", {"br": 35}) == [])
+
 # ---- invariants over every hit this module can create
 for h in vs.profile_hits("dog", {"age_y": 12, "conditions": "diabetes kidney heart"}, "vomiting not eating cough drinking more letharg") + \
          vs.vitals_hits("dog", {"br": 70, "spo2": 80, "temp": 42, "hr": 400}):

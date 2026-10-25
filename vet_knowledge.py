@@ -150,6 +150,10 @@ TOPICS = [
     ("trauma_watch", r"hit by|fell|fall|kicked|accident|trauma|crush|τροχαι|επεσε|χτυπησε", ("dog", "cat"),
      "After a fall, car or other blunt injury the pet can look fine but hide chest, belly or spine injuries: watch breathing, gum colour and alertness every few hours for the first 48 hours, and see a vet even if the pet seems normal.",
      "emergency-medicine-and-critical-care/specific-diagnostics-and-therapy/trauma-in-emergency-medicine-in-small-animals"),
+    ("rat_bait_anticoag", r"rat poison|rodenticide|rat bait|mouse poison|warfarin|brodifacoum|δολωματ|ποντικοφαρμακο|φαρμακο για ποντικ", ("dog", "cat"),
+     "Anticoagulant rat bait stops blood clotting, but signs often do not start until more than 24 hours after it was eaten (bruises, nosebleeds, bleeding gums, pale gums, weakness, sudden collapse from internal bleeding). "
+     "A pet that looks well after eating rat bait is NOT safe: it needs a vet the same day for treatment before bleeding begins, and the effect can last 2 to 4 weeks with newer products.",
+     "toxicology/rodenticide-poisoning/anticoagulant-rodenticide-poisoning"),
     ("eclampsia", r"nursing|lactat|whelp|gave birth|puppies|kittens|θηλαζ|γεννησε|κουταβια", ("dog", "cat"),
      "Eclampsia (low blood calcium) most often hits small-breed mothers with large litters 1 to 4 weeks after giving birth: restlessness, panting, drooling, stiff walk, twitching, then seizures. "
      "It is an emergency; do not give calcium supplements during pregnancy, as they can make it more likely.",

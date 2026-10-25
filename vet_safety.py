@@ -188,6 +188,9 @@ def vitals_hits(species_key, vitals):
     elif br is not None and br >= 40:
         hit("VIT-BR-RAISED", "URGENT", f"Measured {br:.0f} breaths per minute at rest: sleeping or resting rates above about 30 to 40 are worth a vet check today.",
             f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: ρυθμοί πάνω από περίπου 30 έως 40 σε ύπνο ή ηρεμία θέλουν έλεγχο από κτηνίατρο σήμερα.")
+    if br is not None and 30 < br < 40 and sp == "dog":
+        hit("VIT-BR-DOG-SLEEP", "URGENT", f"Measured {br:.0f} breaths per minute at rest: a sleeping or resting dog above 30 can mean fluid in the lungs (early heart failure), a vet should check today.",
+            f"Μετρήθηκαν {br:.0f} αναπνοές το λεπτό σε ηρεμία: σκύλος που κοιμάται ή ξεκουράζεται πάνω από 30 μπορεί να έχει υγρό στους πνεύμονες (αρχόμενη καρδιακή ανεπάρκεια), χρειάζεται έλεγχο από κτηνίατρο σήμερα.")
     if spo2 is not None and 0 < spo2 < 90:
         hit("VIT-SPO2-LOW", "EMERGENCY", f"Oxygen saturation {spo2:.0f}%: below 90% is an emergency.",
             f"Κορεσμός οξυγόνου {spo2:.0f}%: κάτω από 90% είναι επείγον.")

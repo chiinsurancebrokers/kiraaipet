@@ -256,6 +256,9 @@ CASES = [
     ("bird", "the budgie is fluffed up on the cage floor", None, "EMERGENCY"),
     ("dog", "my dog is bright and eating and has one small tick on his ear", None, None),
     ("dog", "he is happy, eating well and has a normal bowel movement", None, None),
+    ("dog", "she had ticks last week and now has dark urine, pale gums and is weak", None, "EMERGENCY"),
+    ("dog", "the vet said heartworm and he coughs and tires easily", None, "URGENT"),
+    ("reptile", "my tortoise is stargazing with its neck twisted", None, "URGENT"),
 ]
 
 
