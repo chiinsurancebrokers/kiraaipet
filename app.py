@@ -6649,8 +6649,14 @@ def render_privacy_page():
             "- **Συνδρομή & χρήση**: κρατάμε τη συνδρομή σου Plus και μόνο το πλήθος (ημερομηνίες) των δωρεάν ελέγχων "
             "κάθε μήνα, για να εφαρμόζεται το δωρεάν όριο· όχι το περιεχόμενο των ελέγχων.\n"
             "- **Λογαριασμός (email) & προτιμήσεις γλώσσας**: κρατούνται μόνο όσο είσαι συνδεδεμένος/η.\n"
+            "- **Υπενθύμιση παρακολούθησης (προαιρετική)**: αν πατήσεις «Υπενθύμισέ μου», κρατάμε το email σου, το όνομα και το είδος του ζώου, "
+            "το επίπεδο επείγοντος (επείγον ή ήπιο) και την ώρα αποστολής, για να σου στείλουμε ένα email. Το email δεν περιέχει συμπτώματα· "
+            "στέλνεται μέσω Resend. Οι εγγραφές διαγράφονται περίπου 30 ημέρες αφότου την ορίσεις και σβήνονται αμέσως με τη διαγραφή δεδομένων παρακάτω. "
+            "Αν πατήσεις «όλα καλά» ή «χειρότερα» στο email, αποθηκεύουμε μόνο αυτή την επιλογή.\n"
+            "- **Αρχείο ασφαλείας (χωρίς προσωπικά δεδομένα)**: καταγράφουμε μόνο κωδικούς κανόνων, είδος ζώου και επίπεδο επείγοντος, χωρίς κείμενο, email ή όνομα, "
+            "για να ελέγχουμε ότι οι έλεγχοι ασφαλείας λειτουργούν· διαγράφονται μετά από 12 μήνες.\n"
             "- **Κανένα δεδομένο δεν μοιράζεται** με τρίτους πέρα από τους AI παρόχους (Anthropic, OpenAI, Groq, "
-            "Roboflow) που χρειάζονται για να γίνει η ανάλυση που ζήτησες.\n"
+            "Roboflow) που χρειάζονται για να γίνει η ανάλυση που ζήτησες, τον πάροχο πληρωμών (Stripe) και, μόνο αν ζητήσεις υπενθύμιση, τον πάροχο email (Resend).\n"
         )
         st.markdown("---")
         st.markdown("### 🗑️ Διαγραφή των δεδομένων μου τώρα")
@@ -6684,8 +6690,14 @@ def render_privacy_page():
             "- **Subscription & usage**: we keep your Plus subscription and only the count (dates) of free checks "
             "per month to apply the free limit — not the content of the checks.\n"
             "- **Account email & language preference**: kept only while you're logged in.\n"
+            "- **Follow-up reminder (optional)**: if you tap \"Remind me\", we keep your email, the pet's name and species, "
+            "the urgency level (urgent or mild) and the send time, so we can email you once. The email contains no symptoms and is sent through Resend. "
+            "Rows are deleted about 30 days after you set the reminder and immediately by the data deletion below. "
+            "If you tap \"all good\" or \"worse\" in the email, we store only that choice.\n"
+            "- **Safety log (no personal data)**: we record only rule codes, species and urgency level, with no text, email or name, "
+            "to check that the safety checks work; deleted after 12 months.\n"
             "- **Nothing is shared** with third parties beyond the AI providers (Anthropic, OpenAI, Groq, "
-            "Roboflow) strictly needed to produce the analysis you asked for.\n"
+            "Roboflow) strictly needed to produce the analysis you asked for, the payment provider (Stripe) and, only if you ask for a reminder, the email provider (Resend).\n"
         )
         st.markdown("---")
         st.markdown("### 🗑️ Delete my data now")
