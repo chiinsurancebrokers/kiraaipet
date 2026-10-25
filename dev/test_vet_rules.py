@@ -20,7 +20,7 @@ CASES = [
     ("dog", "licking paw a lot, red between toes", None, None),
     ("cat", "she is very lethargic and her gums look pale", None, "EMERGENCY"),
     ("dog", "licked a crumb of chocolate cake off the floor, she's 30 kg", None, None),
-    ("cat", "he peed outside the box twice and is drinking much more water than usual", None, None),
+    ("cat", "he peed outside the box twice and is drinking much more water than usual", None, "URGENT"),
     ("dog", "my pup got into the pantry and ate a bunch of raisin bread", None, "EMERGENCY"),
     # --- the 7 unseen phrasings that broke the first keyword engine
     ("dog", "he got into the Halloween candy, mostly Hershey's dark squares, around 12 of them, he's 4 kilos", None, "EMERGENCY"),
@@ -173,6 +173,33 @@ CASES = [
     ("dog", "got bitten in a fight and the neck is swollen", None, "EMERGENCY"),
     ("dog", "the bite wound on his leg is clean and he is playful", None, None),
     ("cat", "το ματι ειναι κοκκινο και θολο", None, "URGENT"),
+    # MSD urinary + musculoskeletal pages
+    ("dog", "he squats and strains but only a few drops come out", None, "EMERGENCY"),
+    ("dog", "he has not peed since yesterday morning", None, "EMERGENCY"),
+    ("dog", "she has blood in her urine and is vomiting and very weak", None, "EMERGENCY"),
+    ("cat", "she keeps peeing outside the litter box in small amounts", None, "URGENT"),
+    ("cat", "he peed normally this morning and is playful", None, None),
+    ("dog", "the bone is sticking out of the skin on his leg", None, "EMERGENCY"),
+    ("dog", "I think his leg is broken, it is dangling", None, "URGENT"),
+    ("dog", "his knee is hot and swollen and he suddenly went lame this morning", None, "URGENT"),
+    ("dog", "his knee has been swollen for two months, he walks fine", None, None),
+    ("dog", "after exercise his legs went stiff and rigid and his urine is dark brown", None, "EMERGENCY"),
+    ("cat", "her neck is drooping and she is suddenly weak", None, "URGENT"),
+    # MSD toxicology pages
+    ("dog", "he ate a handful of macadamia nuts", None, "URGENT"),
+    ("dog", "he did not eat any macadamia nuts", None, None),
+    ("cat", "she ate a piece of raw onion", None, "URGENT"),
+    ("dog", "he swallowed a mothball", None, "URGENT"),
+    ("cat", "she licked tea tree oil that spilled on the floor", None, "EMERGENCY"),
+    ("dog", "he licked some essential oil that spilled", None, "URGENT"),
+    ("dog", "he ate bromethalin rat bait but seems fine", None, "EMERGENCY"),
+    ("dog", "he ate a cannabis edible gummy", None, "URGENT"),
+    ("dog", "he pulled weeds in the garden with me", None, None),
+    ("cat", "she chewed a nicotine patch", None, "URGENT"),
+    ("dog", "he bit into a laundry pod", None, "URGENT"),
+    ("dog", "there was a house fire and we got him out", None, "EMERGENCY"),
+    ("bird", "my bird was near a non-stick pan that overheated and smoked", None, "EMERGENCY"),
+    ("dog", "τσιγαρο εφαγε ο σκυλος", None, "URGENT"),
 ]
 
 

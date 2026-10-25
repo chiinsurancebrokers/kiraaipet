@@ -113,6 +113,32 @@ TOPICS = [
      "Sudden bloody diarrhoea in a previously healthy small dog can be haemorrhagic gastroenteritis and causes fast fluid loss. "
      "Repeated vomiting, belly pain, or a swallowed sock, string, needle or toy suggest obstruction and need a vet.",
      "dog-owners/digestive-disorders-of-dogs/disorders-of-the-stomach-and-intestines-in-dogs"),
+    ("allium", r"onion|garlic|chive|leek|κρεμμυδ|σκορδ|πρασ", ("dog", "cat"),
+     "Onion, garlic, chives and leeks (garlic about 3 to 5 times stronger than onion, powders and dried soup mixes the strongest) damage red blood cells, cats most of all. "
+     "Signs appear days later: weakness, poor appetite, pale gums, yellow eyes or skin, dark urine, fast breathing. Pale gums, dark urine or collapse are an emergency.",
+     "toxicology/food-hazards/garlic-and-onion-allium-spp-toxicosis-in-animals"),
+    ("macadamia", r"macadamia|μακαντα?μια", ("dog",),
+     "Macadamia nuts: vomiting, weakness, wobbly gait, tremors and fever within about 12 hours; usually clears in 1 to 2 days, but call a vet the same day.",
+     "toxicology/food-hazards/macadamia-nut-toxicosis-in-dogs"),
+    ("essential_oils", r"essential oil|tea ?tree|diffuser|αιθεριο|τι τρι", ("dog", "cat", "bird"),
+     "Essential oils (tea tree, wintergreen, pennyroyal, eucalyptus, cinnamon) are most dangerous to cats and birds, by skin, mouth or inhaled mist: drooling, vomiting, wobbliness, tremors, breathing trouble. "
+     "Do not induce vomiting; get the pet into fresh air and to a vet.",
+     "toxicology/toxicoses-from-household-hazards/toxicoses-from-essential-oils-in-animals"),
+    ("cannabis", r"cannabis|marijuana|marihuana|\bthc\b|hashish|κανναβ|μαριχουανα|χασισ", ("dog", "cat"),
+     "Cannabis/THC: wobbliness, sleepiness, vomiting, leaking urine, head bobbing and sensitivity to noise within minutes to 2 hours (up to 4 if fasted); lasts 1 to 3 days. Deaths are rare, but seizures, collapse or slow breathing are an emergency.",
+     "toxicology/toxicoses-from-human-recreational-drugs/toxicosis-in-dogs-and-cats-from-tetrahydrocannabinol-thc"),
+    ("smoke", r"smoke|fire|soot|teflon|ptfe|καπν|φωτια|πυρκαγι", (),
+     "Smoke and fire: carbon monoxide, cyanide and soot injure the lungs; swelling of the airways peaks 12 to 24 hours later, so a pet that seems fine still needs a vet. "
+     "Overheated non-stick (PTFE) pans can kill birds within minutes.",
+     "toxicology/smoke-inhalation-injury/smoke-inhalation-injury-in-animals"),
+    ("urine_block", r"urin|pee\b|peeing|litter|ουρ|αμμο", ("dog", "cat"),
+     "A blocked urethra (male cats most often; dogs with stones or prostate problems): repeated trips with little or no urine, crying, a hard painful belly, then vomiting and weakness. "
+     "Toxins build up in 36 to 48 hours and it can be fatal in about 72, so no urine is an emergency, not constipation.",
+     "urinary-system/urolithiasis-in-small-animals/urethral-obstruction-in-small-animals"),
+    ("fracture", r"broken|fractur|dislocat|bone|σπασ|κατα[γκ]μα|εξαρθρ", ("dog", "cat"),
+     "Suspected fracture or dislocation: keep the pet still and, if needed, carry it on a firm board or blanket; do not try to straighten the limb. "
+     "A bone through the skin is an emergency: cover with a clean cloth and go now.",
+     "musculoskeletal-system/osteopathies-in-small-animals/bone-fractures-in-dogs-and-cats"),
 ]
 
 _COMPILED = [(tid, re.compile(rx), sp, txt, MSD + page) for tid, rx, sp, txt, page in TOPICS]
