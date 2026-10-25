@@ -1221,6 +1221,17 @@ RULES = [
 ]
 
 # exposure rules: ignore clauses where the owner says it did not happen
+def _fold_pat(p):
+    """Greek letters in a pattern get the same treatment as the text (lower-case, no accents, final sigma -> sigma),
+    otherwise an alternative written with a final sigma or an accent can never match. ASCII (regex syntax) is untouched."""
+    return "".join(norm(c) if "\u0370" <= c <= "\u03ff" else c for c in p)
+
+
+for _rule in RULES:
+    _rule.all_of = tuple(re.compile(_fold_pat(x.pattern), x.flags) for x in _rule.all_of)
+    if _rule.exclude:
+        _rule.exclude = _fold_pat(_rule.exclude)
+
 _GUARDED = {"DOG-XYLITOL", "DOG-GRAPES", "CAT-LILY", "CAT-FLOWERS", "CAT-PARACETAMOL", "DC-NSAID", "DC-ANTIFREEZE", "DC-RODENTICIDE",
             "DC-RODENTICIDE-BLEED", "DC-SNAKEBITE", "DC-METALDEHYDE", "DC-POISON-BAIT", "CAT-DOGFLEA", "DC-BATTERY", "DC-CORROSIVE",
             "DC-ALCOHOL", "DC-OTC-STIMULANT", "DC-RX-HUMAN", "DC-FLUOROURACIL", "DC-PLANT-SEVERE", "DC-PLANT-OTHER", "DOG-BREADDOUGH",

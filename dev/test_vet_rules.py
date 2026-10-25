@@ -347,6 +347,13 @@ assert _r2.startswith("🚨") and "ΑΜΕΣΩΣ" in _r2
 for _i in vr.ACT_NOW:
     if _i != "DC-CHOCOLATE":
         assert any(r.id == _i and r.level == "EMERGENCY" for r in vr.RULES), "ACT_NOW id is not an EMERGENCY rule: " + _i
+# Greek words in patterns are folded like the text (final sigma, accents): these alternatives used to be dead
+for _sp, _t, _id in [("cat", "δεν τρώει από χθες", "CAT-NOT-EATING-1D"), ("dog", "έφαγε δηλητηριασμένο κρέας στο πάρκο", "DC-POISON-BAIT"),
+                     ("dog", "έφαγε τσιχλα χωρίς ζάχαρη", "DOG-XYLITOL"), ("rabbit", "χωρίς κόπρανα από χθες", "RAB-STASIS")]:
+    assert _id in [h.id for h in vr.evaluate(_sp, [_t]).hits], (_id, _t)
+for rule in vr.RULES:
+    for _p in [x.pattern for x in rule.all_of] + ([rule.exclude] if rule.exclude else []):
+        assert "ς" not in _p and not any(c in _p for c in "άέήίόύώΐΰϊϋ"), ("unfolded Greek in " + rule.id)
 # every rule has both languages and msd rules have a source
 for rule in vr.RULES:
     assert rule.en and rule.el, rule.id
