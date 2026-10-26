@@ -2540,9 +2540,9 @@ def render_paid_page():
                     f'<div style="font:800 18px Sora,Inter,sans-serif;color:#0B1B4B;">⏳ {"Ενεργοποιούμε το Plus…" if el else "Activating Plus…"}</div>'
                     f'<div style="font-size:13.5px;color:#5B6794;margin-top:6px;line-height:1.55;">'
                     + ("Η πληρωμή έγινε. Η ενεργοποίηση παίρνει μερικά δευτερόλεπτα· πάτα «Έλεγχος ξανά». "
-                       f"Αν πλήρωσες με διαφορετικό email από το {email or 'λογαριασμό σου'}, γράψε μας στο info@chiinsurance.gr και το συνδέουμε αμέσως."
+                       f"Αν πλήρωσες με διαφορετικό email από το {_html.escape(email or 'λογαριασμό σου')}, γράψε μας στο info@chiinsurance.gr και το συνδέουμε αμέσως."
                        if el else "Your payment went through. Activation takes a few seconds; press “Check again”. "
-                       f"If you paid with a different email than {email or 'your account'}, write to info@chiinsurance.gr and we will link it right away.")
+                       f"If you paid with a different email than {_html.escape(email or 'your account')}, write to info@chiinsurance.gr and we will link it right away.")
                     + '</div></div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
@@ -8556,7 +8556,7 @@ def render_vet_workbench():
             ic = {"Dog": "🐕", "Cat": "🐈", "Rabbit": "🐇", "Bird": "🐦"}.get(p["species"], "🐾")
             last = max([e.get("date") or "" for e in p["entries"]] or [""])
             r1, r2 = st.columns([5, 2])
-            r1.markdown(f'<div class="vw-card"><b>{ic} {p["name"]}</b><br><span class="vw-s">{p.get("age","")} · {p.get("breed","")} · '
+            r1.markdown(f'<div class="vw-card"><b>{ic} {_html.escape(str(p["name"]))}</b><br><span class="vw-s">{_html.escape(str(p.get("age","")))} · {_html.escape(str(p.get("breed","")))} · '
                         f'{len(p["entries"])} ' + L("έγγραφα", "document" if len(p["entries"]) == 1 else "documents") + (f' · ' + L("τελευταίο", "latest") + f' {last}' if last else '') + '</span></div>', unsafe_allow_html=True)
             if r2.button(L("Άνοιγμα φακέλου →", "Open folder →"), key=f"vw_open_{p['id']}", use_container_width=True):
                 st.session_state["vet_sel"] = p["id"]; st.rerun()
