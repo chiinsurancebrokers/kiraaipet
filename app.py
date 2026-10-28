@@ -3336,9 +3336,11 @@ def _render_disclaimer_strip(lang=None):
     lang = lang or st.session_state.lang
     st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
     _priv_label = "🔒 Τα δεδομένα μου & GDPR" if lang == "el" else "🔒 My data & GDPR"
+    _terms_label = "Όροι χρήσης" if lang == "el" else "Terms"
     st.markdown(
         f'<div style="text-align:center;margin-top:-6px;margin-bottom:10px">'
         f'<a href="?page=privacy" target="_self" style="font-size:11px;color:#6B7280;text-decoration:underline">{_priv_label}</a>'
+        f' · <a href="?page=terms" target="_self" style="font-size:11px;color:#6B7280;text-decoration:underline">{_terms_label}</a>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -8628,6 +8630,80 @@ def render_vet_workbench():
             st.markdown(w["opinion"])
 
 
+# ── TERMS OF SERVICE (/?page=terms) ───────────────────────────────────────────
+# DRAFT written from what the app actually does (plans, data handling, safety design). It must be
+# reviewed by a Greek lawyer before paid launch. Operator identity comes from env/secrets so no
+# placeholder text ships by accident: set OPERATOR_NAME, OPERATOR_ADDRESS, OPERATOR_VAT, SUPPORT_EMAIL.
+def render_terms_page():
+    lang = st.session_state.get("lang", "el")
+    c1, c2 = st.columns([6, 1])
+    with c2:
+        if st.button("🇬🇧 EN" if lang == "el" else "🇬🇷 ΕΛ", key="terms_lang"):
+            st.session_state.lang = "en" if lang == "el" else "el"
+            st.rerun()
+            return
+    op = _secret("OPERATOR_NAME", "") or "[OPERATOR_NAME]"
+    addr = _secret("OPERATOR_ADDRESS", "") or "[OPERATOR_ADDRESS]"
+    vat = _secret("OPERATOR_VAT", "") or "[OPERATOR_VAT]"
+    mail = _secret("SUPPORT_EMAIL", "") or "[SUPPORT_EMAIL]"
+    if lang == "el":
+        st.markdown("## 📄 Όροι Χρήσης")
+        st.caption("Τελευταία ενημέρωση: 28/10/2026")
+        st.markdown(
+            f"**Πάροχος:** {op} · {addr} · ΑΦΜ {vat} · {mail}\n\n"
+            "**1. Τι είναι το PetsAIHealth.** Εργαλείο πληροφόρησης και προετοιμασίας επίσκεψης για ιδιοκτήτες κατοικιδίων. "
+            "Βοηθά να περιγράψεις τα συμπτώματα, δείχνει πόσο επείγον μπορεί να είναι και ετοιμάζει αναφορά για τον κτηνίατρό σου.\n\n"
+            "**2. Δεν είναι κτηνιατρική υπηρεσία.** Το PetsAIHealth **δεν κάνει διάγνωση, δεν συνταγογραφεί και δεν αντικαθιστά τον κτηνίατρο**. "
+            "Οι απαντήσεις παράγονται από τεχνητή νοημοσύνη και κανόνες ασφαλείας, μπορεί να είναι ανακριβείς ή ελλιπείς και δεν έχουν ακόμη ελεγχθεί κλινικά από κτηνίατρο. "
+            "Αν το ζώο σου φαίνεται σε κίνδυνο, **πήγαινε αμέσως σε κτηνίατρο ή σε 24ωρη κλινική** χωρίς να περιμένεις την εφαρμογή. "
+            "Μια ένδειξη «ήπιο» ή «χωρίς επείγον» δεν αποκλείει σοβαρή κατάσταση.\n\n"
+            "**3. Δική σου ευθύνη.** Εσύ αποφασίζεις αν και πότε θα επισκεφθείς κτηνίατρο. Δίνεις ακριβή και πλήρη στοιχεία και δεν καθυστερείς φροντίδα εξαιτίας της εφαρμογής.\n\n"
+            "**4. Πλάνα & πληρωμές.** Το δωρεάν πλάνο περιλαμβάνει 3 ελέγχους συμπτωμάτων τον μήνα και 1 κατοικίδιο. "
+            "Το PetsAIHealth Plus κοστίζει 4,99 €/μήνα ή 49,99 €/έτος (συμπεριλαμβανομένου ΦΠΑ όπου ισχύει) και ανανεώνεται αυτόματα μέχρι να το ακυρώσεις. "
+            "Πληρωμές και τιμολόγια γίνονται μέσω Stripe. Ακυρώνεις οποιαδήποτε στιγμή από τη σελίδα Λογαριασμός· η πρόσβαση συνεχίζεται μέχρι το τέλος της περιόδου που έχεις πληρώσει. "
+            "Τα δικαιώματά σου ως καταναλωτή (μεταξύ άλλων το δικαίωμα υπαναχώρησης που προβλέπει η νομοθεσία) δεν επηρεάζονται· για επιστροφή χρημάτων επικοινώνησε στο " + mail + ".\n\n"
+            "**5. Ασφάλιση.** Οι πληροφορίες για προγράμματα Eurolife «My Happy Pet» είναι ενημερωτικές. Ισχύουν μόνο οι όροι του ασφαλιστηρίου σου και η απόφαση της ασφαλιστικής.\n\n"
+            "**6. Δεδομένα.** Η επεξεργασία προσωπικών δεδομένων περιγράφεται στη σελίδα «Τα δεδομένα μου & GDPR» (?page=privacy), όπου μπορείς και να διαγράψεις τα δεδομένα σου.\n\n"
+            "**7. Αποδεκτή χρήση.** Όχι κατάχρηση, αυτοματοποιημένη χρήση σε μεγάλη κλίμακα, παραβίαση ορίων ή ανέβασμα περιεχομένου που δεν δικαιούσαι να χρησιμοποιήσεις.\n\n"
+            "**8. Διαθεσιμότητα.** Η υπηρεσία παρέχεται «ως έχει». Μπορεί να διακοπεί ή να αλλάξει. Δεν εγγυόμαστε αδιάλειπτη λειτουργία, ειδικά όταν εξαρτάται από τρίτους παρόχους (π.χ. AI).\n\n"
+            "**9. Περιορισμός ευθύνης.** Στο μέτρο που επιτρέπει ο νόμος, δεν ευθυνόμαστε για έμμεσες ή αποθετικές ζημίες ή για αποφάσεις που λήφθηκαν βάσει των απαντήσεων της εφαρμογής. "
+            "Τίποτα σε αυτούς τους όρους δεν περιορίζει ευθύνη που δεν μπορεί να περιοριστεί από τον νόμο (π.χ. δόλος, βαριά αμέλεια) ούτε τα δικαιώματά σου ως καταναλωτή.\n\n"
+            "**10. Αλλαγές.** Μπορεί να ενημερώνουμε τους όρους· οι ουσιώδεις αλλαγές ανακοινώνονται στην εφαρμογή.\n\n"
+            "**11. Εφαρμοστέο δίκαιο.** Ελληνικό δίκαιο. Ως καταναλωτής διατηρείς τα δικαιώματα που σου παρέχει το δίκαιο της χώρας κατοικίας σου και μπορείς να απευθυνθείς σε φορείς εξωδικαστικής επίλυσης διαφορών.\n"
+        )
+        back_label = "← Πίσω στην εφαρμογή"
+    else:
+        st.markdown("## 📄 Terms of Service")
+        st.caption("Last updated: 28 Oct 2026")
+        st.markdown(
+            f"**Provider:** {op} · {addr} · VAT {vat} · {mail}\n\n"
+            "**1. What PetsAIHealth is.** An information and visit-preparation tool for pet owners. It helps you describe symptoms, "
+            "shows how urgent they may be and prepares a report for your vet.\n\n"
+            "**2. Not a veterinary service.** PetsAIHealth **does not diagnose, prescribe or replace your vet**. "
+            "Answers come from artificial intelligence and safety rules, can be inaccurate or incomplete and have not yet been clinically reviewed by a veterinarian. "
+            "If your pet seems to be in danger, **go to a vet or a 24h clinic immediately** without waiting for the app. "
+            "A “mild” or “not urgent” result does not rule out a serious condition.\n\n"
+            "**3. Your responsibility.** You decide whether and when to see a vet. You give accurate and complete information and do not delay care because of the app.\n\n"
+            "**4. Plans & payments.** The free plan includes 3 symptom checks per month and 1 pet. "
+            "PetsAIHealth Plus costs €4.99/month or €49.99/year (VAT included where applicable) and renews automatically until you cancel. "
+            "Payments and invoices are handled by Stripe. You can cancel any time from the Account page; access continues until the end of the period you paid for. "
+            "Your statutory consumer rights (including any right of withdrawal) are not affected; for a refund contact " + mail + ".\n\n"
+            "**5. Insurance.** Information about Eurolife “My Happy Pet” programmes is informational. Only your policy terms and the insurer's decision apply.\n\n"
+            "**6. Data.** Personal data handling is described on “My data & GDPR” (?page=privacy), where you can also delete your data.\n\n"
+            "**7. Acceptable use.** No abuse, large-scale automated use, circumventing limits, or uploading content you have no right to use.\n\n"
+            "**8. Availability.** The service is provided “as is”. It may be interrupted or changed. We do not guarantee uninterrupted operation, especially where it depends on third-party providers (e.g. AI).\n\n"
+            "**9. Limitation of liability.** To the extent the law allows, we are not liable for indirect or consequential loss or for decisions made based on the app's answers. "
+            "Nothing in these terms limits liability that cannot be limited by law (e.g. intent, gross negligence) or your consumer rights.\n\n"
+            "**10. Changes.** We may update these terms; material changes are announced in the app.\n\n"
+            "**11. Governing law.** Greek law. As a consumer you keep the rights given by the law of your country of residence and may use out-of-court dispute resolution bodies.\n"
+        )
+        back_label = "← Back to the app"
+    st.markdown("---")
+    if st.button(back_label, key="terms_back"):
+        st.query_params.clear()
+        st.rerun()
+
+
 # ── ROUTER ────────────────────────────────────────────────────────────────────
 _page_param = st.query_params.get("page")
 if _page_param == "admin":
@@ -8636,6 +8712,10 @@ if _page_param == "admin":
 
 if _page_param == "privacy":
     render_privacy_page()
+    st.stop()
+
+if _page_param == "terms":
+    render_terms_page()
     st.stop()
 
 if _page_param == "ktiniatroys":      # old link, kept so existing URLs keep working

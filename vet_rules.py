@@ -1004,8 +1004,8 @@ RULES = [
          "Συμπτώματα αυτιού με απώλεια ισορροπίας ή γερμένο κεφάλι μαζί με πυρετό, λήθαργο ή άρνηση φαγητού μπορεί να σημαίνουν ότι η λοίμωξη φτάνει στο έσω αυτί και στον εγκέφαλο: πήγαινε αμέσως σε κτηνίατρο.",
          MSD + "ear-disorders/otitis-media-and-interna/otitis-media-and-interna-in-animals", "msd", immediate=True),
     Rule("DC-EAR-FOREIGN", ("dog", "cat", "rabbit"), "URGENT",
-         _r(r"ear|αυτι",
-            r"grass (seed|awn)|foxtail|seed|stuck|something in|foreign|water got|σπορος|ακανθα|αγκαθι|ξυλαρι|κολλησε|κατι μεσα|ξενο σωμα",
+         _r(r"\bears?\b|αυτι",
+            r"grass (seed|awn)|foxtail|seed|stuck|something in|foreign|water got|σπορ\w*|ακανθα|αγκαθι|ξυλαρι|κολλησε|κατι μεσα|ξενο σωμα",
             r"shak\w*|scratch\w*|cry\w*|yelp\w*|pain\w*|tilt\w*|τιναζ|ξυνει|πονα|κλαιει|γερν"),
          "Something stuck in the ear canal (a grass seed, for example) is painful and can burst the eardrum: see a vet today and do not push anything into the ear.",
          "Κάτι κολλημένο στον ακουστικό πόρο (π.χ. σπόρος χόρτου) πονάει και μπορεί να σπάσει το τύμπανο: δες κτηνίατρο σήμερα και μην βάζεις τίποτα μέσα στο αυτί.",
@@ -1204,7 +1204,7 @@ RULES = [
          MSD + "exotic-and-laboratory-animals/four-toed-african-pygmy-hedgehogs/diseases-of-four-toed-african-pygmy-hedgehogs", "policy", immediate=True),
     # ---- from MSD anemia (pet-owner), wound-management and hyperthyroid pages (policy basis, levels inferred, vet to confirm)
     Rule("DC-ANEMIA-JAUNDICE-WEAK", ("dog", "cat"), "EMERGENCY",
-         _r(r"yellow\w* (skin|gums?|eyes?|whites)|(skin|gums?|eyes?|whites).{0,20}yellow|jaundic|icter|ικτερ|κιτριν\w* (ουλα|δερμα|ματια)",
+         _r(r"yellow\w* (skin|gums?|eyes?|whites)|(skin|gums?|eyes?|whites).{0,20}yellow|jaundic|icter|ικτερ|κιτριν\w* (ουλα|δερμα|ματια)|(ουλα|δερμα|ματια).{0,25}κιτριν",
             r"collaps\w*|faint\w*|can'?t (stand|get up|walk)|very weak|so weak|racing heart|heart (is )?rac\w*|fast heart|panting at rest|καταρρε|κατερρε|δεν σηκωνεται|πολυ αδυνατ"),
          "Yellow gums, skin or eyes together with collapse, severe weakness or a racing heart can be destruction of red blood cells (for example immune-mediated anaemia), which can be fatal without rapid treatment: go to a vet now and give no human painkillers.",
          "Κίτρινα ούλα, δέρμα ή μάτια μαζί με κατάρρευση, σοβαρή αδυναμία ή γρήγορο καρδιακό ρυθμό μπορεί να σημαίνουν καταστροφή ερυθρών αιμοσφαιρίων (π.χ. ανοσομεταβολική αναιμία) και είναι επείγον: πήγαινε αμέσως σε κτηνίατρο και μην δώσεις ανθρώπινα παρηγορητικά.",
@@ -1219,7 +1219,10 @@ RULES = [
             r"vomit|diarrh|letharg|not eating|poor appetite|reduced appetite|soft stool|yellow stool|εμετ|διαρρο|ληθαργ|δεν τρωει|αδυναμ|μαλακα κοπρανα"),
          "A puppy or kitten with vomiting, diarrhoea, lethargy or poor appetite can crash within hours (low blood sugar, dehydration, parvovirus, parasites): see a vet today.",
          "Ένα κουτάβι ή γατάκι με εμετό, διάρροια, λήθαργο ή κακή όρεξη μπορεί να χειροτερέψει μέσα σε ώρες (χαμηλό σάκχαρο, αφυδάτωση, παρβοϊός, παράσιτα): δες κτηνίατρο σήμερα.",
-         SRC["dog_gi"] + " | " + SRC["cases"], "policy"),
+         SRC["dog_gi"] + " | " + SRC["cases"], "policy",
+         # an adult ("9 year old", "5 χρονων") or an illness DURATION ("for 3 weeks") is not a puppy age,
+         # unless the owner also says puppy/kitten
+         exclude=r"^(?!.*(?:puppy|\bpup\b|kitten|κουταβ|γατακ))(?s:.*)(?:\b\d+ ?[- ]?(?:year|yr)s?[- ]?old|\b(?:a|one|an) (?:adult|senior|old)\b|\b(?:adult|senior|elderly)\b|\d+ ?(?:χρονων|ετων|ετη|χρονια)|ενηλικ|ηλικιωμεν|(?:for|since|over|past|last) (?:the )?(?:\d+|a few|several) ?(?:weeks?|months?)|εδω και (?:\d+|μερικες|αρκετες) ?(?:εβδομαδ|μην))"),
 ]
 
 # exposure rules: ignore clauses where the owner says it did not happen
