@@ -4012,10 +4012,11 @@ def _hero_avatar(pet=None):
     b64 = _HA.get(key) or MASCOT_IMG.get(key)
     if not b64:
         return "🐾"
-    try:
-        return _b64.b64decode(b64)
-    except Exception:
-        return "🐾"
+    # Return a data URI, NOT raw bytes: bytes go through Streamlit's in-memory
+    # media store (/media/<hash>.png) whose entries expire on rerun/redeploy,
+    # which left the avatar as a broken image (404).
+    mime = "image/png" if str(b64).startswith("iVBOR") else "image/jpeg"
+    return f"data:{mime};base64,{b64}"
 
 
 
