@@ -136,8 +136,8 @@ div[data-testid="stHorizontalBlock"]:has([class*="pn-feat-"]) > div[data-testid=
 .pn-banner.dark .sb {{ color:#D5DCFF; }}
 .pn-banner .art {{ min-height:150px; }}
 @media (max-width:640px) {{
-  .pn-banner {{ grid-template-columns:1fr; }} .pn-banner .art {{ order:-1; height:132px; min-height:0; }}
-  .pn-banner .ttl {{ font-size:21px; }} .pn-banner .tx {{ padding:16px 18px 18px; }}
+  .pn-banner {{ grid-template-columns:1fr; margin-bottom:12px; }} .pn-banner .art {{ display:none; }} .pn-banner .org {{ display:none; }}
+  .pn-banner .ttl {{ font-size:20px; }} .pn-banner .tx {{ padding:14px 18px 16px; }}
 }}
 .pn-pillar {{ display:flex; gap:12px; align-items:flex-start; }}
 .pn-pillar .ic {{ width:40px; height:40px; border-radius:13px; background:{LAV}; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}

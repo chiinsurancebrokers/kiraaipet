@@ -3342,7 +3342,10 @@ def _render_disclaimer_strip(lang=None):
     so the GDPR claim made elsewhere in the marketing copy is backed by an
     actual, reachable control — not just a badge."""
     lang = lang or st.session_state.lang
-    st.markdown(f'<div class="disclaimer">{t("disclaimer_main")}</div>', unsafe_allow_html=True)
+    _short = ("Η PetsAIHealth ενημερώνει, δεν κάνει διάγνωση και δεν αντικαθιστά τον κτηνίατρο. Σε επείγον, κάλεσε κτηνίατρο τώρα."
+              if lang == "el" else
+              "PetsAIHealth informs; it does not diagnose or replace your vet. In an emergency, call a vet now.")
+    st.markdown(f'<div style="text-align:center;font-size:12px;line-height:1.5;color:#6B7390;margin:14px 6px 4px;">{_short}</div>', unsafe_allow_html=True)
     _priv_label = "🔒 Τα δεδομένα μου & GDPR" if lang == "el" else "🔒 My data & GDPR"
     st.markdown(
         f'<div style="text-align:center;margin-top:-6px;margin-bottom:10px">'
@@ -4966,6 +4969,35 @@ def _render_intake_progress(step, total, lang):
     st.markdown(_PN_SECTION_CSS + _pn_steps(step, lang), unsafe_allow_html=True)
 
 
+def _intake_finish_early(draft, lang):
+    """'Skip the rest': save the pet with what is filled in so far and go to Home. Optional fields stay empty."""
+    species_key = draft.get("species_key", "dog")
+    _new_pet = {
+        "name": draft.get("name", ""), "species_key": species_key, "species_label": draft.get("species_label", ""),
+        "breed": draft.get("breed", ""), "age_y": draft.get("age_y", 0), "age_m": draft.get("age_m", 0),
+        "sex": draft.get("sex", ""), "weight": draft.get("weight"), "microchip": draft.get("microchip", ""),
+        "vaccinations": draft.get("vaccinations", ""), "conditions": draft.get("conditions", ""),
+        "meds_raw": draft.get("meds_raw", ""), "vet_name": draft.get("vet_name", ""), "filled_by": draft.get("filled_by", ""),
+        "insurance_provider": "", "country": draft.get("country", st.session_state.get("pet_country", "")),
+        "policy_start": "", "policy_number": "",
+    }
+    _pets = list(st.session_state.get("pets") or [])
+    _ei = st.session_state.get("_editing_pet")
+    if isinstance(_ei, int) and 0 <= _ei < len(_pets):
+        _pets[_ei] = _new_pet; _act = _ei
+    else:
+        _pets.append(_new_pet); _act = len(_pets) - 1
+    st.session_state.pets = _pets
+    st.session_state.active_pet = _act
+    st.session_state.pet = _new_pet
+    st.session_state["_editing_pet"] = None
+    save_pets(st.session_state.get("auth_user", ""), _pets, _act)
+    st.session_state.intake_step = 0
+    st.session_state.intake_draft = {}
+    st.session_state.screen = "dashboard"
+    st.rerun()
+
+
 def render_intake():
     render_stepper("intake")
     lang = st.session_state.lang
@@ -4989,18 +5021,14 @@ def render_intake():
                 sub_en="Current medications and vet details (optional)"),
     }
     hdr = STEP_HEADERS[step]
-    render_doc_header(
-        hdr["title_el"], hdr["title_en"], icon=hdr["icon"],
-        sub_el=hdr["sub_el"], sub_en=hdr["sub_en"],
-    )
-    _render_page_helper(
-        "intake",
-        "Σχετικά με αυτό το βήμα",
-        "Συμπλήρωσε τα βασικά στοιχεία του κατοικιδίου σου ώστε η ανάλυση να γίνει με βάση το **είδος** και τη **ράτσα** του (π.χ. φυσιολογικός καρδιακός ρυθμός για γάτα ≠ σκύλο). Όλα τα πεδία με αστερίσκο είναι υποχρεωτικά — τα υπόλοιπα προαιρετικά.",
-        title_en="About this step",
-        body_en="Fill in the basics so the assessment can use **species** and **breed**-appropriate ranges (a cat's normal HR ≠ a dog's). Fields with an asterisk are required; the rest are optional.",
-    )
-    _render_intake_progress(step, 4, lang)
+    _ttl = hdr["title_el"] if lang == "el" else hdr["title_en"]
+    st.markdown(
+        '<div style="font:700 12px Inter,sans-serif;color:#1237C9;letter-spacing:.08em;margin:6px 2px 2px;">'
+        + (f"ΒΗΜΑ {step + 1} ΑΠΟ 4" if lang == "el" else f"STEP {step + 1} OF 4") + '</div>'
+        f'<div style="font:700 24px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:0 2px 4px;">{_ttl}</div>'
+        '<div style="height:6px;background:#E4E8FB;border-radius:99px;margin:8px 2px 16px;overflow:hidden;">'
+        f'<div style="height:6px;width:{(step + 1) * 25}%;background:#1237C9;border-radius:99px;"></div></div>',
+        unsafe_allow_html=True)
     if step > 0:
         _chip_pet = dict(pet or {}); _chip_pet.update({k: v for k, v in (draft or {}).items() if v})
         if _chip_pet.get("name"):
@@ -5013,9 +5041,10 @@ def render_intake():
         filler_opts = filler_opts_el if lang=="el" else filler_opts_en
         prev_filler = draft.get("filled_by", pet.get("filled_by", filler_opts[0]))
         if prev_filler not in filler_opts: prev_filler = filler_opts[0]
-        filled_by = st.selectbox(
-            ("Η αναφορά συμπληρώνεται από" if lang=="el" else "This assessment is being filled in by"),
-            filler_opts, index=filler_opts.index(prev_filler))
+        with st.expander("Δεν είσαι ο ιδιοκτήτης;" if lang == "el" else "Not the owner?"):
+            filled_by = st.selectbox(
+                ("Η αναφορά συμπληρώνεται από" if lang=="el" else "This assessment is being filled in by"),
+                filler_opts, index=filler_opts.index(prev_filler))
         if filled_by != filler_opts[0]:
             st.caption(("ℹ️ Η αναφορά θα αναφέρει ότι συμπληρώθηκε από " + filled_by.lower()
                         + " — χρήσιμο όταν στέλνεις την αναφορά στον ιδιοκτήτη ή τον κτηνίατρο.")
@@ -5038,12 +5067,6 @@ def render_intake():
             species_label = st.selectbox(t("species"), species_opts,
                                          index=species_opts.index(prev_sp))
 
-        st.markdown(_pn_species(SPECIES_KEY.get(species_label, "dog"), lang), unsafe_allow_html=True)
-
-        # Show common conditions for the chosen species — mirrors Asklepios
-        # giving owners a quick heads-up of what to watch for in their species.
-        _render_common_conditions(species_label, lang)
-
         col_b, col_n = st.columns([1,3])
         with col_b:
             if st.button(t("back")): st.session_state.screen="home"; st.rerun()
@@ -5061,6 +5084,14 @@ def render_intake():
                 else:
                     st.session_state["_intake_show_errors"] = True
                     st.rerun()
+        if st.button(("Παράλειψη υπόλοιπων — ξεκίνα →" if lang == "el" else "Skip the rest and start →"), key="intake_skip0", use_container_width=True):
+            if name:
+                draft.update({"filled_by": filled_by, "name": name, "species_label": species_label,
+                              "species_key": SPECIES_KEY.get(species_label, "dog")})
+                _intake_finish_early(draft, lang)
+            else:
+                st.session_state["_intake_show_errors"] = True
+                st.rerun()
         return
 
     # ── STEP 1: breed, age, sex, weight ────────────────────────────────────────
@@ -5107,6 +5138,9 @@ def render_intake():
                 st.session_state.intake_draft = draft
                 st.session_state.intake_step = 2
                 st.rerun()
+        if st.button(("Παράλειψη υπόλοιπων — ξεκίνα →" if lang == "el" else "Skip the rest and start →"), key="intake_skip1", use_container_width=True):
+            draft.update({"breed": breed, "age_y": age_y, "age_m": age_m, "sex": sex, "weight": weight})
+            _intake_finish_early(draft, lang)
         return
 
     # ── STEP 2: microchip, vaccinations, conditions ────────────────────────────
@@ -5133,6 +5167,9 @@ def render_intake():
                 st.session_state.intake_draft = draft
                 st.session_state.intake_step = 3
                 st.rerun()
+        if st.button(("Παράλειψη υπόλοιπων — ξεκίνα →" if lang == "el" else "Skip the rest and start →"), key="intake_skip2", use_container_width=True):
+            draft.update({"microchip": microchip, "vaccinations": vaccinations, "conditions": conditions})
+            _intake_finish_early(draft, lang)
         return
 
     # ── STEP 3: medications + vet, then submit ─────────────────────────────────
@@ -7094,7 +7131,7 @@ def render_pet_nurse_card():
                 '.pn-step b{display:block;font:800 11px Inter,sans-serif;letter-spacing:.12em;color:#F2B393;margin-bottom:2px;}'
                 '.st-key-pn_nurse_go button{background:#EE7340 !important;border:none !important;color:#fff !important;font-weight:800 !important;min-height:50px !important;}'
                 '.st-key-pn_nurse_go button p{color:#fff !important;font-weight:800 !important;}'
-                '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;gap:10px;}.pn-nurse .art{order:-1;aspect-ratio:400/150;}}'
+                '@media (max-width:760px){.pn-nurse{grid-template-columns:1fr;gap:10px;}.pn-nurse .art{display:none;}}'
                 '@media (max-width:640px){.pn-nurse .d{display:none;}.pn-step{flex:1 1 100%;padding:8px 12px;}}</style>', unsafe_allow_html=True)
     steps = ([("ΒΗΜΑ 1", "Πες τι παρατηρείς"), ("ΒΗΜΑ 2", "Η νοσηλεύτρια ρωτά ανά μία ερώτηση"), ("ΒΗΜΑ 3", "Παίρνεις αναφορά για τον κτηνίατρο")]
              if el else [("STEP 1", "Tell us what you notice"), ("STEP 2", "The nurse asks one question at a time"), ("STEP 3", "Get a vet-ready report")])
@@ -7117,7 +7154,6 @@ def render_pet_nurse_card():
         with c2:
             if st.button(("🚨 Επείγον;" if el else "🚨 Emergency?"), key="pn_emerg", use_container_width=True):
                 _goto("vets")
-        st.markdown(f'<div class="pn-steps">{steps_html}</div>', unsafe_allow_html=True)
 
 
 def render_plans_section(lang="en", gate=False, cta=None):
@@ -7436,23 +7472,30 @@ def render_pet_home():
     render_pet_nurse_card()
     render_plan_banner(lang)
 
-    st.markdown('<div class="pn-sec">' + ("ΑΚΟΜΑ ΠΕΡΙΣΣΟΤΕΡΑ" if el else "MORE YOU CAN DO") + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pn-sec">' + ("ΕΡΓΑΛΕΙΑ" if el else "TOOLS") + '</div>', unsafe_allow_html=True)
     _tiles = list(_PET_TOOLS) + [("insurance", "insurance", ("ΑΣΦΑΛΙΣΗ", "INSURANCE"), ("Ασφάλιση", "Insurance"),
                                   ("Κάλυψη εξόδων κτηνιάτρου με έλεγχο από AI.", "Vet-cost cover with an AI check."), ("Άνοιγμα", "Open"))]
-    with st.container(key="pn_tiles"):
-        for r in range(0, len(_tiles), 4):
-            cols = st.columns(4, gap="small", vertical_alignment="top")
-            for col, tool in zip(cols, _tiles[r:r + 4]):
+    _EMO = {"vitals": "🫁", "photo": "📷", "labs": "🧪", "longevity": "⏳", "diary": "📅", "vets": "📍", "insurance": "🛡️"}
+    st.markdown('<style>.st-key-pn_tools [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;gap:8px !important;}'
+                '.st-key-pn_tools [data-testid="stColumn"]{min-width:0 !important;flex:1 1 0 !important;width:auto !important;}'
+                '.st-key-pn_tools button{min-height:52px !important;justify-content:flex-start !important;text-align:left !important;border-radius:16px !important;}'
+                '.st-key-pn_tools button p{font-weight:700 !important;font-size:13.5px !important;line-height:1.25 !important;}</style>', unsafe_allow_html=True)
+    with st.container(key="pn_tools"):
+        for r in range(0, len(_tiles), 2):
+            cols = st.columns(2, gap="small")
+            for col, tool in zip(cols, _tiles[r:r + 2]):
                 with col:
-                    render_pet_tile(*tool)
+                    _k, _scr = tool[0], tool[1]
+                    _lock = paywall_enabled() and _scr in PAID_SCREENS and not has_plus()
+                    _done = _tool_status(_k)
+                    _lbl = f"{_EMO.get(_k, '•')} {tool[3][0 if el else 1]}" + (" 🔒" if _lock else (" ✓" if _done else ""))
+                    if st.button(_lbl, key=f"pntool_{_k}", use_container_width=True):
+                        _goto(_scr)
 
     S = st.session_state.get("longevity") or {}
     if S.get("result"):
         st.markdown('<div class="pn-sec">' + ("ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΜΑΚΡΟΖΩΙΑΣ" if el else "LATEST LONGEVITY CHECK") + '</div>', unsafe_allow_html=True)
         render_pet_longevity_result(S["result"], lang, compact=True)
-    if st.button(("ℹ️ Τι μπορεί να κάνει η PetsAIHealth;" if el else "ℹ️ What can PetsAIHealth do?"), key="home_open_landing",
-                 use_container_width=True):
-        st.session_state.screen = "landing"; st.rerun()
     _render_disclaimer_strip()
     _emergency_banner()
 
@@ -7748,15 +7791,22 @@ def _pn_evidence_bar():
     v = st.session_state.vitals or {}
     n_photo = len(st.session_state.get("photo_findings") or [])
     n_lab = len(st.session_state.get("lab_findings") or [])
-    st.markdown('<div class="pn-sec" style="margin-top:6px;">' + ("ΠΡΟΣΘΕΣΕ ΣΤΟΙΧΕΙΑ (ΠΡΟΑΙΡΕΤΙΚΑ)" if el else "ADD EVIDENCE (OPTIONAL)") + '</div>',
+    st.markdown('<style>.st-key-pn_evrow [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;gap:6px !important;}'
+                '.st-key-pn_evrow [data-testid="stColumn"]{min-width:0 !important;flex:1 1 0 !important;width:auto !important;}'
+                '.st-key-pn_evrow button{min-height:40px !important;padding:0 6px !important;}'
+                '.st-key-pn_evrow button p{font-size:12.5px !important;white-space:nowrap !important;}</style>'
+                '<div style="font-size:12.5px;color:#6B7390;margin:2px 2px 6px;">'
+                + ("Προαιρετικά: πρόσθεσε στοιχεία για καλύτερη εκτίμηση" if el else "Optional: add details for a better assessment") + '</div>',
                 unsafe_allow_html=True)
-    cols = st.columns(3, gap="small")
+    _evc = st.container(key="pn_evrow")
+    with _evc:
+        cols = st.columns(3, gap="small")
     items = [("vitals", "🫁", "Ζωτικά" if el else "Vitals", bool(v)),
              ("photo", "📷", "Φωτογραφία" if el else "Photo", n_photo > 0),
              ("labs", "🧪", "Εξετάσεις" if el else "Lab results", n_lab > 0)]
     for col, (scr, ic, lbl, done) in zip(cols, items):
         with col:
-            if st.button(f"{ic} {lbl}" + (" ✓" if done else " +"), key=f"pn_ev_{scr}", use_container_width=True,
+            if st.button(f"{ic} {lbl}" + (" ✓" if done else ""), key=f"pn_ev_{scr}", use_container_width=True,
                          type=("primary" if done else "secondary")):
                 _goto(scr)
 
