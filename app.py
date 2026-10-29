@@ -2915,11 +2915,22 @@ def render_login_gate():
     if is_logged_in():
         return True
 
-    st.markdown(f'''<div style="background:#EEF1FF;border:1px solid #D9DEF5;border-radius:14px;padding:20px 22px;text-align:center;margin:10px 0">
-        <div style="font-size:34px;margin-bottom:6px">🔒</div>
-        <div style="font-size:16px;font-weight:700;color:#0B1B4B">{"Σύνδεση" if lang=="el" else "Sign in"}</div>
-        <div style="font-size:13px;color:#6B7280;margin-top:4px">{"Email + κωδικός μίας χρήσης. Χωρίς password." if lang=="el" else "Email + one-time code. No password."}</div>
-    </div>''', unsafe_allow_html=True)
+    sent_to = st.session_state.get("otp_sent_to") or st.query_params.get("pe")
+    _el = lang == "el"
+    _s1, _s2 = ("Email", "Κωδικός") if _el else ("Email", "Code")
+    _on = "background:#1237C9;color:#fff" ; _off = "background:#EEF1FF;color:#5B6794"
+    st.markdown(
+        '<div style="font:800 20px Sora,Inter,sans-serif;color:#0B1B4B;letter-spacing:-.02em;margin:0 0 4px;">'
+        + (("Βάλε το email σου για να ξεκινήσεις" if _el else "Enter your email to start") if not sent_to
+           else ("Βάλε τον κωδικό από το email" if _el else "Enter the code from your email")) + '</div>'
+        '<div style="font-size:13.5px;color:#5B6794;margin:0 0 12px;">'
+        + (("Θα σου στείλουμε έναν κωδικό. Χωρίς password, χωρίς κάρτα." if _el else "We'll email you a one-time code. No password, no card.")
+           if not sent_to else
+           ("Έλεγξε και το spam. Φτάνει σε λίγα δευτερόλεπτα." if _el else "Check spam too. It arrives within seconds.")) + '</div>'
+        '<div style="display:flex;gap:8px;margin:0 0 12px;font:800 12px Inter,sans-serif;">'
+        f'<span style="{_off if sent_to else _on};padding:5px 12px;border-radius:999px;">1 · {_s1}</span>'
+        f'<span style="{_on if sent_to else _off};padding:5px 12px;border-radius:999px;">2 · {_s2}</span></div>',
+        unsafe_allow_html=True)
 
     sent_to = st.session_state.get("otp_sent_to")
     if not sent_to:
@@ -2954,9 +2965,6 @@ def render_login_gate():
         else:
             st.success(f"📧 " + (f"Σου στείλαμε κωδικό στο **{sent_to}**" if lang=="el"
                                   else f"We sent a code to **{sent_to}**"))
-        st.caption(("Έλεγξε το inbox και το spam folder. Ο κωδικός φτάνει σε λίγα δευτερόλεπτα."
-                    if lang=="el" else
-                    "Check your inbox and spam folder. The code arrives within a few seconds."))
 
         code = st.text_input(
             ("Κωδικός από το email" if lang=="el" else "Code from your email"),
@@ -7176,7 +7184,7 @@ def render_plans_section(lang="en", gate=False, cta=None):
                 '<span class="pn-plan-plus"></span><div class="pn-pl">'
                 f'<div class="eb">PETSAIHEALTH PLUS<span class="tag">{"ΟΛΕΣ ΟΙ ΥΠΗΡΕΣΙΕΣ" if el else "EVERYTHING"}</span></div>'
                 f'<div class="pr">{PLUS_PRICE_MONTH} <small>/ {"μήνα" if el else "month"} · {PLUS_PRICE_YEAR} / {"έτος" if el else "year"}</small></div>'
-                f'<ul>{li(plus_items, "✨")}</ul></div>', unsafe_allow_html=True)
+                f'<ul>{li(plus_items, "✓")}</ul></div>', unsafe_allow_html=True)
             _em = st.session_state.get("auth_user", "")
             if gate:
                 if st.button(("Ξεκίνα με Plus" if el else "Start with Plus"), key="pl_plus", use_container_width=True):
@@ -7265,7 +7273,7 @@ def render_pet_landing(gate=False):
 
     def _cta(key):
         lbl = ("Συνέχεια στην εφαρμογή" if has_pet else "Ξεκίνα δωρεάν") if el else ("Open the app" if has_pet else "Get started")
-        if st.button(lbl, key=key, type="primary", use_container_width=True, icon="🐾"):
+        if st.button(lbl, key=key, type="primary", use_container_width=True):
             st.session_state["_landing_seen"] = True
             st.session_state.screen = "dashboard" if has_pet else "intake"
             st.rerun()
@@ -7274,50 +7282,50 @@ def render_pet_landing(gate=False):
         """One obvious way in: gate mode -> sign-in (free plan); otherwise straight to the app."""
         if not gate:
             return _cta(key)
-        if st.button(label or ("Ξεκίνα δωρεάν" if el else "Start free"), key=key, type="primary", use_container_width=True, icon="🐾"):
+        if st.button(label or ("Ξεκίνα δωρεάν" if el else "Start free"), key=key, type="primary", use_container_width=True):
             st.session_state["_login_plan"] = "free"; st.rerun()
 
     st.markdown(parts["hero"], unsafe_allow_html=True)
-    st.markdown('<style>.st-key-pn_herocta [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;gap:10px !important;align-items:stretch !important;}'
-                '.st-key-pn_herocta [data-testid="stColumn"]{min-width:0 !important;width:auto !important;}'
-                '.st-key-pn_herocta .stButton button{background:#EE7340 !important;border:none !important;min-height:50px !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}'
-                '.st-key-pn_herocta .stButton button p{color:#0B1B4B !important;font-weight:800 !important;}</style>', unsafe_allow_html=True)
-    with st.container(key="pn_herocta"):
-        _h1, _h2 = st.columns(2, gap="small")
-        with _h1:
-            _start("land_cta_top", label=("Δοκίμασέ το δωρεάν" if el else "Try it free"))
-        with _h2:
-            st.markdown('<a class="pn-ghost" href="#pn-how">' + ("Δες πώς λειτουργεί" if el else "See how it works") + '</a>', unsafe_allow_html=True)
-    st.markdown(parts["chips"], unsafe_allow_html=True)
-    st.markdown('<div id="pn-how" style="scroll-margin-top:12px;"></div>', unsafe_allow_html=True)
-    # Explainer video (EN / EL, in static/video). EXPLAINER_VIDEO_URL overrides it with your own video; "off" hides the section.
-    _vid = os.environ.get("EXPLAINER_VIDEO_URL", "").strip()
-    if _vid.lower() != "off":
-        st.markdown('<div class="pn-l-head"><span class="pn-eyebrow">' + ("ΔΕΣ ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ" if el else "SEE HOW IT WORKS") + '</span>'
-                    '<div class="h">' + ("Η PetsAIHealth σε 30 δευτερόλεπτα" if el else "PetsAIHealth in 30 seconds") + '</div></div>',
-                    unsafe_allow_html=True)
-        if _vid:
-            st.video(_vid)
-        else:
-            _lg = "el" if el else "en"
-            st.markdown(f'<video controls playsinline preload="metadata" poster="/app/static/video/poster_{_lg}.jpg" '
-                        f'style="width:100%;border-radius:24px;background:#0B1B4B;box-shadow:0 24px 50px -30px rgba(18,55,201,.6);display:block;">'
-                        f'<source src="/app/static/video/explainer_{_lg}.mp4" type="video/mp4"></video>', unsafe_allow_html=True)
-    st.markdown(parts["steps"], unsafe_allow_html=True)
-    st.markdown(parts["heroes"], unsafe_allow_html=True)
-    st.markdown(parts["svc_head"], unsafe_allow_html=True)
-    st.markdown(parts["services"], unsafe_allow_html=True)
-    st.markdown(parts["more"], unsafe_allow_html=True)
-    render_plans_section(lang, gate, _cta)
     if gate:
+        # ONE way in, above the fold: email -> code, right under the headline (no button to find first).
+        st.markdown('<style>@media(max-width:760px){.pn-l-hero .art{display:none !important;}}'
+                    '.st-key-pn_signin{background:#fff;border:1px solid #DDE2F8;border-radius:24px;padding:18px 18px 12px;'
+                    'box-shadow:0 18px 40px -26px rgba(18,55,201,.55);margin:14px 0 6px;}</style>'
+                    '<div id="pn-login" style="scroll-margin-top:8px;"></div>', unsafe_allow_html=True)
+        with st.container(key="pn_signin"):
+            _plan = st.session_state.get("_login_plan")
+            if _plan == "plus":
+                st.info("Συνδέεσαι πρώτα· η πληρωμή του Plus γίνεται αμέσως μετά." if el else "You sign in first; the Plus payment comes right after.")
+            render_login_gate()
         if st.session_state.get("_login_plan"):
-            st.markdown('<div id="pn-login" style="scroll-margin-top:16px;"></div>', unsafe_allow_html=True)
             import streamlit.components.v1 as _cmp
             _cmp.html("<script>setTimeout(function(){var e=window.parent.document.getElementById('pn-login');"
-                      "if(e)e.scrollIntoView({behavior:'smooth',block:'center'});},250);</script>", height=0)
-            _g1, _g2, _g3 = st.columns([1, 2, 1])
-            with _g2:
-                render_login_gate()
+                      "if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},250);</script>", height=0)
+    else:
+        st.markdown('<style>.st-key-pn_herocta [data-testid="stHorizontalBlock"]{flex-direction:row !important;flex-wrap:nowrap !important;gap:10px !important;align-items:stretch !important;}'
+                    '.st-key-pn_herocta [data-testid="stColumn"]{min-width:0 !important;width:auto !important;}'
+                    '.st-key-pn_herocta .stButton button{background:#EE7340 !important;border:none !important;min-height:50px !important;box-shadow:0 12px 28px -12px rgba(238,115,64,.9) !important;}'
+                    '.st-key-pn_herocta .stButton button p{color:#0B1B4B !important;font-weight:800 !important;}</style>', unsafe_allow_html=True)
+        with st.container(key="pn_herocta"):
+            _start("land_cta_top", label=("Δοκίμασέ το δωρεάν" if el else "Try it free"))
+    st.markdown(parts["chips"], unsafe_allow_html=True)
+    st.markdown(parts["steps"], unsafe_allow_html=True)
+    render_plans_section(lang, gate, _cta)
+    # Everything else (video, mascots, every service) is one tap away, not 6 screens of scrolling.
+    with st.expander(("Περισσότερα για την PetsAIHealth" if el else "More about PetsAIHealth")):
+        _vid = os.environ.get("EXPLAINER_VIDEO_URL", "").strip()
+        if _vid.lower() != "off":
+            if _vid:
+                st.video(_vid)
+            else:
+                _lg = "el" if el else "en"
+                st.markdown(f'<video controls playsinline preload="metadata" poster="/app/static/video/poster_{_lg}.jpg" '
+                            f'style="width:100%;border-radius:24px;background:#0B1B4B;display:block;">'
+                            f'<source src="/app/static/video/explainer_{_lg}.mp4" type="video/mp4"></video>', unsafe_allow_html=True)
+        st.markdown(parts["heroes"], unsafe_allow_html=True)
+        st.markdown(parts["svc_head"], unsafe_allow_html=True)
+        st.markdown(parts["services"], unsafe_allow_html=True)
+        st.markdown(parts["more"], unsafe_allow_html=True)
     # Hidden until the benchmark is re-run on the current models/prompt and vet-reviewed (set SHOW_BENCHMARK=on to show).
     if os.environ.get("SHOW_BENCHMARK", "off").strip().lower() in ("1", "on", "true", "yes"):
         render_benchmark_section(lang)
