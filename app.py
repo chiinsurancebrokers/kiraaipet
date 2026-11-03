@@ -7356,6 +7356,23 @@ def render_pet_landing(gate=False):
                     '.st-key-pn_herocta .stButton button p{color:#0B1B4B !important;font-weight:800 !important;}</style>', unsafe_allow_html=True)
         with st.container(key="pn_herocta"):
             _start("land_cta_top", label=("Δοκίμασέ το δωρεάν" if el else "Try it free"))
+    # A real-looking example (static text, no AI call) so a new visitor sees what they get in five seconds.
+    _ex = ({"q": "Ο σκύλος μου έφαγε μια πλάκα μαύρη σοκολάτα. Είναι 5 κιλά.",
+            "a": "Η μαύρη σοκολάτα είναι τοξική για τους σκύλους και ένα μικρό σκυλί κινδυνεύει περισσότερο. Πήγαινε σε κτηνίατρο <b>τώρα</b> και μην προκαλέσεις εμετό στο σπίτι.",
+            "v": "ΕΠΕΙΓΟΝ · ΠΗΓΑΙΝΕ ΣΕ ΚΤΗΝΙΑΤΡΟ ΤΩΡΑ", "src": "Πηγή: MSD Veterinary Manual, δηλητηρίαση από σοκολάτα", "ey": "ΠΑΡΑΔΕΙΓΜΑ", "nt": "Παράδειγμα· δεν αντικαθιστά τον κτηνίατρο."}
+           if el else
+           {"q": "My dog ate a bar of dark chocolate. He is 5 kg.",
+            "a": "Dark chocolate is toxic to dogs, and a small dog is at higher risk. Go to a vet <b>now</b> and do not make him vomit at home.",
+            "v": "EMERGENCY · SEE A VET NOW", "src": "Source: MSD Veterinary Manual, chocolate toxicosis", "ey": "EXAMPLE", "nt": "Example only; it does not replace your vet."})
+    st.markdown(
+        '<style>.pn-ex{background:#fff;border:1px solid #DDE2F8;border-radius:22px;padding:14px 16px;margin:12px 0 6px;}'
+        '.pn-ex .ey{font:800 10.5px Inter,sans-serif;letter-spacing:.14em;color:#6B7390;margin-bottom:8px;}'
+        '.pn-ex .q{background:#EEF1FF;color:#0B1B4B;border-radius:16px 16px 4px 16px;padding:10px 12px;font-size:14px;line-height:1.45;margin:0 0 8px 28px;}'
+        '.pn-ex .a{background:#F7F8FF;border:1px solid #E4E8FB;color:#2B3566;border-radius:16px 16px 16px 4px;padding:10px 12px;font-size:14px;line-height:1.5;margin:0 28px 8px 0;}'
+        '.pn-ex .v{display:inline-block;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:999px;font:800 11.5px Inter,sans-serif;padding:5px 11px;margin:2px 0 6px;}'
+        '.pn-ex .s{font-size:11.5px;color:#6B7390;line-height:1.5;}</style>'
+        f'<div class="pn-ex"><div class="ey">{_ex["ey"]}</div><div class="q">{_ex["q"]}</div><div class="a">{_ex["a"]}</div>'
+        f'<div class="v">🚨 {_ex["v"]}</div><div class="s">{_ex["src"]}<br>{_ex["nt"]}</div></div>', unsafe_allow_html=True)
     st.markdown(parts["chips"], unsafe_allow_html=True)
     st.markdown(parts["steps"], unsafe_allow_html=True)
     render_plans_section(lang, gate, _cta)
