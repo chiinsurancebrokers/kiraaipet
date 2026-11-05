@@ -555,8 +555,8 @@ def landing_parts(lang: str, gr: bool = False) -> dict:
 <div class="pn-l-hero"><div>
   <span class="pn-eyebrow dark">{"AI ΚΤΗΝΙΑΤΡΙΚΗ ΝΟΣΗΛΕΥΤΡΙΑ" if el else "AI VET NURSE"}</span>
   <h1>{"Πες τι παρατηρείς. <span>Η PetsAIHealth ρωτά, εξηγεί και ετοιμάζει την αναφορά.</span>" if el else "Tell us what you notice. <span>PetsAIHealth asks, explains and prepares the report.</span>"}</h1>
-  <p>{"Δομημένη αξιολόγηση συμπτωμάτων με παραπομπές MSD Vet Manual — και γύρω της υπηρεσίες για κάλυψη ασφαλιστηρίου, μακροζωία και ιατρική αναφορά. Συμπληρώνει, δεν αντικαθιστά τον κτηνίατρο." if el
-      else "A structured symptom assessment with MSD Vet Manual references — with services around it for insurance coverage, longevity and the medical report. It complements your vet, never replaces them."}</p>
+  <p>{"Περίγραψε τι βλέπεις. Θα σε ρωτήσουμε λίγα πράγματα, θα σου πούμε πόσο επείγον μπορεί να είναι και θα ετοιμάσουμε αναφορά για τον κτηνίατρό σου. Στηρίζουμε τον κτηνίατρο, δεν τον αντικαθιστούμε." if el
+      else "Describe what you see. We ask a few questions, tell you how urgent it may be, and prepare a report for your vet. We support your vet, never replace them."}</p>
 </div><div class="art team">{team_html()}</div></div>"""
 
     def svc(scene, flip, main, tag, title, summary, problem, steps, note=""):

@@ -2432,7 +2432,7 @@ def render_plus_paywall(lang="en", feature_label="", full=True):
         '<div class="pn-plus"><div class="eb">PETSAIHEALTH PLUS</div>'
         f'<div class="ti">{"Όλες οι υπηρεσίες, ένα πλάνο" if el else "Every service, one plan"}</div>'
         '<div class="su">'
-        + ((f"Η υπηρεσία «{feature_label}» περιλαμβάνεται στο Plus. " if feature_label else "")
+        + (((f"Η υπηρεσία «{feature_label}» περιλαμβάνεται στο Plus. " if el else f"“{feature_label}” is part of Plus. ") if feature_label else "")
            + ("Με μία συνδρομή ξεκλειδώνεις αναφορά για τον κτηνίατρο, δεύτερη γνώμη, ζωτικά, φωτογραφίες, εξετάσεις, μακροζωία, ημερολόγιο και όλο το κομμάτι της ασφάλισης."
               if el else "One subscription unlocks the vet report, second opinion, vitals, photos, labs, longevity, diary and all the insurance tools."))
         + '</div>'
@@ -4994,7 +4994,7 @@ def _intake_finish_early(draft, lang):
     save_pets(st.session_state.get("auth_user", ""), _pets, _act)
     st.session_state.intake_step = 0
     st.session_state.intake_draft = {}
-    st.session_state.screen = "dashboard"
+    st.session_state.screen = "triage"
     st.rerun()
 
 
@@ -5316,7 +5316,7 @@ def render_intake():
             save_pets(st.session_state.get("auth_user", ""), _pets, _act)
             st.session_state.intake_step = 0
             st.session_state.intake_draft = {}
-            st.session_state.screen = "dashboard"
+            st.session_state.screen = "triage"
             st.rerun()
 
 
@@ -5382,6 +5382,18 @@ def render_triage():
     if paywall_enabled() and not has_plus():
         _left = free_triage_left()
         if not st.session_state.triage_chat and _left <= 0:
+            st.markdown(
+                '<div style="background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:18px;padding:14px 16px;margin:6px 0 12px;">'
+                '<div style="font:800 16px Sora,Inter,sans-serif;color:#991B1B;">🚨 '
+                + ("Επείγον τώρα;" if lang == "el" else "Is it an emergency right now?") + '</div>'
+                '<div style="font-size:13.5px;color:#7F1D1D;line-height:1.5;margin-top:4px;">'
+                + ("Μην περιμένεις. Κάλεσε τον κτηνίατρό σου ή πήγαινε στην κοντινότερη 24ωρη κλινική. Αυτό είναι πάντα δωρεάν."
+                   if lang == "el" else
+                   "Don't wait. Call your vet or go to the nearest 24-hour clinic. This is always free.") + '</div></div>',
+                unsafe_allow_html=True)
+            if st.button(("🚨 Βρες κτηνίατρο / 24ωρη κλινική" if lang == "el" else "🚨 Find a vet / 24h clinic"),
+                         key="tri_free_emerg", type="primary", use_container_width=True):
+                _goto("vets")
             st.warning("Χρησιμοποίησες και τους 3 δωρεάν ελέγχους αυτού του μήνα." if lang == "el"
                        else "You've used all 3 free checks this month.")
             render_plus_paywall(lang, "Απεριόριστοι έλεγχοι συμπτωμάτων" if lang == "el" else "Unlimited symptom checks")
@@ -5520,11 +5532,11 @@ def render_triage():
     if not st.session_state.triage_chat:
         with st.chat_message("assistant", avatar=_hero_avatar(pet)):
             st.markdown(
-                (f"Γεια σου! Είμαι {'η' if mascot_for_pet(pet)=='cat' else 'ο'} **{MASCOT_NAMES.get(mascot_for_pet(pet) or 'dog', 'PetsAIHealth')}**, {'η' if mascot_for_pet(pet)=='cat' else 'ο'} superhero της PetsAIHealth. Τι παρατήρησες στον/στην **{nm}**; "
-                 "Διάλεξε από τα γρήγορα συμπτώματα παρακάτω ή γράψε με δικά σου λόγια — θα σε ρωτώ **μία ερώτηση τη φορά**."
+                (f"Γεια σου! Τι παρατήρησες στον/στην **{nm}**; "
+                 "Γράψε το με δικά σου λόγια ή διάλεξε από τα γρήγορα συμπτώματα. Θα σε ρωτήσω **μία ερώτηση τη φορά**."
                  if lang=="el" else
-                 f"Hi! I'm **{MASCOT_NAMES.get(mascot_for_pet(pet) or 'dog', 'PetsAIHealth')}**, PetsAIHealth's superhero. What have you noticed about **{nm}**? "
-                 "Pick from the quick symptoms below or write it in your own words — I'll ask **one question at a time**."))
+                 f"Hi! What have you noticed about **{nm}**? "
+                 "Tell me in your own words, or pick a quick symptom. I'll ask **one question at a time**."))
 
     # Species-specific symptom chips
     CHIPS = {
@@ -7311,7 +7323,7 @@ def render_pet_landing(gate=False):
         lbl = ("Συνέχεια στην εφαρμογή" if has_pet else "Ξεκίνα δωρεάν") if el else ("Open the app" if has_pet else "Get started")
         if st.button(lbl, key=key, type="primary", use_container_width=True):
             st.session_state["_landing_seen"] = True
-            st.session_state.screen = "dashboard" if has_pet else "intake"
+            st.session_state.screen = "triage" if has_pet else "intake"
             st.rerun()
 
     def _start(key, label=None):
@@ -7344,6 +7356,23 @@ def render_pet_landing(gate=False):
                     '.st-key-pn_herocta .stButton button p{color:#0B1B4B !important;font-weight:800 !important;}</style>', unsafe_allow_html=True)
         with st.container(key="pn_herocta"):
             _start("land_cta_top", label=("Δοκίμασέ το δωρεάν" if el else "Try it free"))
+    # A real-looking example (static text, no AI call) so a new visitor sees what they get in five seconds.
+    _ex = ({"q": "Ο σκύλος μου έφαγε μια πλάκα μαύρη σοκολάτα. Είναι 5 κιλά.",
+            "a": "Η μαύρη σοκολάτα είναι τοξική για τους σκύλους και ένα μικρό σκυλί κινδυνεύει περισσότερο. Πήγαινε σε κτηνίατρο <b>τώρα</b> και μην προκαλέσεις εμετό στο σπίτι.",
+            "v": "ΕΠΕΙΓΟΝ · ΠΗΓΑΙΝΕ ΣΕ ΚΤΗΝΙΑΤΡΟ ΤΩΡΑ", "src": "Πηγή: MSD Veterinary Manual, δηλητηρίαση από σοκολάτα", "ey": "ΠΑΡΑΔΕΙΓΜΑ", "nt": "Παράδειγμα· δεν αντικαθιστά τον κτηνίατρο."}
+           if el else
+           {"q": "My dog ate a bar of dark chocolate. He is 5 kg.",
+            "a": "Dark chocolate is toxic to dogs, and a small dog is at higher risk. Go to a vet <b>now</b> and do not make him vomit at home.",
+            "v": "EMERGENCY · SEE A VET NOW", "src": "Source: MSD Veterinary Manual, chocolate toxicosis", "ey": "EXAMPLE", "nt": "Example only; it does not replace your vet."})
+    st.markdown(
+        '<style>.pn-ex{background:#fff;border:1px solid #DDE2F8;border-radius:22px;padding:14px 16px;margin:12px 0 6px;}'
+        '.pn-ex .ey{font:800 10.5px Inter,sans-serif;letter-spacing:.14em;color:#6B7390;margin-bottom:8px;}'
+        '.pn-ex .q{background:#EEF1FF;color:#0B1B4B;border-radius:16px 16px 4px 16px;padding:10px 12px;font-size:14px;line-height:1.45;margin:0 0 8px 28px;}'
+        '.pn-ex .a{background:#F7F8FF;border:1px solid #E4E8FB;color:#2B3566;border-radius:16px 16px 16px 4px;padding:10px 12px;font-size:14px;line-height:1.5;margin:0 28px 8px 0;}'
+        '.pn-ex .v{display:inline-block;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:999px;font:800 11.5px Inter,sans-serif;padding:5px 11px;margin:2px 0 6px;}'
+        '.pn-ex .s{font-size:11.5px;color:#6B7390;line-height:1.5;}</style>'
+        f'<div class="pn-ex"><div class="ey">{_ex["ey"]}</div><div class="q">{_ex["q"]}</div><div class="a">{_ex["a"]}</div>'
+        f'<div class="v">🚨 {_ex["v"]}</div><div class="s">{_ex["src"]}<br>{_ex["nt"]}</div></div>', unsafe_allow_html=True)
     st.markdown(parts["chips"], unsafe_allow_html=True)
     st.markdown(parts["steps"], unsafe_allow_html=True)
     render_plans_section(lang, gate, _cta)
@@ -7480,10 +7509,10 @@ def render_pet_home():
                 '.st-key-pn_tools [data-testid="stColumn"]{min-width:0 !important;flex:1 1 0 !important;width:auto !important;}'
                 '.st-key-pn_tools button{min-height:52px !important;justify-content:flex-start !important;text-align:left !important;border-radius:16px !important;}'
                 '.st-key-pn_tools button p{font-weight:700 !important;font-size:13.5px !important;line-height:1.25 !important;}</style>', unsafe_allow_html=True)
-    with st.container(key="pn_tools"):
-        for r in range(0, len(_tiles), 2):
+    def _tool_grid(_items):
+        for r in range(0, len(_items), 2):
             cols = st.columns(2, gap="small")
-            for col, tool in zip(cols, _tiles[r:r + 2]):
+            for col, tool in zip(cols, _items[r:r + 2]):
                 with col:
                     _k, _scr = tool[0], tool[1]
                     _lock = paywall_enabled() and _scr in PAID_SCREENS and not has_plus()
@@ -7491,6 +7520,13 @@ def render_pet_home():
                     _lbl = f"{_EMO.get(_k, '•')} {tool[3][0 if el else 1]}" + (" 🔒" if _lock else (" ✓" if _done else ""))
                     if st.button(_lbl, key=f"pntool_{_k}", use_container_width=True):
                         _goto(_scr)
+    _core = [t_ for t_ in _tiles if t_[0] in ("vets", "photo", "labs", "vitals", "insurance")]
+    _extra = [t_ for t_ in _tiles if t_[0] not in ("vets", "photo", "labs", "vitals", "insurance")]
+    with st.container(key="pn_tools"):
+        _tool_grid(_core)
+        if _extra:
+            with st.expander("Περισσότερα" if el else "More"):
+                _tool_grid(_extra)
 
     S = st.session_state.get("longevity") or {}
     if S.get("result"):
@@ -8760,7 +8796,7 @@ if screen == "home" and not st.session_state.get("_landing_seen") and not (auth_
 elif screen == "landing":
     render_pet_landing()
 elif screen == "home":
-    st.session_state.screen = "dashboard" if _has_pet else "intake"
+    st.session_state.screen = "triage" if _has_pet else "intake"
     st.rerun()
 elif screen == "intake" and paywall_enabled() and st.session_state.get("pets") and not has_plus():
     render_paywall_page("profile")
