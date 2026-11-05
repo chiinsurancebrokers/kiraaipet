@@ -354,6 +354,21 @@ for _sp, _t, _id in [("cat", "δεν τρώει από χθες", "CAT-NOT-EATIN
 for rule in vr.RULES:
     for _p in [x.pattern for x in rule.all_of] + ([rule.exclude] if rule.exclude else []):
         assert "ς" not in _p and not any(c in _p for c in "άέήίόύώΐΰϊϋ"), ("unfolded Greek in " + rule.id)
+# regression: audit round 7 (Greek word order, adult age vs puppy, illness duration, "year"/"hear" is not "ear")
+for _sp, _t, _id, _exp in [
+    ("dog", "κατέρρευσε και τα μάτια του είναι κίτρινα", "DC-ANEMIA-JAUNDICE-WEAK", True),
+    ("dog", "έχει σπόρο στο αυτί, κουνάει το κεφάλι και πονάει", "DC-EAR-FOREIGN", True),
+    ("dog", "my 9 year old dog has been vomiting for 3 weeks", "DC-YOUNG-GI", False),
+    ("dog", "ο σκύλος μου 8 χρονών κάνει εμετό εδώ και 3 εβδομάδες", "DC-YOUNG-GI", False),
+    ("dog", "my 10 week old puppy is vomiting", "DC-YOUNG-GI", True),
+    ("dog", "my puppy has been vomiting for 3 weeks", "DC-YOUNG-GI", True),
+    ("dog", "κουτάβι 2 μηνών με εμετό", "DC-YOUNG-GI", True),
+    ("dog", "last year he shook his head, he stuck out his tongue and hurt", "DC-EAR-FOREIGN", False),
+    ("dog", "ο σκύλος δεν έχει κατουρήσει από χθες το πρωί", "DC-NO-URINE-DAY", True),
+    ("dog", "Δεν υπήρχε δηλητηριασμένο δόλωμα", "DC-POISON-BAIT", False),
+    ("cat", "I put my dog's flea drops on my cat", "CAT-DOGFLEA", True),
+]:
+    assert (_id in [h.id for h in vr.evaluate(_sp, [_t]).hits]) == _exp, (_id, _t, _exp)
 # every rule has both languages and msd rules have a source
 for rule in vr.RULES:
     assert rule.en and rule.el, rule.id

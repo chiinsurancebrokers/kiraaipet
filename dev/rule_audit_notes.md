@@ -3,6 +3,16 @@
 Every rule has an English and a Greek sample in `dev/rule_samples.json` (checked by `dev/test_rule_samples.py`).
 Fixed in the audit: Greek words with final sigma/accents in patterns never matched (all rules, knowledge topics, safety patterns); dead Greek in DC-ANOREXIA-LONG, DC-NO-URINE-DAY, DC-PRIAPISM (typo); missing verb forms (bitten, collapsed, car hit, breathe); garbled Greek texts (BITE-ANY, CORROSIVE, URINARY-SICK); negation for DC-POISON-BAIT and BIRD-FUMES; smoker false alarm in ALL-SMOKE; CAT-URETHRAL no longer fires on the bare word 'nothing'.
 
+## Round 7 re-check (probe with natural Greek/English phrasing)
+
+Most items below were already fixed in earlier rounds; re-tested with the natural wording from each note and confirmed working:
+DC-NO-URINE-DAY, DC-ANOREXIA-LONG, DC-PRIAPISM, ALL-TRAUMA-BLEED, ALL-ANAPHYLAXIS, DC-ASPIRATION, CAT-DOGFLEA (possessive),
+DC-POISON-BAIT (negation), ALL-SMOKE (smoker), CAT-URETHRAL ("nothing wrong"), DC-BITE-ANY (passive), DC-CORROSIVE.
+Fixed now: DC-ANEMIA-JAUNDICE-WEAK (reversed word order "eyes are yellow"), DC-YOUNG-GI (adult age / illness duration no longer read
+as puppy age unless puppy/kitten is said), DC-EAR-FOREIGN (`\bear\b`, any form of σπόρος). Regression cases are in `dev/test_vet_rules.py`.
+Still open for the vet (clinical judgement, not typos): the broad/over-triggering notes (DC-ESOPH-FB, DC-METRITIS, DC-MASTITIS,
+DC-ANAL-SAC, DC-HYPOGLY-EPISODE, DC-NOSEBLEED, REP-TORTOISE-SERIOUS) and the species/wording notes.
+
 ## Left as is, for a vet to decide (they only raise levels; over-triggering is the safe direction)
 
 - **DC-PRIAPISM**: Greek pattern dead: regex uses 'στιση' (typo) instead of 'στυση', so correct Greek 'στύση' never fires (only misspelt 'στίση' does). Closest tried: 'Ο σκύλος μου έχει στύση εδώ και ώρες που δεν περνάει' -> no hit. The 'el' sample in samples is the natural wording and does NOT fire.
