@@ -87,6 +87,11 @@ lv, txt, calls = run("dog", "I found a tick on my dog, how do I remove it", SELF
 expect("MSD facts reach the nurse prompt for that topic", "tick" in STATE["nurse_system"].lower() and "REFERENCE FACTS" in STATE["nurse_system"], STATE["nurse_system"][-300:])
 lv, txt, calls = run("dog", "He is limping slightly", SELF)
 expect("no MSD facts injected for an unrelated message", "REFERENCE FACTS" not in STATE["nurse_system"])
+lv, txt, calls = run("dog", "He vomited three times, has diarrhoea and is not eating", "Vomiting with diarrhoea for a day needs a vet soon [S1].\n[TRIAGE: URGENT]")
+expect("RAG: retrieved facts are tagged in the nurse prompt", "[S1]" in STATE["nurse_system"] and "RETRIEVED REFERENCE FACTS" in STATE["nurse_system"], STATE["nurse_system"][-200:])
+expect("RAG: [S#] tag is removed from the owner's text and the cited source is listed", "[S1]" not in txt and "Sources:" in txt, txt[-160:])
+lv, txt, calls = run("dog", "He is limping slightly", "Keep him calm [S7].\n[TRIAGE: SELF_CARE]")
+expect("RAG: an invented tag is dropped and no source line is added", "[S7]" not in txt and "Sources:" not in txt, txt[-120:])
 
 lv, txt, calls = run("dog", "He is limping slightly", SELF, facts='{"ingested":[],"symptoms":[]}')
 expect("extraction call uses the small model by default", "haiku" in STATE.get("facts_model", ""), STATE.get("facts_model"))

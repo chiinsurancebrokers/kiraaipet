@@ -131,7 +131,7 @@ TOPICS = [
      "Smoke and fire: carbon monoxide, cyanide and soot injure the lungs; swelling of the airways peaks 12 to 24 hours later, so a pet that seems fine still needs a vet. "
      "Overheated non-stick (PTFE) pans can kill birds within minutes.",
      "toxicology/smoke-inhalation-injury/smoke-inhalation-injury-in-animals"),
-    ("urine_block", r"urin|pee\b|peeing|litter|ουρ|αμμο", ("dog", "cat"),
+    ("urine_block", r"urin|pee\b|peeing|litter|\bουρ(α|η|ο)|κατουρ|αμμο", ("dog", "cat"),
      "A blocked urethra (male cats most often; dogs with stones or prostate problems): repeated trips with little or no urine, crying, a hard painful belly, then vomiting and weakness. "
      "Toxins build up in 36 to 48 hours and it can be fatal in about 72, so no urine is an emergency, not constipation.",
      "urinary-system/urolithiasis-in-small-animals/urethral-obstruction-in-small-animals"),

@@ -21,6 +21,7 @@ import vet_rules as _vet_rules   # deterministic safety floor under the nurse ch
 import followups as _followups   # opt-in one-time check-in email after URGENT / SELF_CARE
 import safety_events as _safety_events   # code-only safety event log (Supabase) for the weekly report
 import vet_knowledge as _vet_knowledge   # MSD owner-level facts for the topics a chat mentions
+import kb_vet as _kb_vet   # retrieval (RAG) over the curated guidance: tagged facts in the prompt, cited sources in the reply
 import vet_safety as _vet_safety   # extra safety layers: fact extraction, profile/vitals floors, fail-safe, safety-net text
 from petify_ui import (THEME_CSS as _PETIFY_THEME, HERO_CSS as _PETIFY_HERO_CSS, hero_html as _petify_hero_html,
                        feature_banner_css as _pet_feature_banner_css, pillar_html as _pet_pillar_html,
@@ -5415,10 +5416,14 @@ def render_triage():
             _hints = _vet_rules.prompt_hints(_vr)
             if _hints:
                 system_ctx += "\n\n" + _hints
+            _kbh = []
             try:
-                _kb = _vet_knowledge.prompt_block(_sk, _owner_texts + [_vet_safety.facts_text(_facts)]) if _floor_on else ""
+                _kb, _kbh = (_kb_vet.retrieve(_sk, _owner_texts + [_vet_safety.facts_text(_facts)], [h.id for h in _vr.hits])
+                             if _floor_on else ("", []))
+                if _kbh:
+                    log_event("kb_retrieve", ok=True, ids=_kb_vet.ids(_kbh))      # chunk ids only, never owner text
             except Exception:
-                _kb = ""
+                _kb, _kbh = "", []
             if _kb:
                 system_ctx += "\n\n" + _kb
             # Act-now bypass: a clear life-threatening statement gets the fixed emergency message at once, without the
@@ -5455,6 +5460,7 @@ def render_triage():
             except Exception:
                 pass
             reply, _tool = parse_tool_request(reply)
+            reply = _kb_vet.cite(reply, _kbh, lang)          # drop [S#] tags; list only the sources the nurse really cited
             reply = sanitize_ai_text(reply)
             if _lvl is None:
                 if not reply.rstrip().endswith(("?", ";")):   # a question mid-cycle is never an emergency verdict
