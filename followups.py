@@ -98,9 +98,20 @@ def _post(url, headers, payload):
         return r.status
 
 
+def to_html(text):
+    """Minimal HTML twin of the plain-text mail. Resend only tracks opens (pixel) and clicks (rewritten links) in HTML,
+    so without this the open/click rates stay at 0 even when the owner reads the mail. Text is escaped; only URLs become links."""
+    import html
+    import re
+    esc = html.escape(text)
+    esc = re.sub(r"(https?://[^\s<]+)", lambda m: f'<a href="{m.group(1)}">{m.group(1)}</a>', esc)
+    return ('<div style="font:15px/1.55 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0B1B4B;max-width:520px">'
+            + esc.replace("\n", "<br>") + "</div>")
+
+
 def send_email(to, subject, text, api_key, sender):
     return _post("https://api.resend.com/emails", {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                 {"from": sender, "to": [to], "subject": subject, "text": text})
+                 {"from": sender, "to": [to], "subject": subject, "text": text, "html": to_html(text)})
 
 
 def run_due(sb, send, app_url="", now=None, limit=50, outcome_url="", secret=""):

@@ -2159,6 +2159,7 @@ def verify_otp(email, token):
                 # using the authenticated client so RLS sees auth.uid()/email.
                 st.session_state["_output_lang_loaded"] = False
                 _ensure_output_lang_loaded()
+                track_event("login")
                 return True, ""
         except Exception as e:
             last_err = str(e)
@@ -2368,6 +2369,31 @@ def record_triage_check(email: str = ""):
         log_event("usage_write", ok=False, error=str(e))
 
 
+FUNNEL_KINDS = ("login", "session_start", "followup_offer_shown", "followup_consent")
+
+
+def track_event(kind: str, once_per_session: bool = False):
+    """Funnel event (signed-in users only) written to `usage_events` next to `triage_check`.
+    Kinds: login (OTP verified), session_start (first render of a signed-in session), followup_offer_shown, followup_consent.
+    First check = `triage_check`; signup = the user's earliest event; return visit = a session_start on a later day (dev/funnel.sql).
+    Never raises, never stores free text. GDPR delete removes these rows (triage_check stays: it enforces the free quota)."""
+    email = st.session_state.get("auth_user", "")
+    if not email or kind not in FUNNEL_KINDS:
+        return
+    flag = f"_tracked_{kind}"
+    if once_per_session and st.session_state.get(flag):
+        return
+    st.session_state[flag] = True
+    sb = _supabase_client()
+    if not sb:
+        return
+    try:
+        sb.table("usage_events").insert({"user_email": email, "kind": kind}).execute()
+        log_event("funnel", ok=True, kind=kind)
+    except Exception as e:
+        log_event("funnel", ok=False, kind=kind, error=str(e))
+
+
 def _render_poison_handoff(lang):
     """Next-step card beside a poisoning verdict: call the vet / 24h clinic now, plus the official bait-report lines when relevant."""
     last = st.session_state.get("_vs_last") or {}
@@ -2391,6 +2417,7 @@ def _render_followup_offer(pet, lang, level):
         return
     key = f"_fu_done_{pet.get('name','')}_{len(st.session_state.get('triage_chat', []))}"
     nm = pet.get("name") or ("το κατοικίδιο" if lang == "el" else "your pet")
+    track_event("followup_offer_shown", once_per_session=True)
     if st.session_state.get(key):
         st.success((f"🔔 Εντάξει! Θα σου στείλω ένα email σε περίπου {_followups.DELAY_HOURS[level]} ώρες για να δούμε πώς είναι {nm}."
                     if lang == "el" else f"🔔 Done! I'll email you in about {_followups.DELAY_HOURS[level]} hours to ask how {nm} is doing."))
@@ -2400,6 +2427,8 @@ def _render_followup_offer(pet, lang, level):
         try:
             due = _followups.schedule(_supabase_client(), email, pet, level, lang)
             log_event("followup_schedule", ok=bool(due), level=level)
+            if due:
+                track_event("followup_consent")
             st.session_state[key] = bool(due)
         except Exception as e:
             log_event("followup_schedule", ok=False, error=str(e))
@@ -6742,6 +6771,8 @@ def render_privacy_page():
                     try:
                         sb.table("user_prefs").delete().eq("user_email", _email).execute()
                         sb.table("followups").delete().eq("user_email", _email).execute()
+                        # funnel events go; triage_check rows stay because they enforce the free monthly quota
+                        sb.table("usage_events").delete().eq("user_email", _email).in_("kind", list(FUNNEL_KINDS)).execute()
                         log_event("gdpr_delete", ok=True)
                     except Exception as e:
                         log_event("gdpr_delete", ok=False, error=str(e))
@@ -8778,6 +8809,7 @@ def _ensure_pets_loaded():
 
 
 _ensure_pets_loaded()
+track_event("session_start", once_per_session=True)
 if st.session_state.pop("_login_plan", None) == "plus" and paywall_enabled() and not has_plus():
     st.session_state.screen = "plus"
 if st.session_state.pop("_paid_return", None):
