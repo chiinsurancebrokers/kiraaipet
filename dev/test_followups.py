@@ -71,5 +71,12 @@ db3 = DB(); fu.schedule(db3, "a@b.gr", {"name": "Rex"}, "URGENT", "en"); fu.canc
 db3.d["followups"][0]["due_at"] = "2000-01-01T00:00:00+00:00"
 check("cancelled reminder is never sent", fu.run_due(db3, lambda *a: 1 / 0) == (0, 0))
 check("not-yet-due rows are left alone", (lambda d: (fu.schedule(d, "x@y.gr", {"name": "Z"}, "URGENT", "en"), fu.run_due(d, lambda *a: 1 / 0))[1])(DB()) == (0, 0))
+h = fu.to_html('Hi <b>Rex</b> & co\nBetter: https://x.example/o?id=1&o=ok')
+check("html twin escapes markup and keeps one clickable link", "&lt;b&gt;" in h and "<b>" not in h
+      and '<a href="https://x.example/o?id=1&amp;o=ok">' in h and "<br>" in h)
+cap = {}
+fu._post = lambda url, headers, payload: cap.update(payload) or 200
+fu.send_email("a@b.gr", "S", "Hello https://x.example", "k", "PetsAIHealth <care@petsaihealth.com>")
+check("send_email sends both text and html (needed for Resend open/click tracking)", cap.get("text") and "<a href=" in cap.get("html", ""))
 print("\nall passed" if not fails else f"\nFAILED: {fails}")
 sys.exit(1 if fails else 0)
